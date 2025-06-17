@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 import { env } from "process";
 
 const nextConfig: NextConfig = {
-  output: "export",
+  output: "export", // Ensure this line is present
   trailingSlash: true,
   images: {
     unoptimized: true,
