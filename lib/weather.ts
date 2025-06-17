@@ -172,7 +172,7 @@ export function generateMockWeatherData(startDate: Date): WeatherResponse {
   const today = new Date();
 
   while (currentDate <= today) {
-    const dayOfYear = Math.floor((currentDate - new Date(currentDate.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
+    const dayOfYear = Math.floor((currentDate.getTime() - new Date(currentDate.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
 
     // Simulate realistic temperature progression through growing season
     const baseTempHigh = 60 + Math.sin((dayOfYear - 90) / 365 * 2 * Math.PI) * 20 + Math.random() * 10;
