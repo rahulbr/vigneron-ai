@@ -170,7 +170,7 @@ export default function Debug() {
       >
         {results.length === 0 && (
           <p style={{ color: "#666" }}>
-            Click "Test Port Huron, MI Weather" to start debugging...
+            Click &quot;Test Port Huron, MI Weather&quot; to start debugging...
           </p>
         )}
 
