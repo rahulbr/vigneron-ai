@@ -11,8 +11,12 @@ NEXT_TELEMETRY_DISABLED = "1"
 
 [deployment]
 build = ["npm", "run", "build"]
-run = ["npm", "run", "start"]
-deploymentTarget = "cloudrun"
+deploymentTarget = "static"
+publicDir = "public"
+[deployment]
+build = ["npm", "run", "build"]
+deploymentTarget = "static"
+publicDir = "out"
 
 [[ports]]
 localPort = 3000
