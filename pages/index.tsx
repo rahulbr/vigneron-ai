@@ -1,5 +1,3 @@
-
-```typescript
 // pages/index.tsx - Super robust version that always works
 
 import { useState, useEffect } from 'react';
@@ -307,4 +305,3 @@ export default function Home() {
     </div>
   );
 }
-```
