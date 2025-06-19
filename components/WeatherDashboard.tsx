@@ -1066,7 +1066,7 @@ export function WeatherDashboard({
               }}
             >
               <Thermometer size={20} style={{ color: "#8b5cf6" }} />
-                            <span
+              <span
                 style={{
                   fontSize: "14px",
                   fontWeight: "500",
@@ -1083,7 +1083,7 @@ export function WeatherDashboard({
                 color: "#8b5cf6",
               }}
             >
-              {avgTempLow.toFixed(1)}°F
+  {avgTempLow.toFixed(1)}°F
             </div>
             <div
               style={{ fontSize: "12px", color: "#9ca3af", marginTop: "4px" }}
