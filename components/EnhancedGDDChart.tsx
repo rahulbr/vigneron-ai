@@ -1,5 +1,6 @@
 // components/EnhancedGDDChart.tsx - Local storage version (no database)
 import { useState, useEffect } from 'react';
+import { savePhenologyEvent } from '../lib/supabase';
 
 interface WeatherDay {
   date: string;
@@ -108,12 +109,50 @@ export function EnhancedGDDChart({ weatherData, locationName, vineyardId }: Enha
   };
 
   // Add phenology event
+  // const handleAddPhenologyEvent = async () => {
+  //   if (!selectedDate) return;
+
+  //   try {
+  //     const newEvent: PhenologyEvent = {
+  //       id: Date.now().toString(), // Simple ID generation
+  //       event_type: selectedEventType,
+  //       event_date: selectedDate,
+  //       notes: notes
+  //     };
+
+  //     // Add end date for development stages (not harvest)
+  //     if (selectedEventType !== 'harvest' && endDate) {
+  //       newEvent.end_date = endDate;
+  //     }
+
+  //     // Add harvest block for harvest picks
+  //     if (selectedEventType === 'harvest' && harvestBlock) {
+  //       newEvent.harvest_block = harvestBlock;
+  //     }
+
+  //     // Add to local state and save to localStorage
+  //     const updatedEvents = [...phenologyEvents, newEvent];
+  //     setPhenologyEvents(updatedEvents);
+  //     savePhenologyEventsToStorage(updatedEvents);
+
+  //     setShowPhenologyForm(false);
+  //     setNotes('');
+  //     setEndDate('');
+  //     setHarvestBlock('');
+
+  //     console.log('✅ Phenology event added locally:', newEvent);
+  //   } catch (error) {
+  //     console.error('❌ Error adding phenology event:', error);
+  //     alert('Error saving phenology event: ' + (error as Error).message);
+  //   }
+  // };
+
   const handleAddPhenologyEvent = async () => {
     if (!selectedDate) return;
 
     try {
       const newEvent: PhenologyEvent = {
-        id: Date.now().toString(), // Simple ID generation
+        id: Date.now().toString(),
         event_type: selectedEventType,
         event_date: selectedDate,
         notes: notes
@@ -134,17 +173,21 @@ export function EnhancedGDDChart({ weatherData, locationName, vineyardId }: Enha
       setPhenologyEvents(updatedEvents);
       savePhenologyEventsToStorage(updatedEvents);
 
+      // This is where you should call savePhenologyEvent
+      await savePhenologyEvent(vineyardId!, selectedEventType, selectedDate, notes, endDate, harvestBlock);
+
       setShowPhenologyForm(false);
       setNotes('');
       setEndDate('');
       setHarvestBlock('');
 
-      console.log('✅ Phenology event added locally:', newEvent);
+      console.log('✅ Phenology event added and saved to database:', newEvent);
     } catch (error) {
       console.error('❌ Error adding phenology event:', error);
       alert('Error saving phenology event: ' + (error as Error).message);
     }
   };
+  
 
   // Phenology event colors and labels
   const eventStyles = {

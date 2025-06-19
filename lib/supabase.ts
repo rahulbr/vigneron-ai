@@ -306,44 +306,71 @@ export async function getWeatherData(
 }
 
 // Enhanced phenology operations with date ranges and harvest blocks
-export async function savePhenologyEvent(
-  vineyardId: string,
-  eventType: 'bud_break' | 'bloom' | 'veraison' | 'harvest',
-  eventDate: string,
-  notes: string = '',
-  endDate?: string,
-  harvestBlock?: string
-): Promise<PhenologyEvent> {
-  try {
-    const eventData: any = {
-      vineyard_id: vineyardId,
-      event_type: eventType,
-      event_date: eventDate
-    };
+// export async function savePhenologyEvent(
+//   vineyardId: string,
+//   eventType: 'bud_break' | 'bloom' | 'veraison' | 'harvest',
+//   eventDate: string,
+//   notes: string = '',
+//   endDate?: string,
+//   harvestBlock?: string
+// ): Promise<PhenologyEvent> {
+//   try {
+//     const eventData: any = {
+//       vineyard_id: vineyardId,
+//       event_type: eventType,
+//       event_date: eventDate
+//     };
 
-    // Add optional fields if provided
-    if (notes) eventData.notes = notes;
-    if (endDate) eventData.end_date = endDate;
-    if (harvestBlock) eventData.harvest_block = harvestBlock;
+//     // Add optional fields if provided
+//     if (notes) eventData.notes = notes;
+//     if (endDate) eventData.end_date = endDate;
+//     if (harvestBlock) eventData.harvest_block = harvestBlock;
 
-    const { data, error } = await supabase
-      .from('phenology_events')
-      .insert([eventData])
-      .select()
-      .single();
+//     const { data, error } = await supabase
+//       .from('phenology_events')
+//       .insert([eventData])
+//       .select()
+//       .single();
 
-    if (error) {
-      console.error('Error saving phenology event:', error);
-      throw new Error(error.message);
-    }
+//     if (error) {
+//       console.error('Error saving phenology event:', error);
+//       throw new Error(error.message);
+//     }
 
-    console.log('✅ Phenology event saved:', data);
-    return data;
-  } catch (error) {
-    console.error('❌ Failed to save phenology event:', error);
-    throw error;
+//     console.log('✅ Phenology event saved:', data);
+//     return data;
+//   } catch (error) {
+//     console.error('❌ Failed to save phenology event:', error);
+//     throw error;
+//   }
+// }
+
+export async function savePhenologyEvent(vineyardId: string, eventType: string, eventDate: string, notes: string = '', endDate?: string, harvestBlock?: string) {
+  const insertData: any = {
+    vineyard_id: vineyardId,
+    event_type: eventType,
+    event_date: eventDate,
+    notes
+  };
+
+  if (endDate) {
+    insertData.end_date = endDate;
   }
+
+  if (harvestBlock) {
+    insertData.harvest_block = harvestBlock;
+  }
+
+  const { data, error } = await supabase
+    .from('phenology_events')
+    .insert([insertData])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
 }
+
 
 export async function getPhenologyEvents(vineyardId: string): Promise<PhenologyEvent[]> {
   try {
