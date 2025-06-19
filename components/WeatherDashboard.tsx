@@ -120,7 +120,6 @@ export function WeatherDashboard({
     latitude,
     longitude,
     refetch,
-    dateRange,
   ]);
 
   // Search for locations using Google Maps API
@@ -136,9 +135,9 @@ export function WeatherDashboard({
     } catch (error) {
       console.error("Google Maps search error:", error);
       alert(
-        'Search failed: ' +
-        (error as Error).message +
-        '\\n\\nFalling back to La Honda, CA'
+        "Search failed: " +
+          (error as Error).message +
+          "\n\nFalling back to La Honda, CA",
       );
 
       // Use La Honda fallback if search fails
@@ -1073,7 +1072,8 @@ export function WeatherDashboard({
                   fontWeight: "500",
                   color: "#6b7280",
                 }}
-              >        Avg Low Temp
+              >
+                Avg Low Temp
               </span>
             </div>
             <div

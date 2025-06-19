@@ -46,7 +46,7 @@ export default function Home() {
     if (vineyardId) {
       loadVineyardData();
     }
-  }, [vineyardId, loadVineyardData]);
+  }, [vineyardId]);
 
   const loadVineyardData = async () => {
     if (!vineyardId) return;
