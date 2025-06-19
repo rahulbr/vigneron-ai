@@ -1,19 +1,49 @@
+# Replit configuration for Next.js app
 run = "npm run dev"
-entrypoint = "index.js"
-hidden = [".config", "package-lock.json", ".next", ".swc"]
-modules = ["nodejs-22"]
+entrypoint = "pages/index.tsx"
 
 [nix]
-channel = "stable-24_11"
+channel = "stable-22_11"
 
 [env]
-NEXT_TELEMETRY_DISABLED = "1"
+XDG_CONFIG_HOME = "/home/runner/.config"
+PATH = "/home/runner/$REPL_SLUG/.config/npm/node_global/bin:/home/runner/$REPL_SLUG/node_modules/.bin"
+
+[gitHubImport]
+requiredFiles = [".replit", "replit.nix", "package.json", "package-lock.json"]
+
+[packager]
+language = "nodejs"
+
+[packager.features]
+packageSearch = true
+guessImports = true
+enabledForHosting = false
+
+[languages.javascript]
+pattern = "**/{*.js,*.jsx,*.ts,*.tsx,*.json}"
+
+[languages.javascript.languageServer]
+start = "typescript-language-server --stdio"
 
 [deployment]
-build = ["npm", "run", "build"]
-deploymentTarget = "static"
-publicDir = "public"
+run = ["sh", "-c", "npm run build && npm run start"]
+
+[webPreview]
+port = 3000
 
 [[ports]]
 localPort = 3000
 externalPort = 80
+
+[workflows]
+runButton = "Run Dev"
+
+[[workflows.workflow]]
+name = "Run Dev"
+author = 21518019
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
