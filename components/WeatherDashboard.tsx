@@ -106,7 +106,7 @@ export function WeatherDashboard({
       latitude &&
       longitude
     ) {
-      console.log("🌤️ Auto-fetching weather data with:", {
+      console.log('🌤️ Auto-fetching weather data with:', {
         latitude,
         longitude,
         dateRange,
@@ -120,6 +120,7 @@ export function WeatherDashboard({
     latitude,
     longitude,
     refetch,
+    dateRange,
   ]);
 
   // Search for locations using Google Maps API
