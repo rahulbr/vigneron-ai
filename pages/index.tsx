@@ -1,3 +1,5 @@
+
+```typescript
 // pages/index.tsx - Super robust version that always works
 
 import { useState, useEffect } from 'react';
@@ -8,6 +10,34 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [vineyardId, setVineyardId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Define loadVineyardData function
+  const loadVineyardData = async () => {
+    if (!vineyardId) return;
+
+    setLoading(true);
+    setError(null);
+
+    console.log('🏗️ Creating demo vineyard data locally (bypassing database for now)');
+
+    // For now, let's just use local data to get the app working
+    // We can integrate database later once the app is stable
+    const demoVineyard = {
+      id: vineyardId,
+      name: 'Demo Vineyard - Napa Valley',
+      location: 'Napa Valley, CA',
+      latitude: 38.2975,
+      longitude: -122.2869,
+      created_at: new Date().toISOString()
+    };
+
+    // Simulate a small delay to show loading
+    setTimeout(() => {
+      console.log('✅ Demo vineyard data loaded:', demoVineyard);
+      setVineyardData(demoVineyard);
+      setLoading(false);
+    }, 500);
+  };
 
   // Generate vineyard ID only on client side
   useEffect(() => {
@@ -46,34 +76,7 @@ export default function Home() {
     if (vineyardId) {
       loadVineyardData();
     }
-  }, [vineyardId, loadVineyardData]);
-
-  const loadVineyardData = async () => {
-    if (!vineyardId) return;
-
-    setLoading(true);
-    setError(null);
-
-    console.log('🏗️ Creating demo vineyard data locally (bypassing database for now)');
-
-    // For now, let's just use local data to get the app working
-    // We can integrate database later once the app is stable
-    const demoVineyard = {
-      id: vineyardId,
-      name: 'Demo Vineyard - Napa Valley',
-      location: 'Napa Valley, CA',
-      latitude: 38.2975,
-      longitude: -122.2869,
-      created_at: new Date().toISOString()
-    };
-
-    // Simulate a small delay to show loading
-    setTimeout(() => {
-      console.log('✅ Demo vineyard data loaded:', demoVineyard);
-      setVineyardData(demoVineyard);
-      setLoading(false);
-    }, 500);
-  };
+  }, [vineyardId]);
 
   // Show loading until vineyard ID is generated and data is loaded
   if (loading || !vineyardId) {
@@ -302,3 +305,4 @@ export default function Home() {
     </div>
   );
 }
+```
