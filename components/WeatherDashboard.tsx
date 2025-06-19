@@ -1076,7 +1076,13 @@ export function WeatherDashboard({
                 Avg Low Temp
               </span>
             </div>
-            <<div style={{ fontSize: "28px", fontWeight: "bold", color: "#8b5cf6" }}>
+            <div
+              style={{
+                fontSize: "28px",
+                fontWeight: "bold",
+                color: "#8b5cf6",
+              }}
+            >
   {avgTempLow.toFixed(1)}°F
             </div>
             <div
