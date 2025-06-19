@@ -1,0 +1,43 @@
+Server Error
+ReferenceError: Cannot access 'loadVineyardData' before initialization
+
+This error happened while generating the page. Any console logs will be displayed in the terminal window.
+Source
+pages/index.tsx (49:18) @ loadVineyardData
+
+  47 |     loadVineyardData();
+  48 |   }
+> 49 | }, [vineyardId, loadVineyardData]);
+     |                ^
+  50 |
+  51 | const loadVineyardData = async () => {
+  52 |   if (!vineyardId) return;
+Call Stack
+renderWithHooks
+file:///home/runner/workspace/node_modules/react-dom/cjs/react-dom-server.browser.development.js (5658:16)
+renderIndeterminateComponent
+file:///home/runner/workspace/node_modules/react-dom/cjs/react-dom-server.browser.development.js (5732:15)
+renderElement
+file:///home/runner/workspace/node_modules/react-dom/cjs/react-dom-server.browser.development.js (5957:7)
+renderNodeDestructiveImpl
+file:///home/runner/workspace/node_modules/react-dom/cjs/react-dom-server.browser.development.js (6115:11)
+renderNodeDestructive
+file:///home/runner/workspace/node_modules/react-dom/cjs/react-dom-server.browser.development.js (6087:14)
+renderIndeterminateComponent
+file:///home/runner/workspace/node_modules/react-dom/cjs/react-dom-server.browser.development.js (5786:7)
+renderElement
+file:///home/runner/workspace/node_modules/react-dom/cjs/react-dom-server.browser.development.js (5957:7)
+renderNodeDestructiveImpl
+file:///home/runner/workspace/node_modules/react-dom/cjs/react-dom-server.browser.development.js (6115:11)
+renderNodeDestructive
+file:///home/runner/workspace/node_modules/react-dom/cjs/react-dom-server.browser.development.js (6087:14)
+renderIndeterminateComponent
+file:///home/runner/workspace/node_modules/react-dom/cjs/react-dom-server.browser.development.js (5786:7)
+renderElement
+file:///home/runner/workspace/node_modules/react-dom/cjs/react-dom-server.browser.development.js (5957:7)
+renderNodeDestructiveImpl
+file:///home/runner/workspace/node_modules/react-dom/cjs/react-dom-server.browser.development.js (6115:11)
+renderNodeDestructive
+file:///home/runner/workspace/node_modules/react-dom/cjs/react-dom-server.browser.development.js (6087:14)
+renderNode
+file:///home/runner/workspace/node_modules/react-dom/cjs/react-dom-server.browser.development.js (6270:12)
