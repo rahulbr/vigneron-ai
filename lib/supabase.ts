@@ -310,7 +310,7 @@ export async function savePhenologyEvent(
   vineyardId: string,
   eventType: 'bud_break' | 'bloom' | 'veraison' | 'harvest',
   eventDate: string,
-  notes?: string,
+  notes: string = '',
   endDate?: string,
   harvestBlock?: string
 ): Promise<PhenologyEvent> {
