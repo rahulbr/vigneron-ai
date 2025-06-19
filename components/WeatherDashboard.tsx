@@ -1076,7 +1076,7 @@ export function WeatherDashboard({
                 Avg Low Temp
               </span>
             </div>
-            <div
+            <Fixed the no-unescaped-entities error by replacing `"` with `&quot;` in the WeatherDashboard component.<div
               style={{ fontSize: "28px", fontWeight: "bold", color: "#8b5cf6" }}
             >
               {avgTempLow.toFixed(1)}°F
