@@ -68,9 +68,13 @@ export async function createVineyard(name: string, location: string, lat: number
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
+  // Generate a proper UUID for the vineyard
+  const vineyardId = crypto.randomUUID()
+
   const { data, error } = await supabase
     .from('vineyards')
     .insert([{
+      id: vineyardId,
       name,
       location,
       location_name: location, // Compatibility
@@ -372,8 +376,7 @@ export async function savePhenologyEvent(
       user_id: user.id, // Multi-user support
       event_type: eventType,
       event_date: eventDate,
-      notes,
-      is_actual: true // Mark as user-entered data
+      notes
     };
 
     if (endDate) {
@@ -436,8 +439,7 @@ export const savePhenologyEventSimple = async (vineyardId: string, event: Omit<P
     .insert({
       ...event,
       vineyard_id: vineyardId,
-      user_id: user.id,
-      is_actual: true
+      user_id: user.id
     })
 }
 
