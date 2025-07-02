@@ -377,16 +377,59 @@ export async function savePhenologyEvent(
   harvestBlock?: string
 ): Promise<PhenologyEvent> {
   try {
-    // Validate and fix vineyard ID to ensure it's a proper UUID
-    const validVineyardId = validateAndFixVineyardId(vineyardId);
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    // Ensure vineyard exists in database first
+    let actualVineyardId: string;
     
-    console.log('🔍 Phenology event vineyard ID validation:', { 
-      originalId: vineyardId, 
-      validId: validVineyardId 
-    });
+    // Check if vineyard already exists
+    const { data: existingVineyard } = await supabase
+      .from('vineyards')
+      .select('id')
+      .eq('id', vineyardId)
+      .single();
+
+    if (existingVineyard) {
+      actualVineyardId = existingVineyard.id;
+      console.log('✅ Using existing vineyard:', actualVineyardId);
+    } else {
+      // Create vineyard if it doesn't exist - we need location data
+      // For now, let's try to extract location from the vineyard ID or use defaults
+      console.log('⚠️ Vineyard not found, creating new one');
+      
+      // Generate a proper UUID for the vineyard
+      const newVineyardId = crypto.randomUUID();
+      
+      // Default location (you might want to pass this as parameter)
+      const defaultVineyard = {
+        id: newVineyardId,
+        name: 'Default Vineyard',
+        location: 'Unknown Location',
+        location_name: 'Unknown Location',
+        latitude: 37.3272, // Default to La Honda, CA
+        longitude: -122.2813,
+        user_id: user.id
+      };
+
+      const { data: newVineyard, error: vineyardError } = await supabase
+        .from('vineyards')
+        .insert([defaultVineyard])
+        .select('id')
+        .single();
+
+      if (vineyardError) {
+        console.error('Error creating vineyard:', vineyardError);
+        throw new Error('Failed to create vineyard: ' + vineyardError.message);
+      }
+
+      actualVineyardId = newVineyard.id;
+      console.log('✅ Created new vineyard:', actualVineyardId);
+    }
 
     const insertData: any = {
-      vineyard_id: validVineyardId,
+      vineyard_id: actualVineyardId,
       event_type: eventType,
       event_date: eventDate,
       notes
@@ -444,6 +487,64 @@ export async function getPhenologyEvents(vineyardId: string): Promise<PhenologyE
     return data || [];
   } catch (error) {
     console.error('❌ Failed to fetch phenology events:', error);
+    throw error;
+  }
+}
+
+// ========================================
+// VINEYARD MANAGEMENT HELPERS
+// ========================================
+export async function ensureVineyardExists(
+  vineyardId: string,
+  locationName: string,
+  latitude: number,
+  longitude: number
+): Promise<string> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    // Check if vineyard exists
+    const { data: existingVineyard } = await supabase
+      .from('vineyards')
+      .select('id')
+      .eq('id', vineyardId)
+      .single();
+
+    if (existingVineyard) {
+      console.log('✅ Vineyard already exists:', existingVineyard.id);
+      return existingVineyard.id;
+    }
+
+    // Generate a proper UUID if the provided ID is not valid
+    const properVineyardId = crypto.randomUUID();
+
+    // Create new vineyard with proper location data
+    const vineyardData = {
+      id: properVineyardId,
+      name: locationName,
+      location: locationName,
+      location_name: locationName,
+      latitude: latitude,
+      longitude: longitude,
+      user_id: user.id
+    };
+
+    const { data: newVineyard, error } = await supabase
+      .from('vineyards')
+      .insert([vineyardData])
+      .select('id')
+      .single();
+
+    if (error) {
+      console.error('Error creating vineyard:', error);
+      throw new Error('Failed to create vineyard: ' + error.message);
+    }
+
+    console.log('✅ Created new vineyard:', newVineyard.id);
+    return newVineyard.id;
+  } catch (error) {
+    console.error('❌ Failed to ensure vineyard exists:', error);
     throw error;
   }
 }

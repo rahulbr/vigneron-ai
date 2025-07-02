@@ -59,18 +59,26 @@ export function WeatherDashboard({
 
   const { data, loading, error, lastUpdated, refetch, retry, clearError } = useWeather(weatherOptions);
 
-  // NEW: Auto-generate vineyard ID if not provided
+  // NEW: Auto-generate vineyard ID and ensure it exists in database
   useEffect(() => {
     const initializeVineyardId = async () => {
       if (!vineyardId) {
         try {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
-            // Create a unique vineyard ID for this user and location
-            const locationHash = `${latitude}_${longitude}`.replace(/[.-]/g, '_');
-            const generatedId = `vineyard_${user.id.slice(0, 8)}_${locationHash}`;
-            setVineyardId(generatedId);
-            console.log('✅ Generated vineyard ID:', generatedId);
+            // Import the ensureVineyardExists function
+            const { ensureVineyardExists } = await import('../lib/supabase');
+            
+            // Create vineyard in database with proper location data
+            const actualVineyardId = await ensureVineyardExists(
+              `temp_${Date.now()}`, // Temporary ID, will be replaced with UUID
+              customLocation,
+              latitude,
+              longitude
+            );
+            
+            setVineyardId(actualVineyardId);
+            console.log('✅ Vineyard initialized in database:', actualVineyardId);
           } else {
             // Fallback for non-authenticated users (shouldn't happen with auth wrapper)
             const fallbackId = `vineyard_guest_${Date.now()}`;
@@ -78,7 +86,7 @@ export function WeatherDashboard({
             console.log('⚠️ Using fallback vineyard ID:', fallbackId);
           }
         } catch (error) {
-          console.error('❌ Error generating vineyard ID:', error);
+          console.error('❌ Error initializing vineyard:', error);
           // Use a simple fallback
           const fallbackId = `vineyard_${Date.now()}`;
           setVineyardId(fallbackId);
@@ -88,7 +96,7 @@ export function WeatherDashboard({
     };
 
     initializeVineyardId();
-  }, [vineyardId, latitude, longitude]);
+  }, [vineyardId, customLocation, latitude, longitude]);
 
   // Load saved locations from localStorage
   useEffect(() => {
