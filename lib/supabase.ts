@@ -367,13 +367,8 @@ export async function savePhenologyEvent(
   harvestBlock?: string
 ): Promise<PhenologyEvent> {
   try {
-    // Get current user
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('Not authenticated')
-
     const insertData: any = {
       vineyard_id: vineyardId,
-      user_id: user.id, // Multi-user support
       event_type: eventType,
       event_date: eventDate,
       notes
@@ -430,16 +425,12 @@ export async function getPhenologyEvents(vineyardId: string): Promise<PhenologyE
 // ========================================
 // NEW HELPER FUNCTIONS FOR AUTH + PHENOLOGY
 // ========================================
-export const savePhenologyEventSimple = async (vineyardId: string, event: Omit<PhenologyEvent, 'id' | 'vineyard_id' | 'user_id' | 'created_at'>) => {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not authenticated')
-
+export const savePhenologyEventSimple = async (vineyardId: string, event: Omit<PhenologyEvent, 'id' | 'vineyard_id' | 'created_at'>) => {
   return supabase
     .from('phenology_events')
     .insert({
       ...event,
-      vineyard_id: vineyardId,
-      user_id: user.id
+      vineyard_id: vineyardId
     })
 }
 
