@@ -137,11 +137,21 @@ export async function saveVineyardLocation(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('Not authenticated')
 
+    // Generate a proper UUID if the provided ID is not a valid UUID
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const properVineyardId = uuidRegex.test(vineyardId) ? vineyardId : crypto.randomUUID();
+
+    console.log('🔍 Vineyard ID check:', { 
+      originalId: vineyardId, 
+      isValidUUID: uuidRegex.test(vineyardId),
+      finalId: properVineyardId 
+    });
+
     // Check if the vineyard already exists
     const { data: existingData } = await supabase
       .from('vineyards')
       .select('*')
-      .eq('id', vineyardId)
+      .eq('id', properVineyardId)
       .limit(1);
 
     let vineyard;
@@ -159,7 +169,7 @@ export async function saveVineyardLocation(
       const { data, error } = await supabase
         .from('vineyards')
         .update(updateData)
-        .eq('id', vineyardId)
+        .eq('id', properVineyardId)
         .eq('user_id', user.id) // Ensure user owns this vineyard
         .select()
         .single();
@@ -173,7 +183,7 @@ export async function saveVineyardLocation(
     } else {
       // Create new vineyard
       const insertData: any = {
-        id: vineyardId,
+        id: properVineyardId,
         name: locationName,
         latitude: latitude,
         longitude: longitude,
@@ -367,8 +377,16 @@ export async function savePhenologyEvent(
   harvestBlock?: string
 ): Promise<PhenologyEvent> {
   try {
+    // Validate and fix vineyard ID to ensure it's a proper UUID
+    const validVineyardId = validateAndFixVineyardId(vineyardId);
+    
+    console.log('🔍 Phenology event vineyard ID validation:', { 
+      originalId: vineyardId, 
+      validId: validVineyardId 
+    });
+
     const insertData: any = {
-      vineyard_id: vineyardId,
+      vineyard_id: validVineyardId,
       event_type: eventType,
       event_date: eventDate,
       notes
@@ -403,10 +421,18 @@ export async function savePhenologyEvent(
 
 export async function getPhenologyEvents(vineyardId: string): Promise<PhenologyEvent[]> {
   try {
+    // Validate vineyard ID before querying
+    const validVineyardId = validateAndFixVineyardId(vineyardId);
+    
+    console.log('🔍 Getting phenology events for vineyard ID validation:', { 
+      originalId: vineyardId, 
+      validId: validVineyardId 
+    });
+
     const { data, error } = await supabase
       .from('phenology_events')
       .select('*')
-      .eq('vineyard_id', vineyardId)
+      .eq('vineyard_id', validVineyardId)
       .order('event_date', { ascending: true });
 
     if (error) {
@@ -423,14 +449,37 @@ export async function getPhenologyEvents(vineyardId: string): Promise<PhenologyE
 }
 
 // ========================================
+// HELPER FUNCTIONS FOR ID GENERATION
+// ========================================
+export function generateVineyardId(userId?: string, latitude?: number, longitude?: number): string {
+  // Always return a proper UUID
+  return crypto.randomUUID();
+}
+
+export function validateAndFixVineyardId(vineyardId: string): string {
+  // Check if it's already a valid UUID
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  
+  if (uuidRegex.test(vineyardId)) {
+    return vineyardId;
+  }
+  
+  // Generate a new UUID if the provided ID is not valid
+  console.log('⚠️ Invalid vineyard ID detected, generating new UUID:', vineyardId);
+  return crypto.randomUUID();
+}
+
+// ========================================
 // NEW HELPER FUNCTIONS FOR AUTH + PHENOLOGY
 // ========================================
 export const savePhenologyEventSimple = async (vineyardId: string, event: Omit<PhenologyEvent, 'id' | 'vineyard_id' | 'created_at'>) => {
+  const validVineyardId = validateAndFixVineyardId(vineyardId);
+  
   return supabase
     .from('phenology_events')
     .insert({
       ...event,
-      vineyard_id: vineyardId
+      vineyard_id: validVineyardId
     })
 }
 
