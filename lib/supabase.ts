@@ -77,7 +77,6 @@ export async function createVineyard(name: string, location: string, lat: number
       id: vineyardId,
       name,
       location,
-      location_name: location, // Compatibility
       latitude: lat,
       longitude: lon,
       user_id: user.id // Multi-user support
@@ -157,13 +156,12 @@ export async function saveVineyardLocation(
     let vineyard;
 
     if (existingData && existingData.length > 0) {
-      // Update existing vineyard
+      // Update existing vineyard - only use fields that exist in your schema
       const updateData: any = {
         name: locationName,
         latitude: latitude,
         longitude: longitude,
-        location: locationName,
-        location_name: locationName,
+        location: locationName
       };
 
       const { data, error } = await supabase
@@ -181,14 +179,13 @@ export async function saveVineyardLocation(
 
       vineyard = data;
     } else {
-      // Create new vineyard
+      // Create new vineyard - only use fields that exist in your schema
       const insertData: any = {
         id: properVineyardId,
         name: locationName,
         latitude: latitude,
         longitude: longitude,
         location: locationName,
-        location_name: locationName,
         user_id: user.id
       };
 
@@ -381,33 +378,29 @@ export async function savePhenologyEvent(
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    // Ensure vineyard exists in database first
-    let actualVineyardId: string;
-    
+    // Validate and fix vineyard ID
+    const actualVineyardId = validateAndFixVineyardId(vineyardId);
+    console.log('🔍 Using vineyard ID for phenology event:', { originalId: vineyardId, actualId: actualVineyardId });
+
     // Check if vineyard already exists
-    const { data: existingVineyard } = await supabase
+    const { data: existingVineyard, error: selectError } = await supabase
       .from('vineyards')
       .select('id')
-      .eq('id', vineyardId)
-      .single();
+      .eq('id', actualVineyardId)
+      .maybeSingle();
 
-    if (existingVineyard) {
-      actualVineyardId = existingVineyard.id;
-      console.log('✅ Using existing vineyard:', actualVineyardId);
-    } else {
-      // Create vineyard if it doesn't exist - we need location data
-      // For now, let's try to extract location from the vineyard ID or use defaults
+    if (selectError) {
+      console.error('Error checking vineyard:', selectError);
+    }
+
+    if (!existingVineyard) {
+      // Create vineyard if it doesn't exist - using default location
       console.log('⚠️ Vineyard not found, creating new one');
       
-      // Generate a proper UUID for the vineyard
-      const newVineyardId = crypto.randomUUID();
-      
-      // Default location (you might want to pass this as parameter)
       const defaultVineyard = {
-        id: newVineyardId,
+        id: actualVineyardId,
         name: 'Default Vineyard',
-        location: 'Unknown Location',
-        location_name: 'Unknown Location',
+        location: 'La Honda, CA',
         latitude: 37.3272, // Default to La Honda, CA
         longitude: -122.2813,
         user_id: user.id
@@ -424,17 +417,20 @@ export async function savePhenologyEvent(
         throw new Error('Failed to create vineyard: ' + vineyardError.message);
       }
 
-      actualVineyardId = newVineyard.id;
-      console.log('✅ Created new vineyard:', actualVineyardId);
+      console.log('✅ Created new vineyard:', newVineyard.id);
+    } else {
+      console.log('✅ Using existing vineyard:', existingVineyard.id);
     }
 
+    // Build the phenology event data - only use fields that exist in your schema
     const insertData: any = {
       vineyard_id: actualVineyardId,
       event_type: eventType,
       event_date: eventDate,
-      notes
+      notes: notes || ''
     };
 
+    // Only add optional fields if they have values
     if (endDate) {
       insertData.end_date = endDate;
     }
@@ -442,6 +438,8 @@ export async function savePhenologyEvent(
     if (harvestBlock) {
       insertData.harvest_block = harvestBlock;
     }
+
+    console.log('💾 Inserting phenology event:', insertData);
 
     const { data, error } = await supabase
       .from('phenology_events')
@@ -504,31 +502,43 @@ export async function ensureVineyardExists(
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
+    // Generate a proper UUID if the provided ID is not valid
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const properVineyardId = uuidRegex.test(vineyardId) ? vineyardId : crypto.randomUUID();
+
+    console.log('🔍 Ensuring vineyard exists:', { 
+      originalId: vineyardId, 
+      properVineyardId, 
+      locationName 
+    });
+
     // Check if vineyard exists
-    const { data: existingVineyard } = await supabase
+    const { data: existingVineyard, error: selectError } = await supabase
       .from('vineyards')
       .select('id')
-      .eq('id', vineyardId)
-      .single();
+      .eq('id', properVineyardId)
+      .maybeSingle(); // Use maybeSingle instead of single to avoid errors when no rows
+
+    if (selectError) {
+      console.error('Error checking vineyard existence:', selectError);
+    }
 
     if (existingVineyard) {
       console.log('✅ Vineyard already exists:', existingVineyard.id);
       return existingVineyard.id;
     }
 
-    // Generate a proper UUID if the provided ID is not valid
-    const properVineyardId = crypto.randomUUID();
-
-    // Create new vineyard with proper location data
+    // Create new vineyard with only fields that exist in your schema
     const vineyardData = {
       id: properVineyardId,
       name: locationName,
       location: locationName,
-      location_name: locationName,
       latitude: latitude,
       longitude: longitude,
       user_id: user.id
     };
+
+    console.log('🔧 Creating vineyard with data:', vineyardData);
 
     const { data: newVineyard, error } = await supabase
       .from('vineyards')

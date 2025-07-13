@@ -66,29 +66,33 @@ export function WeatherDashboard({
         try {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
-            // Import the ensureVineyardExists function
-            const { ensureVineyardExists } = await import('../lib/supabase');
+            // Check if we have a stored vineyard ID first
+            const storedVineyardId = localStorage.getItem('currentVineyardId');
+            if (storedVineyardId) {
+              console.log('🔍 Using stored vineyard ID:', storedVineyardId);
+              setVineyardId(storedVineyardId);
+              return;
+            }
+
+            // Generate a proper UUID for new vineyard
+            const newVineyardId = crypto.randomUUID();
+            console.log('🆕 Generated new vineyard ID:', newVineyardId);
             
-            // Create vineyard in database with proper location data
-            const actualVineyardId = await ensureVineyardExists(
-              `temp_${Date.now()}`, // Temporary ID, will be replaced with UUID
-              customLocation,
-              latitude,
-              longitude
-            );
+            // Store it for future use
+            localStorage.setItem('currentVineyardId', newVineyardId);
+            setVineyardId(newVineyardId);
             
-            setVineyardId(actualVineyardId);
-            console.log('✅ Vineyard initialized in database:', actualVineyardId);
+            console.log('✅ Vineyard ID initialized:', newVineyardId);
           } else {
             // Fallback for non-authenticated users (shouldn't happen with auth wrapper)
-            const fallbackId = `vineyard_guest_${Date.now()}`;
+            const fallbackId = crypto.randomUUID();
             setVineyardId(fallbackId);
             console.log('⚠️ Using fallback vineyard ID:', fallbackId);
           }
         } catch (error) {
           console.error('❌ Error initializing vineyard:', error);
           // Use a simple fallback
-          const fallbackId = `vineyard_${Date.now()}`;
+          const fallbackId = crypto.randomUUID();
           setVineyardId(fallbackId);
           console.log('🔧 Using simple fallback vineyard ID:', fallbackId);
         }
@@ -96,7 +100,7 @@ export function WeatherDashboard({
     };
 
     initializeVineyardId();
-  }, [vineyardId, customLocation, latitude, longitude]);
+  }, [vineyardId]);
 
   // Load saved locations from localStorage
   useEffect(() => {
