@@ -59,40 +59,32 @@ export function WeatherDashboard({
 
   const { data, loading, error, lastUpdated, refetch, retry, clearError } = useWeather(weatherOptions);
 
-  // NEW: Auto-generate vineyard ID and ensure it exists in database
+  // NEW: Auto-generate vineyard ID - simplified approach
   useEffect(() => {
     const initializeVineyardId = async () => {
       if (!vineyardId) {
         try {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            // Check if we have a stored vineyard ID first
-            const storedVineyardId = localStorage.getItem('currentVineyardId');
-            if (storedVineyardId) {
-              console.log('🔍 Using stored vineyard ID:', storedVineyardId);
-              setVineyardId(storedVineyardId);
-              return;
-            }
-
-            // Generate a proper UUID for new vineyard
-            const newVineyardId = crypto.randomUUID();
-            console.log('🆕 Generated new vineyard ID:', newVineyardId);
-            
-            // Store it for future use
-            localStorage.setItem('currentVineyardId', newVineyardId);
-            setVineyardId(newVineyardId);
-            
-            console.log('✅ Vineyard ID initialized:', newVineyardId);
-          } else {
-            // Fallback for non-authenticated users (shouldn't happen with auth wrapper)
-            const fallbackId = crypto.randomUUID();
-            setVineyardId(fallbackId);
-            console.log('⚠️ Using fallback vineyard ID:', fallbackId);
+          // Check if we have a stored vineyard ID first
+          const storedVineyardId = localStorage.getItem('currentVineyardId');
+          if (storedVineyardId) {
+            console.log('🔍 Using stored vineyard ID:', storedVineyardId);
+            setVineyardId(storedVineyardId);
+            return;
           }
+
+          // Generate a simple vineyard ID
+          const newVineyardId = `vineyard_${Date.now()}`;
+          console.log('🆕 Generated new vineyard ID:', newVineyardId);
+          
+          // Store it for future use
+          localStorage.setItem('currentVineyardId', newVineyardId);
+          setVineyardId(newVineyardId);
+          
+          console.log('✅ Vineyard ID initialized:', newVineyardId);
         } catch (error) {
           console.error('❌ Error initializing vineyard:', error);
           // Use a simple fallback
-          const fallbackId = crypto.randomUUID();
+          const fallbackId = `vineyard_${Date.now()}`;
           setVineyardId(fallbackId);
           console.log('🔧 Using simple fallback vineyard ID:', fallbackId);
         }

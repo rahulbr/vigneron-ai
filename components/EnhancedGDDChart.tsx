@@ -1,6 +1,6 @@
 // components/EnhancedGDDChart.tsx - Supabase Database Version
 import { useState, useEffect } from "react";
-import { savePhenologyEvent, getPhenologyEvents } from "../lib/supabase";
+import { savePhenologyEvent, getPhenologyEvents, supabase } from '../lib/supabase';
 
 interface WeatherDay {
   date: string;
