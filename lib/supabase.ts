@@ -168,7 +168,7 @@ export async function saveVineyardLocation(
         .from('vineyards')
         .update(updateData)
         .eq('id', properVineyardId)
-        .eq('user_id', user.id) // Ensure user owns this vineyard
+        
         .select()
         .single();
 
@@ -185,8 +185,7 @@ export async function saveVineyardLocation(
         name: locationName,
         latitude: latitude,
         longitude: longitude,
-        location: locationName,
-        user_id: user.id
+        location: locationName
       };
 
       const { data, error } = await supabase
@@ -467,12 +466,6 @@ export async function ensureVineyardExistsInDatabase(vineyardId: string): Promis
     if (!existingVineyard || existingVineyard.length === 0) {
       console.log('🆕 Vineyard not found, creating it...');
       
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('Not authenticated');
-      }
-
       // Create a basic vineyard record
       const { data: newVineyard, error: createError } = await supabase
         .from('vineyards')
@@ -481,8 +474,7 @@ export async function ensureVineyardExistsInDatabase(vineyardId: string): Promis
           name: 'Default Vineyard',
           latitude: 37.3272, // Default to La Honda
           longitude: -122.2813,
-          location: 'La Honda, CA',
-          user_id: user.id
+          location: 'La Honda, CA'
         }])
         .select()
         .single();
