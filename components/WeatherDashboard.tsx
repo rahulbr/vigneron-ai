@@ -40,6 +40,12 @@ export function WeatherDashboard({
   // NEW: Auto-generated vineyard ID state
   const [vineyardId, setVineyardId] = useState<string>(propVineyardId || '');
 
+  // Multi-vineyard management state
+  const [userVineyards, setUserVineyards] = useState<any[]>([]);
+  const [currentVineyard, setCurrentVineyard] = useState<any | null>(null);
+  const [isLoadingVineyards, setIsLoadingVineyards] = useState(true);
+  const [showCreateVineyard, setShowCreateVineyard] = useState(false);
+
   // AI-related state
   const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
@@ -59,40 +65,123 @@ export function WeatherDashboard({
 
   const { data, loading, error, lastUpdated, refetch, retry, clearError } = useWeather(weatherOptions);
 
-  // NEW: Auto-generate vineyard ID - simplified approach
+  // Load user's vineyards on component mount
   useEffect(() => {
-    const initializeVineyardId = async () => {
-      if (!vineyardId) {
-        try {
-          // Check if we have a stored vineyard ID first
-          const storedVineyardId = localStorage.getItem('currentVineyardId');
-          if (storedVineyardId) {
-            console.log('🔍 Using stored vineyard ID:', storedVineyardId);
-            setVineyardId(storedVineyardId);
-            return;
-          }
-
-          // Generate a proper UUID for the vineyard
-          const newVineyardId = crypto.randomUUID();
-          console.log('🆕 Generated new vineyard ID:', newVineyardId);
-          
-          // Store it for future use
-          localStorage.setItem('currentVineyardId', newVineyardId);
-          setVineyardId(newVineyardId);
-          
-          console.log('✅ Vineyard ID initialized:', newVineyardId);
-        } catch (error) {
-          console.error('❌ Error initializing vineyard:', error);
-          // Use a proper UUID fallback
-          const fallbackId = crypto.randomUUID();
-          setVineyardId(fallbackId);
-          console.log('🔧 Using UUID fallback vineyard ID:', fallbackId);
+    const loadUserVineyards = async () => {
+      try {
+        setIsLoadingVineyards(true);
+        console.log('🔍 Loading user vineyards...');
+        
+        // Get authenticated user
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          console.log('👤 No authenticated user, using demo mode');
+          setIsLoadingVineyards(false);
+          return;
         }
+
+        // Load user's vineyards
+        const { getUserVineyards } = await import('../lib/supabase');
+        const vineyards = await getUserVineyards();
+        
+        console.log('🍇 Loaded user vineyards:', vineyards.length);
+        setUserVineyards(vineyards);
+
+        // Set current vineyard (use stored preference or first vineyard)
+        const storedVineyardId = localStorage.getItem('currentVineyardId');
+        let selectedVineyard = null;
+
+        if (storedVineyardId) {
+          selectedVineyard = vineyards.find(v => v.id === storedVineyardId);
+        }
+        
+        if (!selectedVineyard && vineyards.length > 0) {
+          selectedVineyard = vineyards[0];
+        }
+
+        if (selectedVineyard) {
+          setCurrentVineyard(selectedVineyard);
+          setVineyardId(selectedVineyard.id);
+          setLatitude(selectedVineyard.latitude);
+          setLongitude(selectedVineyard.longitude);
+          setCustomLocation(selectedVineyard.name);
+          localStorage.setItem('currentVineyardId', selectedVineyard.id);
+          console.log('✅ Current vineyard set:', selectedVineyard.name);
+        } else {
+          console.log('🆕 No existing vineyards, user can create one');
+          setShowCreateVineyard(true);
+        }
+
+      } catch (error) {
+        console.error('❌ Error loading vineyards:', error);
+      } finally {
+        setIsLoadingVineyards(false);
       }
     };
 
-    initializeVineyardId();
-  }, [vineyardId]);
+    loadUserVineyards();
+  }, []);
+
+  // Create a new vineyard
+  const createNewVineyard = async () => {
+    try {
+      console.log('🆕 Creating new vineyard:', { customLocation, latitude, longitude });
+      
+      const { createVineyard } = await import('../lib/supabase');
+      const newVineyard = await createVineyard(
+        customLocation || 'New Vineyard',
+        customLocation || 'Unknown Location', 
+        latitude, 
+        longitude
+      );
+
+      console.log('✅ Created new vineyard:', newVineyard);
+      
+      // Update state
+      setUserVineyards(prev => [newVineyard, ...prev]);
+      setCurrentVineyard(newVineyard);
+      setVineyardId(newVineyard.id);
+      localStorage.setItem('currentVineyardId', newVineyard.id);
+      setShowCreateVineyard(false);
+
+      // Refresh weather data for new vineyard
+      if (isInitialized && dateRange.start && dateRange.end) {
+        refetch();
+      }
+      
+    } catch (error) {
+      console.error('❌ Error creating vineyard:', error);
+      alert('Failed to create vineyard: ' + (error as Error).message);
+    }
+  };
+
+  // Switch to a different vineyard
+  const switchVineyard = async (vineyard: any) => {
+    try {
+      console.log('🔄 Switching to vineyard:', vineyard.name);
+      
+      setCurrentVineyard(vineyard);
+      setVineyardId(vineyard.id);
+      setLatitude(vineyard.latitude);
+      setLongitude(vineyard.longitude);
+      setCustomLocation(vineyard.name);
+      localStorage.setItem('currentVineyardId', vineyard.id);
+
+      // Clear AI insights when switching vineyards
+      setAiInsights([]);
+      setWeatherAnalysis('');
+      setPhenologyAnalysis('');
+      setShowAIPanel(false);
+
+      // Refresh weather data for new vineyard
+      if (isInitialized && dateRange.start && dateRange.end) {
+        refetch();
+      }
+
+    } catch (error) {
+      console.error('❌ Error switching vineyard:', error);
+    }
+  };
 
   // Load saved locations from localStorage
   useEffect(() => {
@@ -282,11 +371,36 @@ export function WeatherDashboard({
   };
 
   // Handle manual coordinate update
-  const handleManualLocationUpdate = () => {
-    console.log('📍 Manual coordinate update:', { latitude, longitude, customLocation });
-    clearError();
-    if (isInitialized && dateRange.start && dateRange.end) {
-      refetch();
+  const handleManualLocationUpdate = async () => {
+    if (!currentVineyard) {
+      alert('Please create a vineyard first or select an existing one.');
+      return;
+    }
+
+    try {
+      console.log('📍 Updating vineyard location:', { vineyard: currentVineyard.name, latitude, longitude, customLocation });
+      
+      const { saveVineyardLocation } = await import('../lib/supabase');
+      const updatedVineyard = await saveVineyardLocation(
+        currentVineyard.id,
+        latitude,
+        longitude,
+        customLocation
+      );
+
+      // Update the vineyard in our local state
+      setUserVineyards(prev => prev.map(v => v.id === currentVineyard.id ? updatedVineyard : v));
+      setCurrentVineyard(updatedVineyard);
+
+      console.log('✅ Vineyard location updated:', updatedVineyard);
+      
+      clearError();
+      if (isInitialized && dateRange.start && dateRange.end) {
+        refetch();
+      }
+    } catch (error) {
+      console.error('❌ Error updating vineyard location:', error);
+      alert('Failed to update vineyard location: ' + (error as Error).message);
     }
   };
 
@@ -390,13 +504,140 @@ export function WeatherDashboard({
         <p style={{ color: '#6b7280', margin: '0' }}>
           Track growing degree days, precipitation, and phenology events for your vineyard
         </p>
-        {/* DEBUG: Show current vineyard ID */}
-        {vineyardId && (
-          <p style={{ color: '#9ca3af', fontSize: '12px', margin: '5px 0 0 0' }}>
-            🔍 Vineyard ID: {vineyardId}
-          </p>
+        
+        {/* Current Vineyard Display */}
+        {currentVineyard && (
+          <div style={{ 
+            marginTop: '15px',
+            padding: '12px 16px',
+            backgroundColor: '#f0f9ff',
+            border: '1px solid #bae6fd',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <div>
+              <span style={{ fontSize: '14px', fontWeight: '600', color: '#0369a1' }}>
+                📍 Currently Viewing: {currentVineyard.name}
+              </span>
+              <span style={{ fontSize: '12px', color: '#0284c7', marginLeft: '10px' }}>
+                ({currentVineyard.latitude.toFixed(4)}, {currentVineyard.longitude.toFixed(4)})
+              </span>
+            </div>
+            <span style={{ fontSize: '11px', color: '#6b7280' }}>
+              ID: {vineyardId?.slice(0, 8)}...
+            </span>
+          </div>
         )}
       </div>
+
+      {/* Vineyard Management Panel */}
+      {!isLoadingVineyards && (
+        <div style={{ 
+          marginBottom: '20px', 
+          padding: '20px', 
+          backgroundColor: '#f8fafc', 
+          borderRadius: '12px',
+          border: '1px solid #e2e8f0'
+        }}>
+          <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            🍇 My Vineyards
+          </h3>
+
+          {/* Show create vineyard form if no current vineyard */}
+          {showCreateVineyard && (
+            <div style={{
+              padding: '15px',
+              backgroundColor: '#fefce8',
+              border: '1px solid #fde68a',
+              borderRadius: '8px',
+              marginBottom: '15px'
+            }}>
+              <h4 style={{ margin: '0 0 10px 0', color: '#92400e' }}>
+                🆕 Create Your First Vineyard
+              </h4>
+              <p style={{ margin: '0 0 15px 0', fontSize: '14px', color: '#92400e' }}>
+                Enter a location below and click "Create New Vineyard" to get started.
+              </p>
+              <button
+                onClick={createNewVineyard}
+                disabled={!customLocation.trim()}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: !customLocation.trim() ? '#9ca3af' : '#22c55e',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: !customLocation.trim() ? 'not-allowed' : 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                ✨ Create New Vineyard
+              </button>
+            </div>
+          )}
+
+          {/* Vineyard selector */}
+          {userVineyards.length > 0 && (
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
+                Switch Vineyard:
+              </label>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                {userVineyards.map((vineyard) => (
+                  <button
+                    key={vineyard.id}
+                    onClick={() => switchVineyard(vineyard)}
+                    style={{
+                      padding: '8px 12px',
+                      backgroundColor: currentVineyard?.id === vineyard.id ? '#22c55e' : '#e2e8f0',
+                      color: currentVineyard?.id === vineyard.id ? 'white' : '#374151',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: currentVineyard?.id === vineyard.id ? '600' : '400'
+                    }}
+                  >
+                    {vineyard.name}
+                  </button>
+                ))}
+                
+                {/* Create new vineyard button */}
+                <button
+                  onClick={() => setShowCreateVineyard(true)}
+                  style={{
+                    padding: '8px 12px',
+                    backgroundColor: '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  ➕ Add New
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Show vineyard count */}
+          <div style={{ 
+            fontSize: '12px', 
+            color: '#6b7280',
+            padding: '8px',
+            backgroundColor: '#f1f5f9',
+            borderRadius: '4px'
+          }}>
+            📊 You have {userVineyards.length} vineyard{userVineyards.length !== 1 ? 's' : ''} configured
+          </div>
+        </div>
+      )}
 
       {/* Connection Status */}
       <div style={{ 
@@ -601,24 +842,47 @@ export function WeatherDashboard({
           </div>
         </div>
 
-        <button
-          onClick={handleManualLocationUpdate}
-          disabled={loading}
-          style={{
-            padding: '8px 16px',
-            backgroundColor: loading ? '#9ca3af' : '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}
-        >
-          {loading ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <MapPin size={16} />}
-          Update Location
-        </button>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          {currentVineyard ? (
+            <button
+              onClick={handleManualLocationUpdate}
+              disabled={loading}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: loading ? '#9ca3af' : '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              {loading ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <MapPin size={16} />}
+              Update "{currentVineyard.name}" Location
+            </button>
+          ) : (
+            <button
+              onClick={createNewVineyard}
+              disabled={loading || !customLocation.trim()}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: loading || !customLocation.trim() ? '#9ca3af' : '#22c55e',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: loading || !customLocation.trim() ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              {loading ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <MapPin size={16} />}
+              ✨ Create New Vineyard
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Date Range Controls - 3 Buttons */}
