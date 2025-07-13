@@ -72,8 +72,8 @@ export function WeatherDashboard({
             return;
           }
 
-          // Generate a simple vineyard ID
-          const newVineyardId = `vineyard_${Date.now()}`;
+          // Generate a proper UUID for the vineyard
+          const newVineyardId = crypto.randomUUID();
           console.log('🆕 Generated new vineyard ID:', newVineyardId);
           
           // Store it for future use
@@ -83,10 +83,10 @@ export function WeatherDashboard({
           console.log('✅ Vineyard ID initialized:', newVineyardId);
         } catch (error) {
           console.error('❌ Error initializing vineyard:', error);
-          // Use a simple fallback
-          const fallbackId = `vineyard_${Date.now()}`;
+          // Use a proper UUID fallback
+          const fallbackId = crypto.randomUUID();
           setVineyardId(fallbackId);
-          console.log('🔧 Using simple fallback vineyard ID:', fallbackId);
+          console.log('🔧 Using UUID fallback vineyard ID:', fallbackId);
         }
       }
     };

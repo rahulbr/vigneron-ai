@@ -376,8 +376,9 @@ export async function savePhenologyEvent(
   try {
     console.log('💾 Saving phenology event:', { vineyardId, eventType, eventDate, notes });
 
-    // Simple approach: just save the event with the vineyard ID as-is
-    // If the vineyard doesn't exist, we'll handle that gracefully
+    // First, ensure the vineyard exists - if not, create it
+    await ensureVineyardExistsInDatabase(vineyardId);
+
     const insertData: any = {
       vineyard_id: vineyardId,
       event_type: eventType,
@@ -447,6 +448,60 @@ export async function getPhenologyEvents(vineyardId: string): Promise<PhenologyE
 // ========================================
 // VINEYARD MANAGEMENT HELPERS
 // ========================================
+export async function ensureVineyardExistsInDatabase(vineyardId: string): Promise<void> {
+  try {
+    console.log('🔍 Checking if vineyard exists in database:', vineyardId);
+
+    // Check if vineyard exists
+    const { data: existingVineyard, error: checkError } = await supabase
+      .from('vineyards')
+      .select('id')
+      .eq('id', vineyardId)
+      .limit(1);
+
+    if (checkError) {
+      console.error('❌ Error checking vineyard existence:', checkError);
+      throw checkError;
+    }
+
+    if (!existingVineyard || existingVineyard.length === 0) {
+      console.log('🆕 Vineyard not found, creating it...');
+      
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Not authenticated');
+      }
+
+      // Create a basic vineyard record
+      const { data: newVineyard, error: createError } = await supabase
+        .from('vineyards')
+        .insert([{
+          id: vineyardId,
+          name: 'Default Vineyard',
+          latitude: 37.3272, // Default to La Honda
+          longitude: -122.2813,
+          location: 'La Honda, CA',
+          user_id: user.id
+        }])
+        .select()
+        .single();
+
+      if (createError) {
+        console.error('❌ Error creating vineyard:', createError);
+        throw createError;
+      }
+
+      console.log('✅ Created new vineyard:', newVineyard);
+    } else {
+      console.log('✅ Vineyard already exists in database');
+    }
+  } catch (error) {
+    console.error('❌ Failed to ensure vineyard exists:', error);
+    throw error;
+  }
+}
+
 export async function ensureVineyardExists(
   vineyardId: string,
   locationName: string,
