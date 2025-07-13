@@ -118,6 +118,23 @@ export class OpenAIService {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ OpenAI API error response:', errorText);
+        
+        // Handle specific error cases
+        if (response.status === 429) {
+          let errorMessage = 'OpenAI API rate limit exceeded. ';
+          try {
+            const errorData = JSON.parse(errorText);
+            if (errorData.error?.code === 'insufficient_quota') {
+              errorMessage = 'OpenAI API quota exceeded. Please check your OpenAI billing and add credits to your account.';
+            } else {
+              errorMessage = 'OpenAI API rate limit exceeded. Please wait a moment and try again.';
+            }
+          } catch (e) {
+            errorMessage += 'Please check your OpenAI account billing or try again later.';
+          }
+          throw new Error(errorMessage);
+        }
+        
         throw new Error(`OpenAI API returned ${response.status}: ${response.statusText}`);
       }
 

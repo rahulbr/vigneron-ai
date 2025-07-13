@@ -150,6 +150,13 @@ export function WeatherDashboard({
   const generateAIInsights = async () => {
     if (!data || data.length === 0) return;
 
+    // Check if OpenAI API key is available
+    const hasApiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY && process.env.NEXT_PUBLIC_OPENAI_API_KEY.length > 0;
+    if (!hasApiKey) {
+      alert('❌ OpenAI API Key Missing\n\nTo use AI insights, you need to:\n1. Get an OpenAI API key from https://platform.openai.com/api-keys\n2. Add it to your environment variables as NEXT_PUBLIC_OPENAI_API_KEY\n3. Restart your application');
+      return;
+    }
+
     setIsGeneratingInsights(true);
     try {
       console.log('🤖 Generating AI insights...');
@@ -216,7 +223,16 @@ export function WeatherDashboard({
 
     } catch (error) {
       console.error('❌ Failed to generate AI insights:', error);
-      alert('Failed to generate AI insights: ' + (error as Error).message);
+      
+      // Show more user-friendly error message
+      const errorMessage = (error as Error).message;
+      if (errorMessage.includes('quota exceeded')) {
+        alert('❌ OpenAI API Quota Exceeded\n\nYour OpenAI account has exceeded its usage quota. Please:\n1. Check your OpenAI billing dashboard\n2. Add credits to your account\n3. Try again after adding credits\n\nVisit: https://platform.openai.com/account/billing');
+      } else if (errorMessage.includes('rate limit')) {
+        alert('❌ OpenAI API Rate Limit\n\nToo many requests to OpenAI API. Please wait a moment and try again.');
+      } else {
+        alert('❌ Failed to generate AI insights\n\n' + errorMessage);
+      }
     } finally {
       setIsGeneratingInsights(false);
     }
@@ -966,13 +982,14 @@ export function WeatherDashboard({
         }}>
           <button
             onClick={generateAIInsights}
+            disabled={!process.env.NEXT_PUBLIC_OPENAI_API_KEY}
             style={{
               padding: '12px 24px',
-              backgroundColor: '#8b5cf6',
+              backgroundColor: !process.env.NEXT_PUBLIC_OPENAI_API_KEY ? '#9ca3af' : '#8b5cf6',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
-              cursor: 'pointer',
+              cursor: !process.env.NEXT_PUBLIC_OPENAI_API_KEY ? 'not-allowed' : 'pointer',
               fontSize: '16px',
               fontWeight: '600',
               display: 'flex',
@@ -982,8 +999,13 @@ export function WeatherDashboard({
             }}
           >
             <Brain size={20} />
-            Generate AI Vineyard Insights
+            {!process.env.NEXT_PUBLIC_OPENAI_API_KEY ? 'AI Insights (API Key Required)' : 'Generate AI Vineyard Insights'}
           </button>
+          {!process.env.NEXT_PUBLIC_OPENAI_API_KEY && (
+            <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
+              Add NEXT_PUBLIC_OPENAI_API_KEY to enable AI features
+            </p>
+          )}
         </div>
       )}
 
