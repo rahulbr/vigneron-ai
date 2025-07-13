@@ -144,12 +144,7 @@ export function WeatherDashboard({
     }
   }, [isInitialized, dateRange.start, dateRange.end, latitude, longitude, refetch]);
 
-  // Auto-generate AI insights when weather data is loaded
-  useEffect(() => {
-    if (data.length > 0 && !isGeneratingInsights) {
-      generateAIInsights();
-    }
-  }, [data]);
+  // Remove auto-generation of AI insights - only generate when button is clicked
 
   // Generate AI insights based on current vineyard data
   const generateAIInsights = async () => {
@@ -159,17 +154,18 @@ export function WeatherDashboard({
     try {
       console.log('🤖 Generating AI insights...');
 
-      // Get phenology events from localStorage (fallback) OR database
+      // Get phenology events from database
       let phenologyEvents = [];
       try {
         if (vineyardId) {
-          // Try to get from database first (when implemented)
-          // For now, fall back to localStorage
-          const stored = localStorage.getItem(`phenology_events_${vineyardId}`);
-          phenologyEvents = stored ? JSON.parse(stored) : [];
+          console.log('🔍 Loading phenology events from database for AI analysis:', vineyardId);
+          const { getPhenologyEvents } = await import('../lib/supabase');
+          const dbEvents = await getPhenologyEvents(vineyardId);
+          phenologyEvents = dbEvents || [];
+          console.log('📅 Loaded phenology events for AI:', phenologyEvents.length);
         }
       } catch (error) {
-        console.warn('Error loading phenology events:', error);
+        console.warn('Error loading phenology events for AI:', error);
         phenologyEvents = [];
       }
 
@@ -435,165 +431,7 @@ export function WeatherDashboard({
         )}
       </div>
 
-      {/* AI Insights Panel */}
-      {showAIPanel && (
-        <div style={{ 
-          marginBottom: '20px', 
-          padding: '20px', 
-          backgroundColor: '#fefce8', 
-          borderRadius: '12px',
-          border: '1px solid #fde68a'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-            <h3 style={{ margin: '0', fontSize: '18px', color: '#92400e', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Brain size={20} />
-              AI Vineyard Insights
-            </h3>
-            {isGeneratingInsights ? (
-              <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite', color: '#92400e' }} />
-            ) : (
-              <button
-                onClick={generateAIInsights}
-                style={{
-                  padding: '6px 12px',
-                  backgroundColor: '#eab308',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                <RefreshCw size={12} />
-                Refresh Insights
-              </button>
-            )}
-          </div>
-
-          {isGeneratingInsights ? (
-            <div style={{ textAlign: 'center', padding: '20px' }}>
-              <div style={{ marginBottom: '10px' }}>🤖 AI is analyzing your vineyard data...</div>
-              <div style={{ fontSize: '14px', color: '#92400e' }}>
-                This may take a few seconds
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
-              {/* AI Recommendations */}
-              {aiInsights.length > 0 && (
-                <div>
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', color: '#92400e' }}>
-                    🎯 Recommendations
-                  </h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {aiInsights.map((insight) => {
-                      const colors = getInsightColor(insight.type);
-                      return (
-                        <div
-                          key={insight.id}
-                          style={{
-                            padding: '12px',
-                            backgroundColor: colors.bg,
-                            border: `1px solid ${colors.border}`,
-                            borderRadius: '8px'
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '6px' }}>
-                            {getInsightIcon(insight.type)}
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontWeight: '600', fontSize: '14px', color: colors.text, marginBottom: '4px' }}>
-                                {insight.title}
-                              </div>
-                              <div style={{ fontSize: '13px', color: colors.text, lineHeight: '1.4' }}>
-                                {insight.message}
-                              </div>
-                              <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
-                                Confidence: {(insight.confidence * 100).toFixed(0)}% • {insight.category}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Weather Analysis */}
-              {weatherAnalysis && (
-                <div>
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', color: '#92400e' }}>
-                    🌤️ Weather Pattern Analysis
-                  </h4>
-                  <div style={{
-                    padding: '12px',
-                    backgroundColor: '#f0f9ff',
-                    border: '1px solid #bae6fd',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    lineHeight: '1.5',
-                    color: '#0c4a6e'
-                  }}>
-                    {weatherAnalysis}
-                  </div>
-                </div>
-              )}
-
-              {/* Phenology Analysis */}
-              {phenologyAnalysis && (
-                <div>
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', color: '#92400e' }}>
-                    🌱 Phenology Insights
-                  </h4>
-                  <div style={{
-                    padding: '12px',
-                    backgroundColor: '#f0fdf4',
-                    border: '1px solid #bbf7d0',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    lineHeight: '1.5',
-                    color: '#065f46'
-                  }}>
-                    {phenologyAnalysis}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Generate AI Insights Button (when panel is hidden) */}
-      {!showAIPanel && data.length > 0 && !isGeneratingInsights && (
-        <div style={{ 
-          marginBottom: '20px', 
-          textAlign: 'center'
-        }}>
-          <button
-            onClick={generateAIInsights}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: '#8b5cf6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '16px',
-              fontWeight: '600',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              margin: '0 auto'
-            }}
-          >
-            <Brain size={20} />
-            Generate AI Vineyard Insights
-          </button>
-        </div>
-      )}
+      
 
       {/* Location Controls */}
       <div style={{ 
@@ -1118,6 +956,168 @@ export function WeatherDashboard({
           Sign out and sign back in - your data will still be there!
         </div>
       </div>
+
+      {/* Generate AI Insights Button */}
+      {data.length > 0 && !isGeneratingInsights && (
+        <div style={{ 
+          marginTop: '30px',
+          marginBottom: '20px', 
+          textAlign: 'center'
+        }}>
+          <button
+            onClick={generateAIInsights}
+            style={{
+              padding: '12px 24px',
+              backgroundColor: '#8b5cf6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              margin: '0 auto'
+            }}
+          >
+            <Brain size={20} />
+            Generate AI Vineyard Insights
+          </button>
+        </div>
+      )}
+
+      {/* AI Insights Panel - Moved to Bottom */}
+      {showAIPanel && (
+        <div style={{ 
+          marginTop: '20px',
+          marginBottom: '20px', 
+          padding: '20px', 
+          backgroundColor: '#fefce8', 
+          borderRadius: '12px',
+          border: '1px solid #fde68a'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+            <h3 style={{ margin: '0', fontSize: '18px', color: '#92400e', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Brain size={20} />
+              AI Vineyard Insights
+            </h3>
+            {isGeneratingInsights ? (
+              <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite', color: '#92400e' }} />
+            ) : (
+              <button
+                onClick={generateAIInsights}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: '#eab308',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                <RefreshCw size={12} />
+                Refresh Insights
+              </button>
+            )}
+          </div>
+
+          {isGeneratingInsights ? (
+            <div style={{ textAlign: 'center', padding: '20px' }}>
+              <div style={{ marginBottom: '10px' }}>🤖 AI is analyzing your vineyard data...</div>
+              <div style={{ fontSize: '14px', color: '#92400e' }}>
+                This may take a few seconds
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
+              {/* AI Recommendations */}
+              {aiInsights.length > 0 && (
+                <div>
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', color: '#92400e' }}>
+                    🎯 Recommendations
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {aiInsights.map((insight) => {
+                      const colors = getInsightColor(insight.type);
+                      return (
+                        <div
+                          key={insight.id}
+                          style={{
+                            padding: '12px',
+                            backgroundColor: colors.bg,
+                            border: `1px solid ${colors.border}`,
+                            borderRadius: '8px'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '6px' }}>
+                            {getInsightIcon(insight.type)}
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: '600', fontSize: '14px', color: colors.text, marginBottom: '4px' }}>
+                                {insight.title}
+                              </div>
+                              <div style={{ fontSize: '13px', color: colors.text, lineHeight: '1.4' }}>
+                                {insight.message}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
+                                Confidence: {(insight.confidence * 100).toFixed(0)}% • {insight.category}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Weather Analysis */}
+              {weatherAnalysis && (
+                <div>
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', color: '#92400e' }}>
+                    🌤️ Weather Pattern Analysis
+                  </h4>
+                  <div style={{
+                    padding: '12px',
+                    backgroundColor: '#f0f9ff',
+                    border: '1px solid #bae6fd',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    lineHeight: '1.5',
+                    color: '#0c4a6e'
+                  }}>
+                    {weatherAnalysis}
+                  </div>
+                </div>
+              )}
+
+              {/* Phenology Analysis */}
+              {phenologyAnalysis && (
+                <div>
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', color: '#92400e' }}>
+                    🌱 Phenology Insights
+                  </h4>
+                  <div style={{
+                    padding: '12px',
+                    backgroundColor: '#f0fdf4',
+                    border: '1px solid #bbf7d0',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    lineHeight: '1.5',
+                    color: '#065f46'
+                  }}>
+                    {phenologyAnalysis}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
