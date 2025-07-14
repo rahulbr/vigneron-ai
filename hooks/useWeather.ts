@@ -82,9 +82,22 @@ export function useWeather(options: UseWeatherOptions) {
         );
       }
 
+      // Validate and process the data
+      const processedData = validateWeatherData(weatherData);
+
+      if (processedData.length === 0) {
+        throw new Error('No valid weather data available for the selected period. Please check your date range and try again.');
+      }
+
+      // Additional validation for data quality
+      const invalidCount = weatherData.length - processedData.length;
+      if (invalidCount > 0) {
+        console.warn(`⚠️ Filtered out ${invalidCount} invalid data points out of ${weatherData.length} total`);
+      }
+
       setState(prev => ({
         ...prev,
-        data: weatherData,
+        data: processedData,
         loading: false,
         error: null,
         lastUpdated: new Date()
@@ -96,7 +109,7 @@ export function useWeather(options: UseWeatherOptions) {
 
       if (error instanceof Error) {
         errorMessage = error.message;
-        
+
         // Categorize errors
         if (errorMessage.includes('Invalid coordinates')) {
           errorCode = 'INVALID_COORDS';
@@ -168,4 +181,18 @@ export function useWeatherConnection() {
     testing,
     testConnection
   };
+}
+
+// Basic data validation function
+function validateWeatherData(data: WeatherData[]): WeatherData[] {
+  return data.filter(item => {
+    // Check if temp_high, temp_low, gdd, and rainfall are valid numbers
+    const isValid =
+      typeof item.temp_high === 'number' && !isNaN(item.temp_high) &&
+      typeof item.temp_low === 'number' && !isNaN(item.temp_low) &&
+      typeof item.gdd === 'number' && !isNaN(item.gdd) &&
+      typeof item.rainfall === 'number' && !isNaN(item.rainfall);
+
+    return isValid;
+  });
 }
