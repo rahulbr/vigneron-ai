@@ -53,6 +53,15 @@ export function WeatherDashboard({
   const [phenologyAnalysis, setPhenologyAnalysis] = useState<string>('');
   const [showAIPanel, setShowAIPanel] = useState(false);
 
+  // Activity tracking state
+  const [showActivityModal, setShowActivityModal] = useState(false);
+  const [activityType, setActivityType] = useState('');
+  const [activityStartDate, setActivityStartDate] = useState('');
+  const [activityEndDate, setActivityEndDate] = useState('');
+  const [activityNotes, setActivityNotes] = useState('');
+  const [activities, setActivities] = useState<any[]>([]);
+  const [isLoadingActivities, setIsLoadingActivities] = useState(false);
+
   const { isConnected, testing, testConnection } = useWeatherConnection();
 
   const weatherOptions = {
@@ -173,6 +182,9 @@ export function WeatherDashboard({
       setPhenologyAnalysis('');
       setShowAIPanel(false);
 
+      // Load activities for new vineyard
+      loadActivities(vineyard.id);
+
       // Refresh weather data for new vineyard
       if (isInitialized && dateRange.start && dateRange.end) {
         refetch();
@@ -180,6 +192,23 @@ export function WeatherDashboard({
 
     } catch (error) {
       console.error('❌ Error switching vineyard:', error);
+    }
+  };
+
+  // Load activities for current vineyard
+  const loadActivities = async (vineyardIdToLoad?: string) => {
+    const targetVineyardId = vineyardIdToLoad || vineyardId;
+    if (!targetVineyardId) return;
+
+    try {
+      setIsLoadingActivities(true);
+      const { getVineyardActivities } = await import('../lib/supabase');
+      const fetchedActivities = await getVineyardActivities(targetVineyardId);
+      setActivities(fetchedActivities);
+    } catch (error) {
+      console.error('❌ Error loading activities:', error);
+    } finally {
+      setIsLoadingActivities(false);
     }
   };
 
@@ -232,6 +261,47 @@ export function WeatherDashboard({
       refetch();
     }
   }, [isInitialized, dateRange.start, dateRange.end, latitude, longitude, refetch]);
+
+  // Load activities when vineyard changes
+  useEffect(() => {
+    if (vineyardId) {
+      loadActivities();
+    }
+  }, [vineyardId]);
+
+  // Save activity function
+  const saveActivity = async () => {
+    if (!vineyardId || !activityType || !activityStartDate) {
+      alert('Please fill in required fields (Activity Type and Start Date)');
+      return;
+    }
+
+    try {
+      const { saveVineyardActivity } = await import('../lib/supabase');
+      await saveVineyardActivity(
+        vineyardId,
+        activityType,
+        activityStartDate,
+        activityEndDate || undefined,
+        activityNotes || undefined
+      );
+
+      // Reset form
+      setActivityType('');
+      setActivityStartDate('');
+      setActivityEndDate('');
+      setActivityNotes('');
+      setShowActivityModal(false);
+
+      // Reload activities
+      loadActivities();
+
+      console.log('✅ Activity saved successfully');
+    } catch (error) {
+      console.error('❌ Error saving activity:', error);
+      alert('Failed to save activity: ' + (error as Error).message);
+    }
+  };
 
   // Remove auto-generation of AI insights - only generate when button is clicked
 
@@ -1135,6 +1205,239 @@ export function WeatherDashboard({
             locationName={customLocation}
             vineyardId={vineyardId}
           />
+        </div>
+      )}
+
+      {/* Log Activity Section */}
+      {vineyardId && (
+        <div className="card section-spacing">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h3 style={{ margin: '0', fontSize: '1.25rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              📝 Log Activity
+            </h3>
+            <button
+              onClick={() => setShowActivityModal(true)}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#059669',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              ➕ Log Activity
+            </button>
+          </div>
+
+          {/* Activity Modal */}
+          {showActivityModal && (
+            <div style={{
+              position: 'fixed',
+              top: '0',
+              left: '0',
+              right: '0',
+              bottom: '0',
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000
+            }}>
+              <div style={{
+                backgroundColor: 'white',
+                padding: '24px',
+                borderRadius: '12px',
+                width: '90%',
+                maxWidth: '500px',
+                maxHeight: '80vh',
+                overflowY: 'auto'
+              }}>
+                <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', color: '#374151' }}>
+                  📝 Log New Activity
+                </h3>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
+                      Activity Type *
+                    </label>
+                    <select
+                      value={activityType}
+                      onChange={(e) => setActivityType(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px'
+                      }}
+                    >
+                      <option value="">Select activity type...</option>
+                      <option value="Prune">Prune</option>
+                      <option value="Spray">Spray</option>
+                      <option value="Thin">Thin</option>
+                      <option value="Weed">Weed</option>
+                      <option value="Mow">Mow</option>
+                      <option value="Fertilize">Fertilize</option>
+                      <option value="Harvest">Harvest</option>
+                      <option value="Plant">Plant</option>
+                      <option value="Irrigate">Irrigate</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
+                      Start Date *
+                    </label>
+                    <input
+                      type="date"
+                      value={activityStartDate}
+                      onChange={(e) => setActivityStartDate(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px'
+                      }}
+                      max={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
+                      End Date (optional)
+                    </label>
+                    <input
+                      type="date"
+                      value={activityEndDate}
+                      onChange={(e) => setActivityEndDate(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px'
+                      }}
+                      min={activityStartDate}
+                      max={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
+                      Notes (optional)
+                    </label>
+                    <textarea
+                      value={activityNotes}
+                      onChange={(e) => setActivityNotes(e.target.value)}
+                      rows={3}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        resize: 'vertical'
+                      }}
+                      placeholder="Additional details about this activity..."
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', marginTop: '20px', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={() => setShowActivityModal(false)}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#6b7280',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={saveActivity}
+                    disabled={!activityType || !activityStartDate}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: !activityType || !activityStartDate ? '#9ca3af' : '#059669',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: !activityType || !activityStartDate ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    Save Activity
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Activity Log */}
+          <div style={{ marginTop: '20px' }}>
+            <h4 style={{ margin: '0 0 15px 0', fontSize: '16px', color: '#374151' }}>
+              📋 Activity Log
+            </h4>
+            
+            {isLoadingActivities ? (
+              <div style={{ textAlign: 'center', padding: '20px', color: '#6b7280' }}>
+                Loading activities...
+              </div>
+            ) : activities.length === 0 ? (
+              <div style={{
+                textAlign: 'center',
+                padding: '20px',
+                backgroundColor: '#f9fafb',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                color: '#6b7280'
+              }}>
+                No activities logged yet. Click "Log Activity" to get started!
+              </div>
+            ) : (
+              <div style={{
+                maxHeight: '300px',
+                overflowY: 'auto',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px'
+              }}>
+                {activities.map((activity, index) => (
+                  <div
+                    key={activity.id || index}
+                    style={{
+                      padding: '12px 16px',
+                      borderBottom: index < activities.length - 1 ? '1px solid #f3f4f6' : 'none',
+                      backgroundColor: index % 2 === 0 ? '#fafafa' : 'white'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                      <div style={{ fontWeight: '600', color: '#374151', fontSize: '14px' }}>
+                        {activity.activity_type}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                        {new Date(activity.start_date).toLocaleDateString()}
+                        {activity.end_date && activity.end_date !== activity.start_date && (
+                          <span> - {new Date(activity.end_date).toLocaleDateString()}</span>
+                        )}
+                      </div>
+                    </div>
+                    {activity.notes && (
+                      <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '4px' }}>
+                        {activity.notes}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

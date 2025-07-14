@@ -1,813 +1,303 @@
-// components/EnhancedGDDChart.tsx - Supabase Database Version
-import { useState, useEffect } from "react";
-import { savePhenologyEvent, getPhenologyEvents, supabase } from '../lib/supabase';
+import React, { useState } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
-interface WeatherDay {
+interface WeatherDataPoint {
   date: string;
   temp_high: number;
   temp_low: number;
   gdd: number;
   rainfall: number;
+  cumulative_gdd?: number;
 }
 
 interface PhenologyEvent {
   id?: string;
-  event_type: "bud_break" | "bloom" | "veraison" | "harvest";
-  event_date: string; // For single dates or start date for ranges
-  end_date?: string; // For date ranges (bud break, bloom, veraison)
+  event_type: string;
+  event_date: string;
   notes?: string;
-  harvest_block?: string; // For harvest picks - which block/vineyard section
 }
 
-interface EnhancedChartProps {
-  weatherData: WeatherDay[];
-  locationName: string;
-  vineyardId?: string;
+interface EnhancedGDDChartProps {
+  weatherData: WeatherDataPoint[];
+  phenologyEvents: PhenologyEvent[];
+  onAddPhenologyEvent?: (eventType: string, date: string, notes: string) => void;
 }
 
-export function EnhancedGDDChart({
+const EnhancedGDDChart: React.FC<EnhancedGDDChartProps> = ({
   weatherData,
-  locationName,
-  vineyardId,
-}: EnhancedChartProps) {
-  const [phenologyEvents, setPhenologyEvents] = useState<PhenologyEvent[]>([]);
-  const [showPhenologyForm, setShowPhenologyForm] = useState(false);
-  const [selectedDate, setSelectedDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [selectedEventType, setSelectedEventType] =
-    useState<PhenologyEvent["event_type"]>("bud_break");
-  const [notes, setNotes] = useState("");
-  const [harvestBlock, setHarvestBlock] = useState("");
-  const [loading, setLoading] = useState(false);
+  phenologyEvents,
+  onAddPhenologyEvent
+}) => {
+  const [showModal, setShowModal] = useState(false);
+  const [eventType, setEventType] = useState('');
+  const [eventDate, setEventDate] = useState('');
+  const [eventNotes, setEventNotes] = useState('');
 
-  console.log(
-    "📈 EnhancedGDDChart rendering with:",
-    weatherData.length,
-    "data points",
-  );
+  console.log('📈 EnhancedGDDChart rendering with:', weatherData.length, 'data points');
 
-  // Load existing phenology events from SUPABASE DATABASE
-  useEffect(() => {
-    const loadPhenologyEvents = async () => {
-      if (vineyardId) {
-        try {
-          setLoading(true);
-          console.log(
-            "🔄 Loading phenology events from database for vineyard:",
-            vineyardId,
-          );
+  // Calculate cumulative GDD
+  const chartData = weatherData.map((day, index) => {
+    const cumulativeGDD = weatherData
+      .slice(0, index + 1)
+      .reduce((sum, d) => sum + d.gdd, 0);
 
-          const events = await getPhenologyEvents(vineyardId);
-          setPhenologyEvents(events || []);
-          console.log(
-            "✅ Loaded phenology events from database:",
-            events?.length || 0,
-          );
-        } catch (error) {
-          console.error(
-            "❌ Error loading phenology events from database:",
-            error,
-          );
-          // Fallback to empty array if database fails
-          setPhenologyEvents([]);
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
-
-    loadPhenologyEvents();
-  }, [vineyardId]);
-
-  // Process data for chart
-  let cumulativeGDD = 0;
-  const chartData = weatherData.map((day) => {
-    cumulativeGDD += day.gdd;
     return {
-      date: day.date,
-      cumulativeGDD: Math.round(cumulativeGDD * 10) / 10,
-      dailyGDD: day.gdd,
+      ...day,
+      cumulative_gdd: cumulativeGDD,
+      displayDate: new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     };
   });
 
-  const maxGDD = Math.max(...chartData.map((d) => d.cumulativeGDD));
-  const minGDD = Math.min(...chartData.map((d) => d.cumulativeGDD));
-  const width = 800;
-  const height = 350;
-  const padding = 60;
-
-  // Create SVG path for GDD line
-  const pathData = chartData
-    .map((point, index) => {
-      const x =
-        padding + (index / (chartData.length - 1)) * (width - 2 * padding);
-      const y =
-        height -
-        padding -
-        ((point.cumulativeGDD - minGDD) / (maxGDD - minGDD)) *
-          (height - 2 * padding);
-      return `${index === 0 ? "M" : "L"} ${x} ${y}`;
-    })
-    .join(" ");
-
-  // Handle chart click to add phenology events
-  const handleChartClick = (event: React.MouseEvent<SVGElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-
-    // Calculate which date was clicked
-    const clickPosition = (x - padding) / (width - 2 * padding);
-    const dataIndex = Math.round(clickPosition * (chartData.length - 1));
-
-    if (dataIndex >= 0 && dataIndex < chartData.length) {
-      const clickedDate = chartData[dataIndex].date;
-      setSelectedDate(clickedDate);
-      setEndDate(""); // Reset end date
-      setHarvestBlock(""); // Reset harvest block
-      setShowPhenologyForm(true);
+  const handleAddEvent = () => {
+    if (eventType && eventDate && onAddPhenologyEvent) {
+      onAddPhenologyEvent(eventType, eventDate, eventNotes);
+      setShowModal(false);
+      setEventType('');
+      setEventDate('');
+      setEventNotes('');
     }
   };
 
-  // Add phenology event - SAVE TO SUPABASE DATABASE
-  const handleAddPhenologyEvent = async () => {
-    console.log("🔍 DEBUG: Save button clicked");
-    console.log("🔍 DEBUG selectedDate:", selectedDate);
-    console.log("🔍 DEBUG vineyardId:", vineyardId);
-
-    if (!selectedDate || !vineyardId) return;
-
-    try {
-      setLoading(true);
-      console.log("💾 Saving phenology event to database...");
-
-      // Save directly to Supabase database
-      const savedEvent = await savePhenologyEvent(
-        vineyardId,
-        selectedEventType,
-        selectedDate,
-        notes || "",
-        endDate || undefined,
-        harvestBlock || undefined,
-      );
-
-      console.log("✅ Phenology event saved to database:", savedEvent);
-
-      // Update local state with the saved event
-      const updatedEvents = [...phenologyEvents, savedEvent];
-      setPhenologyEvents(updatedEvents);
-
-      // Clear form
-      setShowPhenologyForm(false);
-      setNotes("");
-      setEndDate("");
-      setHarvestBlock("");
-
-      alert("✅ Phenology event saved to database successfully!");
-    } catch (error) {
-      console.error("❌ Error saving phenology event to database:", error);
-      alert("❌ Error saving phenology event: " + (error as Error).message);
-    } finally {
-      setLoading(false);
+  const formatTooltip = (value: any, name: string) => {
+    if (name === 'cumulative_gdd') {
+      return [`${Math.round(value)}°F`, 'Cumulative GDD'];
     }
+    return [value, name];
   };
 
-  // Phenology event colors and labels
-  const eventStyles = {
-    bud_break: { color: "#22c55e", label: "Bud Break", emoji: "🌱" },
-    bloom: { color: "#f59e0b", label: "Bloom", emoji: "🌸" },
-    veraison: { color: "#8b5cf6", label: "Veraison", emoji: "🍇" },
-    harvest: { color: "#ef4444", label: "Harvest", emoji: "🍷" },
+  const formatXAxisLabel = (tickItem: string) => {
+    const date = new Date(tickItem);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
-
-  // Check if selected event type uses date ranges
-  const isDateRangeEvent = ["bud_break", "bloom", "veraison"].includes(
-    selectedEventType,
-  );
-  const isHarvestEvent = selectedEventType === "harvest";
 
   return (
-    <div style={{ marginTop: "30px" }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "15px",
-          flexWrap: "wrap",
-          gap: "10px",
-        }}
-      >
-        <div>
-          <h2
-            style={{
-              fontSize: "24px",
-              fontWeight: "bold",
-              margin: "0 0 5px 0",
-            }}
-          >
-            🍇 Growing Degree Days - {locationName}
-          </h2>
-          <p style={{ color: "#666", margin: "0" }}>
-            Total GDD:{" "}
-            <strong>
-              {chartData[chartData.length - 1]?.cumulativeGDD || 0}°F
-            </strong>
-            {phenologyEvents.length > 0 && (
-              <span style={{ marginLeft: "20px" }}>
-                Phenology Events: <strong>{phenologyEvents.length}</strong>
-              </span>
-            )}
-            {loading && (
-              <span style={{ marginLeft: "20px", color: "#f59e0b" }}>
-                🔄 Loading...
-              </span>
-            )}
-          </p>
-        </div>
-
+    <div style={{ width: '100%', height: '400px', position: 'relative' }}>
+      {/* Add Phenology Event Button */}
+      <div style={{ 
+        position: 'absolute', 
+        top: '10px', 
+        right: '10px', 
+        zIndex: 10 
+      }}>
         <button
-          onClick={() => setShowPhenologyForm(true)}
-          disabled={loading}
+          onClick={() => setShowModal(true)}
           style={{
-            padding: "8px 16px",
-            backgroundColor: loading ? "#ccc" : "#22c55e",
-            color: "white",
-            border: "none",
-            borderRadius: "6px",
-            cursor: loading ? "not-allowed" : "pointer",
-            fontSize: "14px",
+            backgroundColor: '#059669',
+            color: 'white',
+            border: 'none',
+            padding: '8px 16px',
+            borderRadius: '6px',
+            fontSize: '0.875rem',
+            fontWeight: '500',
+            cursor: 'pointer',
+            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+            transition: 'all 0.2s ease'
           }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#047857'}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#059669'}
         >
-          + Add Phenology Event
+          📅 Add Phenology Event
         </button>
       </div>
 
-      {/* Chart Container */}
-      <div
-        style={{
-          border: "1px solid #ddd",
-          borderRadius: "8px",
-          padding: "15px",
-          backgroundColor: "white",
-          overflow: "auto",
-        }}
-      >
-        <svg
-          width={width}
-          height={height}
-          style={{ maxWidth: "100%", cursor: loading ? "wait" : "crosshair" }}
-          onClick={loading ? undefined : handleChartClick}
-        >
-          {/* Grid */}
-          <defs>
-            <pattern
-              id="grid"
-              width="40"
-              height="30"
-              patternUnits="userSpaceOnUse"
-            >
-              <path
-                d="M 40 0 L 0 0 0 30"
-                fill="none"
-                stroke="#f0f0f0"
-                strokeWidth="1"
-              />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#grid)" />
-
-          {/* Axes */}
-          <line
-            x1={padding}
-            y1={height - padding}
-            x2={width - padding}
-            y2={height - padding}
-            stroke="#333"
-            strokeWidth="2"
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={chartData} margin={{ top: 50, right: 30, left: 20, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis 
+            dataKey="date"
+            tickFormatter={formatXAxisLabel}
+            interval="preserveStartEnd"
           />
-          <line
-            x1={padding}
-            y1={padding}
-            x2={padding}
-            y2={height - padding}
-            stroke="#333"
-            strokeWidth="2"
+          <YAxis />
+          <Tooltip 
+            formatter={formatTooltip}
+            labelFormatter={(label) => `Date: ${formatXAxisLabel(label)}`}
+          />
+          <Line 
+            type="monotone" 
+            dataKey="cumulative_gdd" 
+            stroke="#059669" 
+            strokeWidth={3}
+            dot={false}
+            name="Cumulative GDD"
           />
 
-          {/* Y-axis labels */}
-          <text
-            x={padding - 10}
-            y={padding + 5}
-            textAnchor="end"
-            fontSize="12"
-            fill="#666"
-          >
-            {maxGDD}°F
-          </text>
-          <text
-            x={padding - 10}
-            y={height - padding + 5}
-            textAnchor="end"
-            fontSize="12"
-            fill="#666"
-          >
-            {minGDD}°F
-          </text>
+          {/* Phenology Event Markers */}
+          {phenologyEvents.map((event, index) => (
+            <ReferenceLine 
+              key={`event-${index}`}
+              x={event.event_date} 
+              stroke="#dc2626" 
+              strokeWidth={2}
+              strokeDasharray="5 5"
+              label={{ 
+                value: event.event_type, 
+                position: 'top',
+                offset: 10,
+                style: { 
+                  fill: '#dc2626', 
+                  fontWeight: 'bold',
+                  fontSize: '12px'
+                }
+              }}
+            />
+          ))}
+        </LineChart>
+      </ResponsiveContainer>
 
-          {/* X-axis date labels (every 30 days) */}
-          {chartData
-            .filter((_, index) => index % 30 === 0)
-            .map((point, index) => {
-              const dataIndex = chartData.indexOf(point);
-              const x =
-                padding +
-                (dataIndex / (chartData.length - 1)) * (width - 2 * padding);
-              const date = new Date(point.date);
-              const label = `${date.getMonth() + 1}/${date.getDate()}`;
-
-              return (
-                <text
-                  key={index}
-                  x={x}
-                  y={height - padding + 15}
-                  textAnchor="middle"
-                  fontSize="10"
-                  fill="#666"
-                >
-                  {label}
-                </text>
-              );
-            })}
-
-          {/* Phenology Event Vertical Lines and Ranges */}
-          {phenologyEvents.map((event, index) => {
-            const startDataIndex = chartData.findIndex(
-              (d) => d.date === event.event_date,
-            );
-            if (startDataIndex === -1) return null;
-
-            const startX =
-              padding +
-              (startDataIndex / (chartData.length - 1)) * (width - 2 * padding);
-            const style = eventStyles[event.event_type];
-
-            // If it's a date range event with end_date
-            if (event.end_date && event.event_type !== "harvest") {
-              const endDataIndex = chartData.findIndex(
-                (d) => d.date === event.end_date,
-              );
-              if (endDataIndex !== -1) {
-                const endX =
-                  padding +
-                  (endDataIndex / (chartData.length - 1)) *
-                    (width - 2 * padding);
-
-                return (
-                  <g key={index}>
-                    {/* Range rectangle */}
-                    <rect
-                      x={startX}
-                      y={padding}
-                      width={endX - startX}
-                      height={height - 2 * padding}
-                      fill={style.color}
-                      fillOpacity="0.2"
-                      stroke={style.color}
-                      strokeWidth="2"
-                      strokeDasharray="5,5"
-                    />
-                    {/* Start marker */}
-                    <circle
-                      cx={startX}
-                      cy={padding - 15}
-                      r="8"
-                      fill={style.color}
-                      stroke="white"
-                      strokeWidth="2"
-                    />
-                    <text
-                      x={startX}
-                      y={padding - 10}
-                      textAnchor="middle"
-                      fontSize="12"
-                    >
-                      {style.emoji}
-                    </text>
-                    {/* End marker */}
-                    <circle
-                      cx={endX}
-                      cy={padding - 15}
-                      r="6"
-                      fill={style.color}
-                      stroke="white"
-                      strokeWidth="2"
-                    />
-                  </g>
-                );
-              }
-            }
-
-            // Single date event (harvest picks or single-date development stages)
-            return (
-              <g key={index}>
-                {/* Vertical line */}
-                <line
-                  x1={startX}
-                  y1={padding}
-                  x2={startX}
-                  y2={height - padding}
-                  stroke={style.color}
-                  strokeWidth="3"
-                  strokeDasharray={
-                    event.event_type === "harvest" ? "3,3" : "5,5"
-                  }
-                />
-                {/* Event marker */}
-                <circle
-                  cx={startX}
-                  cy={padding - 15}
-                  r="8"
-                  fill={style.color}
-                  stroke="white"
-                  strokeWidth="2"
-                />
-                {/* Event emoji */}
-                <text
-                  x={startX}
-                  y={padding - 10}
-                  textAnchor="middle"
-                  fontSize="12"
-                >
-                  {style.emoji}
-                </text>
-                {/* Harvest block label */}
-                {event.event_type === "harvest" && event.harvest_block && (
-                  <text
-                    x={startX}
-                    y={padding - 25}
-                    textAnchor="middle"
-                    fontSize="10"
-                    fill={style.color}
-                    fontWeight="bold"
-                  >
-                    {event.harvest_block}
-                  </text>
-                )}
-              </g>
-            );
-          })}
-
-          {/* GDD Accumulation Line */}
-          <path d={pathData} fill="none" stroke="#2563eb" strokeWidth="3" />
-
-          {/* Recent data points (real weather) */}
-          {chartData.slice(-6).map((point, index) => {
-            const dataIndex = chartData.indexOf(point);
-            const x =
-              padding +
-              (dataIndex / (chartData.length - 1)) * (width - 2 * padding);
-            const y =
-              height -
-              padding -
-              ((point.cumulativeGDD - minGDD) / (maxGDD - minGDD)) *
-                (height - 2 * padding);
-            return (
-              <circle
-                key={index}
-                cx={x}
-                cy={y}
-                r="4"
-                fill="#10b981"
-                stroke="white"
-                strokeWidth="2"
-              />
-            );
-          })}
-
-          {/* Chart Title */}
-          <text
-            x={width / 2}
-            y={25}
-            textAnchor="middle"
-            fontSize="16"
-            fontWeight="bold"
-            fill="#333"
-          >
-            Cumulative Growing Degree Days (Click to add phenology events)
-          </text>
-        </svg>
-      </div>
-
-      {/* Phenology Form Modal */}
-      {showPhenologyForm && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0,0,0,0.5)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 1000,
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: "white",
-              padding: "30px",
-              borderRadius: "12px",
-              boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
-              minWidth: "450px",
-              maxWidth: "90vw",
-            }}
-          >
-            <h3 style={{ margin: "0 0 20px 0", fontSize: "20px" }}>
-              Add Phenology Event
+      {/* Add Phenology Event Modal */}
+      {showModal && (
+        <div style={{
+          position: 'fixed',
+          top: '0',
+          left: '0',
+          right: '0',
+          bottom: '0',
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '2rem',
+            borderRadius: '12px',
+            width: '90%',
+            maxWidth: '500px',
+            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.15)'
+          }}>
+            <h3 style={{ 
+              margin: '0 0 1.5rem 0', 
+              color: '#1f2937',
+              fontSize: '1.25rem',
+              fontWeight: '600'
+            }}>
+              📅 Add Phenology Event
             </h3>
 
-            <div style={{ marginBottom: "15px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "5px",
-                  fontWeight: "bold",
-                }}
-              >
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '0.5rem',
+                fontWeight: '500',
+                color: '#374151'
+              }}>
                 Event Type:
               </label>
               <select
-                value={selectedEventType}
-                onChange={(e) =>
-                  setSelectedEventType(
-                    e.target.value as PhenologyEvent["event_type"],
-                  )
-                }
+                value={eventType}
+                onChange={(e) => setEventType(e.target.value)}
                 style={{
-                  width: "100%",
-                  padding: "8px",
-                  border: "1px solid #ddd",
-                  borderRadius: "4px",
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '1rem'
                 }}
               >
-                {Object.entries(eventStyles).map(([type, style]) => (
-                  <option key={type} value={type}>
-                    {style.emoji} {style.label}
-                  </option>
-                ))}
+                <option value="">Select event type...</option>
+                <option value="Bud Break">Bud Break</option>
+                <option value="Flowering">Flowering</option>
+                <option value="Fruit Set">Fruit Set</option>
+                <option value="Veraison">Veraison</option>
+                <option value="Harvest">Harvest</option>
+                <option value="Leaf Fall">Leaf Fall</option>
+                <option value="Dormancy">Dormancy</option>
+                <option value="Other">Other</option>
               </select>
             </div>
 
-            {isDateRangeEvent ? (
-              <>
-                <div style={{ marginBottom: "15px" }}>
-                  <label
-                    style={{
-                      display: "block",
-                      marginBottom: "5px",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    Start Date:
-                  </label>
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "8px",
-                      border: "1px solid #ddd",
-                      borderRadius: "4px",
-                    }}
-                  />
-                </div>
-                <div style={{ marginBottom: "15px" }}>
-                  <label
-                    style={{
-                      display: "block",
-                      marginBottom: "5px",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    End Date (optional):
-                  </label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    min={selectedDate}
-                    style={{
-                      width: "100%",
-                      padding: "8px",
-                      border: "1px solid #ddd",
-                      borderRadius: "4px",
-                    }}
-                  />
-                  <div
-                    style={{
-                      fontSize: "12px",
-                      color: "#666",
-                      marginTop: "2px",
-                    }}
-                  >
-                    Leave empty for single date, or set range for gradual{" "}
-                    {selectedEventType.replace("_", " ")}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div style={{ marginBottom: "15px" }}>
-                <label
-                  style={{
-                    display: "block",
-                    marginBottom: "5px",
-                    fontWeight: "bold",
-                  }}
-                >
-                  {isHarvestEvent ? "Harvest Pick Date:" : "Date:"}
-                </label>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "8px",
-                    border: "1px solid #ddd",
-                    borderRadius: "4px",
-                  }}
-                />
-              </div>
-            )}
-
-            {isHarvestEvent && (
-              <div style={{ marginBottom: "15px" }}>
-                <label
-                  style={{
-                    display: "block",
-                    marginBottom: "5px",
-                    fontWeight: "bold",
-                  }}
-                >
-                  Block/Section:
-                </label>
-                <input
-                  type="text"
-                  value={harvestBlock}
-                  onChange={(e) => setHarvestBlock(e.target.value)}
-                  placeholder="e.g., Block A, North Field, Pinot Block..."
-                  style={{
-                    width: "100%",
-                    padding: "8px",
-                    border: "1px solid #ddd",
-                    borderRadius: "4px",
-                  }}
-                />
-              </div>
-            )}
-
-            <div style={{ marginBottom: "20px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "5px",
-                  fontWeight: "bold",
-                }}
-              >
-                Notes (optional):
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '0.5rem',
+                fontWeight: '500',
+                color: '#374151'
+              }}>
+                Date:
               </label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder={`Add observations about this ${selectedEventType.replace("_", " ")}...`}
+              <input
+                type="date"
+                value={eventDate}
+                onChange={(e) => setEventDate(e.target.value)}
                 style={{
-                  width: "100%",
-                  padding: "8px",
-                  border: "1px solid #ddd",
-                  borderRadius: "4px",
-                  minHeight: "60px",
-                  resize: "vertical",
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '1rem'
                 }}
               />
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                gap: "10px",
-                justifyContent: "flex-end",
-              }}
-            >
-              <button
-                onClick={() => {
-                  setShowPhenologyForm(false);
-                  setNotes("");
-                  setEndDate("");
-                  setHarvestBlock("");
-                }}
-                disabled={loading}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '0.5rem',
+                fontWeight: '500',
+                color: '#374151'
+              }}>
+                Notes (optional):
+              </label>
+              <textarea
+                value={eventNotes}
+                onChange={(e) => setEventNotes(e.target.value)}
+                rows={3}
                 style={{
-                  padding: "8px 16px",
-                  backgroundColor: "#f3f4f6",
-                  border: "1px solid #ddd",
-                  borderRadius: "4px",
-                  cursor: loading ? "not-allowed" : "pointer",
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '1rem',
+                  resize: 'vertical'
+                }}
+                placeholder="Additional notes about this phenology event..."
+              />
+            </div>
+
+            <div style={{ 
+              display: 'flex', 
+              gap: '1rem',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                onClick={() => setShowModal(false)}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  border: '1px solid #d1d5db',
+                  backgroundColor: 'white',
+                  color: '#374151',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '500'
                 }}
               >
                 Cancel
               </button>
               <button
-                onClick={handleAddPhenologyEvent}
-                disabled={!selectedDate || loading}
+                onClick={handleAddEvent}
+                disabled={!eventType || !eventDate}
                 style={{
-                  padding: "8px 16px",
-                  backgroundColor:
-                    !selectedDate || loading ? "#ccc" : "#22c55e",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: !selectedDate || loading ? "not-allowed" : "pointer",
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: !eventType || !eventDate ? '#9ca3af' : '#059669',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: !eventType || !eventDate ? 'not-allowed' : 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '500'
                 }}
               >
-                {loading
-                  ? "💾 Saving..."
-                  : isHarvestEvent
-                    ? "Add Pick"
-                    : "Add Event"}
+                Add Event
               </button>
             </div>
           </div>
         </div>
       )}
-
-      {/* Phenology Legend */}
-      {phenologyEvents.length > 0 && (
-        <div
-          style={{
-            marginTop: "20px",
-            padding: "15px",
-            backgroundColor: "#f8fafc",
-            borderRadius: "8px",
-            border: "1px solid #e2e8f0",
-          }}
-        >
-          <h4 style={{ margin: "0 0 10px 0", fontSize: "16px" }}>
-            Phenology Events:
-          </h4>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "15px" }}>
-            {phenologyEvents.map((event, index) => {
-              const style = eventStyles[event.event_type];
-              const gddAtEvent =
-                chartData.find((d) => d.date === event.event_date)
-                  ?.cumulativeGDD || 0;
-
-              return (
-                <div
-                  key={index}
-                  style={{ display: "flex", alignItems: "center", gap: "5px" }}
-                >
-                  <div
-                    style={{
-                      width: "12px",
-                      height: "12px",
-                      backgroundColor: style.color,
-                      borderRadius: "50%",
-                    }}
-                  ></div>
-                  <span style={{ fontSize: "14px" }}>
-                    {style.emoji} {style.label}: {event.event_date}
-                    {event.end_date && ` - ${event.end_date}`}
-                    {event.harvest_block && ` (${event.harvest_block})`}
-                    {` (${gddAtEvent}°F)`}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Chart Instructions */}
-      <div
-        style={{
-          marginTop: "15px",
-          padding: "10px",
-          backgroundColor: "#e0f2fe",
-          borderRadius: "5px",
-          fontSize: "12px",
-        }}
-      >
-        <strong>Instructions:</strong> Click on the chart or use the button to
-        add phenology events. Development stages (bud break, bloom, veraison)
-        can be date ranges. Harvest picks are individual dates with block
-        labels.
-        <br />
-        <strong>🎉 NEW:</strong> Events are now saved to your personal database
-        and will persist across sessions!
-      </div>
     </div>
   );
-}
+};
+
+export default EnhancedGDDChart;
