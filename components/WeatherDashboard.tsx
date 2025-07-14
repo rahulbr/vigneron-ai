@@ -27,7 +27,7 @@ export function WeatherDashboard({
   const [locationSearch, setLocationSearch] = useState('');
   const [searchResults, setSearchResults] = useState<GeocodeResult[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
+  const [isSearching, setIsSearching] = useState(isSearching);
   const [dateRange, setDateRange] = useState({
     start: '',
     end: ''
@@ -47,10 +47,6 @@ export function WeatherDashboard({
   const [showCreateVineyard, setShowCreateVineyard] = useState(false);
   const [editingVineyardId, setEditingVineyardId] = useState<string | null>(null);
   const [editingVineyardName, setEditingVineyardName] = useState('');
-
-  // Activity log state
-  const [activityLog, setActivityLog] = useState<any[]>([]);
-  const [isLoadingActivities, setIsLoadingActivities] = useState(false);
 
   // AI-related state
   const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
@@ -77,7 +73,7 @@ export function WeatherDashboard({
       try {
         setIsLoadingVineyards(true);
         console.log('🔍 Loading user vineyards...');
-        
+
         // Get authenticated user
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
@@ -89,7 +85,7 @@ export function WeatherDashboard({
         // Load user's vineyards
         const { getUserVineyards } = await import('../lib/supabase');
         const vineyards = await getUserVineyards();
-        
+
         console.log('🍇 Loaded user vineyards:', vineyards.length);
         setUserVineyards(vineyards);
 
@@ -100,7 +96,7 @@ export function WeatherDashboard({
         if (storedVineyardId) {
           selectedVineyard = vineyards.find(v => v.id === storedVineyardId);
         }
-        
+
         if (!selectedVineyard && vineyards.length > 0) {
           selectedVineyard = vineyards[0];
         }
@@ -113,9 +109,6 @@ export function WeatherDashboard({
           setCustomLocation(selectedVineyard.name);
           localStorage.setItem('currentVineyardId', selectedVineyard.id);
           console.log('✅ Current vineyard set:', selectedVineyard.name);
-          
-          // Load activity log for current vineyard
-          await loadActivityLog(selectedVineyard.id);
         } else {
           console.log('🆕 No existing vineyards, user can create one');
           setShowCreateVineyard(true);
@@ -135,7 +128,7 @@ export function WeatherDashboard({
   const createNewVineyard = async () => {
     try {
       console.log('🆕 Creating new vineyard:', { customLocation, latitude, longitude });
-      
+
       const { createVineyard } = await import('../lib/supabase');
       const newVineyard = await createVineyard(
         customLocation || 'New Vineyard',
@@ -145,7 +138,7 @@ export function WeatherDashboard({
       );
 
       console.log('✅ Created new vineyard:', newVineyard);
-      
+
       // Update state
       setUserVineyards(prev => [newVineyard, ...prev]);
       setCurrentVineyard(newVineyard);
@@ -153,53 +146,14 @@ export function WeatherDashboard({
       localStorage.setItem('currentVineyardId', newVineyard.id);
       setShowCreateVineyard(false);
 
-      // Load activity log for new vineyard
-      await loadActivityLog(newVineyard.id);
-
       // Refresh weather data for new vineyard
       if (isInitialized && dateRange.start && dateRange.end) {
         refetch();
       }
-      
+
     } catch (error) {
       console.error('❌ Error creating vineyard:', error);
       alert('Failed to create vineyard: ' + (error as Error).message);
-    }
-  };
-
-  // Load activity log (phenology events + activities)
-  const loadActivityLog = async (vineyardId: string) => {
-    if (!vineyardId) return;
-    
-    setIsLoadingActivities(true);
-    try {
-      console.log('📋 Loading activity log for vineyard:', vineyardId);
-      
-      const { getPhenologyEvents } = await import('../lib/supabase');
-      const events = await getPhenologyEvents(vineyardId);
-      
-      // Transform phenology events to activity format
-      const activities = events.map((event: any) => ({
-        id: event.id,
-        type: 'phenology',
-        activity_type: event.event_type,
-        date: event.event_date,
-        notes: event.notes || '',
-        vineyard_id: event.vineyard_id,
-        created_at: event.created_at
-      }));
-
-      // Sort by date (most recent first)
-      activities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      
-      setActivityLog(activities);
-      console.log('📋 Loaded activity log:', activities.length, 'entries');
-      
-    } catch (error) {
-      console.error('❌ Error loading activity log:', error);
-      setActivityLog([]);
-    } finally {
-      setIsLoadingActivities(false);
     }
   };
 
@@ -207,7 +161,7 @@ export function WeatherDashboard({
   const switchVineyard = async (vineyard: any) => {
     try {
       console.log('🔄 Switching to vineyard:', vineyard.name);
-      
+
       setCurrentVineyard(vineyard);
       setVineyardId(vineyard.id);
       setLatitude(vineyard.latitude);
@@ -220,9 +174,6 @@ export function WeatherDashboard({
       setWeatherAnalysis('');
       setPhenologyAnalysis('');
       setShowAIPanel(false);
-
-      // Load activity log for new vineyard
-      await loadActivityLog(vineyard.id);
 
       // Refresh weather data for new vineyard
       if (isInitialized && dateRange.start && dateRange.end) {
@@ -255,7 +206,7 @@ export function WeatherDashboard({
 
     try {
       console.log('✏️ Renaming vineyard:', { vineyardId, newName: editingVineyardName });
-      
+
       // Find the vineyard to get its coordinates
       const vineyard = userVineyards.find(v => v.id === vineyardId);
       if (!vineyard) {
@@ -272,7 +223,7 @@ export function WeatherDashboard({
 
       // Update the vineyard in our local state
       setUserVineyards(prev => prev.map(v => v.id === vineyardId ? updatedVineyard : v));
-      
+
       // If this is the current vineyard, update it too
       if (currentVineyard?.id === vineyardId) {
         setCurrentVineyard(updatedVineyard);
@@ -284,7 +235,7 @@ export function WeatherDashboard({
       setEditingVineyardName('');
 
       console.log('✅ Vineyard renamed successfully:', updatedVineyard.name);
-      
+
     } catch (error) {
       console.error('❌ Error renaming vineyard:', error);
       alert('Failed to rename vineyard: ' + (error as Error).message);
@@ -420,7 +371,7 @@ export function WeatherDashboard({
 
     } catch (error) {
       console.error('❌ Failed to generate AI insights:', error);
-      
+
       // Show more user-friendly error message
       const errorMessage = (error as Error).message;
       if (errorMessage.includes('quota exceeded')) {
@@ -487,7 +438,7 @@ export function WeatherDashboard({
 
     try {
       console.log('📍 Updating vineyard location:', { vineyard: currentVineyard.name, latitude, longitude, customLocation });
-      
+
       const { saveVineyardLocation } = await import('../lib/supabase');
       const updatedVineyard = await saveVineyardLocation(
         currentVineyard.id,
@@ -501,7 +452,7 @@ export function WeatherDashboard({
       setCurrentVineyard(updatedVineyard);
 
       console.log('✅ Vineyard location updated:', updatedVineyard);
-      
+
       clearError();
       if (isInitialized && dateRange.start && dateRange.end) {
         refetch();
@@ -612,7 +563,7 @@ export function WeatherDashboard({
         <p style={{ color: '#6b7280', margin: '0', fontSize: '1rem' }}>
           Advanced weather tracking and phenology management for your vineyards
         </p>
-        
+
         {/* Current Vineyard Display */}
         {currentVineyard && (
           <div style={{ 
@@ -1369,108 +1320,6 @@ export function WeatherDashboard({
             locationName={customLocation}
             vineyardId={vineyardId}
           />
-        </div>
-      )}
-
-      {/* Activity Log */}
-      {currentVineyard && (
-        <div className="card section-spacing">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-            <h3 style={{ margin: '0', fontSize: '1.25rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              📋 Activity Log
-            </h3>
-            <div style={{ fontSize: '12px', color: '#6b7280' }}>
-              {activityLog.length} {activityLog.length === 1 ? 'entry' : 'entries'}
-            </div>
-          </div>
-
-          {isLoadingActivities ? (
-            <div style={{ textAlign: 'center', padding: '20px', color: '#6b7280' }}>
-              <RefreshCw size={20} style={{ animation: 'spin 1s linear infinite', marginBottom: '8px' }} />
-              <div>Loading activity log...</div>
-            </div>
-          ) : activityLog.length === 0 ? (
-            <div style={{ 
-              textAlign: 'center', 
-              padding: '30px',
-              backgroundColor: '#f8fafc',
-              borderRadius: '8px',
-              color: '#6b7280'
-            }}>
-              <div style={{ fontSize: '24px', marginBottom: '8px' }}>📝</div>
-              <div style={{ fontWeight: '500', marginBottom: '4px' }}>No activities recorded yet</div>
-              <div style={{ fontSize: '14px' }}>Click on the chart above to add phenology events or activities!</div>
-            </div>
-          ) : (
-            <div style={{ 
-              maxHeight: '400px', 
-              overflowY: 'auto',
-              border: '1px solid #e2e8f0',
-              borderRadius: '8px'
-            }}>
-              {activityLog.map((activity, index) => (
-                <div
-                  key={activity.id || index}
-                  style={{
-                    padding: '12px 16px',
-                    borderBottom: index < activityLog.length - 1 ? '1px solid #f3f4f6' : 'none',
-                    backgroundColor: index % 2 === 0 ? '#fafafa' : 'white'
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ 
-                        fontSize: '16px',
-                        fontWeight: '600',
-                        color: activity.type === 'phenology' ? '#059669' : '#3b82f6'
-                      }}>
-                        {activity.type === 'phenology' ? '🌱' : '🔧'} {activity.activity_type}
-                      </span>
-                      <span style={{
-                        fontSize: '11px',
-                        padding: '2px 6px',
-                        backgroundColor: activity.type === 'phenology' ? '#ecfdf5' : '#eff6ff',
-                        color: activity.type === 'phenology' ? '#065f46' : '#1e40af',
-                        borderRadius: '10px',
-                        fontWeight: '500'
-                      }}>
-                        {activity.type === 'phenology' ? 'PHENOLOGY' : 'ACTIVITY'}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: '500' }}>
-                      {new Date(activity.date).toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric', 
-                        year: 'numeric'
-                      })}
-                    </div>
-                  </div>
-                  {activity.notes && (
-                    <div style={{ 
-                      fontSize: '14px', 
-                      color: '#374151',
-                      marginLeft: '24px',
-                      fontStyle: 'italic'
-                    }}>
-                      "{activity.notes}"
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div style={{ 
-            marginTop: '10px',
-            padding: '8px 12px',
-            backgroundColor: '#f1f5f9',
-            borderRadius: '6px',
-            fontSize: '12px',
-            color: '#6b7280',
-            textAlign: 'center'
-          }}>
-            💡 Tip: Click anywhere on the Growing Degree Days chart above to add phenology events and activities
-          </div>
         </div>
       )}
 

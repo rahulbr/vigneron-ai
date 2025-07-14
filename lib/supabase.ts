@@ -378,18 +378,9 @@ export async function savePhenologyEvent(
     // First, ensure the vineyard exists - if not, create it
     await ensureVineyardExistsInDatabase(vineyardId);
 
-    // Map activity types to valid phenology event types for database constraints
-    let finalEventType = eventType;
-    if (eventType.startsWith('activity_')) {
-      // For activities, we'll use "Other" as the event type and put the activity info in notes
-      finalEventType = 'Other';
-      const activityType = eventType.replace('activity_', '');
-      notes = `[ACTIVITY: ${activityType}] ${notes}`.trim();
-    }
-
     const insertData: any = {
       vineyard_id: vineyardId,
-      event_type: finalEventType,
+      event_type: eventType,
       event_date: eventDate,
       notes: notes || ''
     };
