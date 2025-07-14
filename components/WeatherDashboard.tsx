@@ -55,6 +55,18 @@ export function WeatherDashboard({
   const [phenologyAnalysis, setPhenologyAnalysis] = useState<string>('');
   const [showAIPanel, setShowAIPanel] = useState(false);
 
+  // Activity Log state
+  const [activities, setActivities] = useState<any[]>([]);
+  const [showActivityForm, setShowActivityForm] = useState(false);
+  const [activityForm, setActivityForm] = useState({
+    activity_type: '',
+    start_date: new Date().toISOString().split('T')[0],
+    end_date: '',
+    notes: ''
+  });
+  const [isLoadingActivities, setIsLoadingActivities] = useState(false);
+  const [isSavingActivity, setIsSavingActivity] = useState(false);
+
   const { isConnected, testing, testConnection } = useWeatherConnection();
 
   const weatherOptions = {
@@ -293,6 +305,99 @@ export function WeatherDashboard({
   }, [isInitialized, dateRange.start, dateRange.end, latitude, longitude, refetch]);
 
   // Remove auto-generation of AI insights - only generate when button is clicked
+
+  // Load activities for current vineyard
+  const loadActivities = async () => {
+    if (!vineyardId) return;
+
+    setIsLoadingActivities(true);
+    try {
+      console.log('📋 Loading activities for vineyard:', vineyardId);
+      
+      const { data, error } = await supabase
+        .from('phenology_events')
+        .select('*')
+        .eq('vineyard_id', vineyardId)
+        .order('event_date', { ascending: false });
+
+      if (error) {
+        console.error('❌ Error loading activities:', error);
+        return;
+      }
+
+      console.log('✅ Loaded activities:', data?.length || 0);
+      setActivities(data || []);
+    } catch (error) {
+      console.error('❌ Failed to load activities:', error);
+    } finally {
+      setIsLoadingActivities(false);
+    }
+  };
+
+  // Load activities when vineyard changes
+  useEffect(() => {
+    if (vineyardId) {
+      loadActivities();
+    }
+  }, [vineyardId]);
+
+  // Save new activity
+  const saveActivity = async () => {
+    if (!vineyardId || !activityForm.activity_type || !activityForm.start_date) {
+      alert('Please fill in activity type and start date');
+      return;
+    }
+
+    setIsSavingActivity(true);
+    try {
+      console.log('💾 Saving activity:', activityForm);
+      
+      const { savePhenologyEvent } = await import('../lib/supabase');
+      await savePhenologyEvent(
+        vineyardId,
+        activityForm.activity_type,
+        activityForm.start_date,
+        activityForm.notes,
+        activityForm.end_date || undefined
+      );
+
+      // Reset form
+      setActivityForm({
+        activity_type: '',
+        start_date: new Date().toISOString().split('T')[0],
+        end_date: '',
+        notes: ''
+      });
+      setShowActivityForm(false);
+
+      // Reload activities
+      await loadActivities();
+      
+      console.log('✅ Activity saved successfully');
+    } catch (error) {
+      console.error('❌ Failed to save activity:', error);
+      alert('Failed to save activity: ' + (error as Error).message);
+    } finally {
+      setIsSavingActivity(false);
+    }
+  };
+
+  // Activity type options
+  const activityTypes = [
+    'Pruning',
+    'Bud Break',
+    'Bloom',
+    'Fruit Set',
+    'Veraison',
+    'Harvest',
+    'Irrigation',
+    'Spray Application',
+    'Fertilization',
+    'Canopy Management',
+    'Soil Work',
+    'Equipment Maintenance',
+    'Other'
+  ];
 
   // Generate AI insights based on current vineyard data
   const generateAIInsights = async () => {
@@ -1338,6 +1443,271 @@ export function WeatherDashboard({
           <strong>🎉 Professional Features:</strong> Multi-vineyard management, persistent data storage, AI-powered insights, and mobile-optimized design for field use.
         </div>
       </div>
+
+      {/* Activity Log Section */}
+      {currentVineyard && (
+        <div className="card section-spacing">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h3 style={{ margin: '0', fontSize: '1.25rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              📋 Activity Log
+            </h3>
+            <button
+              onClick={() => setShowActivityForm(!showActivityForm)}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: showActivityForm ? '#ef4444' : '#22c55e',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              {showActivityForm ? '✕ Cancel' : '➕ Log Activity'}
+            </button>
+          </div>
+
+          {/* Activity Form */}
+          {showActivityForm && (
+            <div style={{
+              padding: '20px',
+              backgroundColor: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              marginBottom: '20px'
+            }}>
+              <h4 style={{ margin: '0 0 15px 0', color: '#374151' }}>Log New Activity</h4>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '15px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
+                    Activity Type *
+                  </label>
+                  <select
+                    value={activityForm.activity_type}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, activity_type: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      backgroundColor: 'white'
+                    }}
+                    required
+                  >
+                    <option value="">Select activity type...</option>
+                    {activityTypes.map(type => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
+                    Start Date *
+                  </label>
+                  <input
+                    type="date"
+                    value={activityForm.start_date}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, start_date: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px'
+                    }}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
+                    End Date (Optional)
+                  </label>
+                  <input
+                    type="date"
+                    value={activityForm.end_date}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, end_date: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px'
+                    }}
+                    min={activityForm.start_date}
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
+                  Notes (Optional)
+                </label>
+                <textarea
+                  value={activityForm.notes}
+                  onChange={(e) => setActivityForm(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Add any additional details about this activity..."
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    minHeight: '80px',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={saveActivity}
+                  disabled={isSavingActivity || !activityForm.activity_type || !activityForm.start_date}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: isSavingActivity || !activityForm.activity_type || !activityForm.start_date ? '#9ca3af' : '#22c55e',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: isSavingActivity || !activityForm.activity_type || !activityForm.start_date ? 'not-allowed' : 'pointer',
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  {isSavingActivity ? <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> : '💾'}
+                  {isSavingActivity ? 'Saving...' : 'Save Activity'}
+                </button>
+                
+                <button
+                  onClick={() => setShowActivityForm(false)}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#6b7280',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px'
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Activities List */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'between', alignItems: 'center', marginBottom: '15px' }}>
+              <h4 style={{ margin: '0', fontSize: '16px', color: '#374151' }}>
+                Recent Activities {activities.length > 0 && `(${activities.length})`}
+              </h4>
+              {activities.length > 0 && (
+                <button
+                  onClick={loadActivities}
+                  disabled={isLoadingActivities}
+                  style={{
+                    padding: '4px 8px',
+                    backgroundColor: '#f3f4f6',
+                    color: '#374151',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <RefreshCw size={12} style={{ animation: isLoadingActivities ? 'spin 1s linear infinite' : 'none' }} />
+                  Refresh
+                </button>
+              )}
+            </div>
+
+            {isLoadingActivities ? (
+              <div style={{ textAlign: 'center', padding: '20px', color: '#6b7280' }}>
+                <RefreshCw size={20} style={{ animation: 'spin 1s linear infinite', marginBottom: '8px' }} />
+                <div>Loading activities...</div>
+              </div>
+            ) : activities.length === 0 ? (
+              <div style={{
+                padding: '30px',
+                textAlign: 'center',
+                backgroundColor: '#f8fafc',
+                borderRadius: '8px',
+                border: '2px dashed #cbd5e1'
+              }}>
+                <div style={{ fontSize: '48px', marginBottom: '10px' }}>📝</div>
+                <h4 style={{ margin: '0 0 8px 0', color: '#374151' }}>No Activities Logged</h4>
+                <p style={{ margin: '0', color: '#6b7280', fontSize: '14px' }}>
+                  Start logging your vineyard activities to track your work throughout the season.
+                </p>
+              </div>
+            ) : (
+              <div style={{
+                maxHeight: '400px',
+                overflowY: 'auto',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                backgroundColor: 'white'
+              }}>
+                {activities.map((activity, index) => (
+                  <div
+                    key={activity.id || index}
+                    style={{
+                      padding: '15px',
+                      borderBottom: index < activities.length - 1 ? '1px solid #f3f4f6' : 'none',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start'
+                    }}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <span style={{ fontWeight: '600', color: '#374151', fontSize: '14px' }}>
+                          {activity.event_type}
+                        </span>
+                        <span style={{ 
+                          fontSize: '11px', 
+                          color: '#6b7280',
+                          padding: '2px 6px',
+                          backgroundColor: '#f1f5f9',
+                          borderRadius: '10px'
+                        }}>
+                          {new Date(activity.event_date).toLocaleDateString()}
+                        </span>
+                      </div>
+                      
+                      {activity.end_date && (
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                          Duration: {activity.event_date} to {activity.end_date}
+                        </div>
+                      )}
+                      
+                      {activity.notes && (
+                        <div style={{ fontSize: '13px', color: '#4b5563', lineHeight: '1.4' }}>
+                          {activity.notes}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div style={{ fontSize: '11px', color: '#9ca3af', marginLeft: '15px' }}>
+                      {activity.created_at && (
+                        <div>Logged: {new Date(activity.created_at).toLocaleDateString()}</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Generate AI Insights Button */}
       {data.length > 0 && !isGeneratingInsights && (
