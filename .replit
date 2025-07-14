@@ -11,7 +11,7 @@ NEXT_TELEMETRY_DISABLED = "1"
 
 [deployment]
 build = ["sh", "-c", "npm run build"]
-run = ["sh", "-c", "npm start"]
+run = ["sh", "-c", "npm run start"]
 deploymentTarget = "cloudrun"
 
 [[ports]]
