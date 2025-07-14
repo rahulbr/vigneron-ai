@@ -234,8 +234,20 @@ export function EnhancedGDDChart({ weatherData, locationName = "Vineyard", viney
         vineyardId,
         `activity_${activityType}`,
         activityDate,
-        activityNotes
+        activityNotes ? `[ACTIVITY] ${activityNotes}` : '[ACTIVITY]'
       );
+
+      // Update local state instead of reloading
+      const newActivity = {
+        id: Date.now().toString(),
+        vineyard_id: vineyardId,
+        event_type: `activity_${activityType}`,
+        event_date: activityDate,
+        notes: activityNotes ? `[ACTIVITY] ${activityNotes}` : '[ACTIVITY]',
+        created_at: new Date().toISOString()
+      };
+      
+      setPhenologyEvents(prev => [...prev, newActivity]);
 
       // Reset form
       setActivityType('');
@@ -245,9 +257,6 @@ export function EnhancedGDDChart({ weatherData, locationName = "Vineyard", viney
       setSelectedDate('');
 
       console.log('✅ Activity saved successfully');
-      
-      // Force reload to update activity log
-      window.location.reload();
       
     } catch (error) {
       console.error('❌ Error saving activity:', error);
@@ -376,18 +385,24 @@ export function EnhancedGDDChart({ weatherData, locationName = "Vineyard", viney
             {phenologyEvents.map((event) => {
               const chartPoint = chartData.find(d => d.date === event.event_date);
               if (chartPoint) {
+                const isActivity = event.event_type.startsWith('activity_');
+                const displayType = isActivity ? event.event_type.replace('activity_', '') : event.event_type;
+                const markerColor = isActivity ? '#3b82f6' : '#dc2626';
+                const markerIcon = isActivity ? '🔧' : '🌱';
+                
                 return (
                   <ReferenceLine
                     key={event.id || event.event_date}
                     x={chartPoint.displayDate}
-                    stroke="#dc2626"
-                    strokeWidth={2}
-                    strokeDasharray="5 5"
+                    stroke={markerColor}
+                    strokeWidth={1}
+                    strokeDasharray="2 2"
                     label={{
-                      value: event.event_type,
+                      value: `${markerIcon} ${displayType}`,
                       position: 'topRight',
-                      fontSize: 10,
-                      fill: '#dc2626'
+                      fontSize: 9,
+                      fill: markerColor,
+                      fontWeight: 'bold'
                     }}
                   />
                 );
@@ -423,24 +438,32 @@ export function EnhancedGDDChart({ weatherData, locationName = "Vineyard", viney
           border: '1px solid #bbf7d0'
         }}>
           <h4 style={{ margin: '0 0 10px 0', color: '#065f46', fontSize: '14px', fontWeight: '600' }}>
-            📅 Recorded Phenology Events:
+            📅 Recorded Events & Activities:
           </h4>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {phenologyEvents.map((event) => (
-              <span
-                key={event.id || event.event_date}
-                style={{
-                  padding: '4px 8px',
-                  backgroundColor: '#dcfce7',
-                  color: '#166534',
-                  borderRadius: '12px',
-                  fontSize: '12px',
-                  fontWeight: '500'
-                }}
-              >
-                {event.event_type} ({new Date(event.event_date).toLocaleDateString()})
-              </span>
-            ))}
+            {phenologyEvents.map((event) => {
+              const isActivity = event.event_type.startsWith('activity_');
+              const displayType = isActivity ? event.event_type.replace('activity_', '') : event.event_type;
+              const icon = isActivity ? '🔧' : '🌱';
+              const bgColor = isActivity ? '#eff6ff' : '#dcfce7';
+              const textColor = isActivity ? '#1e40af' : '#166534';
+              
+              return (
+                <span
+                  key={event.id || event.event_date}
+                  style={{
+                    padding: '4px 8px',
+                    backgroundColor: bgColor,
+                    color: textColor,
+                    borderRadius: '12px',
+                    fontSize: '12px',
+                    fontWeight: '500'
+                  }}
+                >
+                  {icon} {displayType} ({new Date(event.event_date).toLocaleDateString()})
+                </span>
+              );
+            })}
           </div>
         </div>
       )}
