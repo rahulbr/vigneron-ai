@@ -45,6 +45,8 @@ export function WeatherDashboard({
   const [currentVineyard, setCurrentVineyard] = useState<any | null>(null);
   const [isLoadingVineyards, setIsLoadingVineyards] = useState(true);
   const [showCreateVineyard, setShowCreateVineyard] = useState(false);
+  const [editingVineyardId, setEditingVineyardId] = useState<string | null>(null);
+  const [editingVineyardName, setEditingVineyardName] = useState('');
 
   // AI-related state
   const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
@@ -180,6 +182,63 @@ export function WeatherDashboard({
 
     } catch (error) {
       console.error('❌ Error switching vineyard:', error);
+    }
+  };
+
+  // Start editing a vineyard name
+  const startEditingVineyard = (vineyard: any) => {
+    setEditingVineyardId(vineyard.id);
+    setEditingVineyardName(vineyard.name);
+  };
+
+  // Cancel editing a vineyard name
+  const cancelEditingVineyard = () => {
+    setEditingVineyardId(null);
+    setEditingVineyardName('');
+  };
+
+  // Save the new vineyard name
+  const saveVineyardName = async (vineyardId: string) => {
+    if (!editingVineyardName.trim()) {
+      alert('Vineyard name cannot be empty');
+      return;
+    }
+
+    try {
+      console.log('✏️ Renaming vineyard:', { vineyardId, newName: editingVineyardName });
+      
+      // Find the vineyard to get its coordinates
+      const vineyard = userVineyards.find(v => v.id === vineyardId);
+      if (!vineyard) {
+        throw new Error('Vineyard not found');
+      }
+
+      const { saveVineyardLocation } = await import('../lib/supabase');
+      const updatedVineyard = await saveVineyardLocation(
+        vineyardId,
+        vineyard.latitude,
+        vineyard.longitude,
+        editingVineyardName.trim()
+      );
+
+      // Update the vineyard in our local state
+      setUserVineyards(prev => prev.map(v => v.id === vineyardId ? updatedVineyard : v));
+      
+      // If this is the current vineyard, update it too
+      if (currentVineyard?.id === vineyardId) {
+        setCurrentVineyard(updatedVineyard);
+        setCustomLocation(updatedVineyard.name);
+      }
+
+      // Clear editing state
+      setEditingVineyardId(null);
+      setEditingVineyardName('');
+
+      console.log('✅ Vineyard renamed successfully:', updatedVineyard.name);
+      
+    } catch (error) {
+      console.error('❌ Error renaming vineyard:', error);
+      alert('Failed to rename vineyard: ' + (error as Error).message);
     }
   };
 
@@ -576,26 +635,113 @@ export function WeatherDashboard({
           {userVineyards.length > 0 && (
             <div style={{ marginBottom: '15px' }}>
               <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
-                Switch Vineyard:
+                My Vineyards:
               </label>
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {userVineyards.map((vineyard) => (
-                  <button
+                  <div 
                     key={vineyard.id}
-                    onClick={() => switchVineyard(vineyard)}
                     style={{
-                      padding: '8px 12px',
-                      backgroundColor: currentVineyard?.id === vineyard.id ? '#22c55e' : '#e2e8f0',
-                      color: currentVineyard?.id === vineyard.id ? 'white' : '#374151',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: currentVineyard?.id === vineyard.id ? '600' : '400'
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px',
+                      backgroundColor: currentVineyard?.id === vineyard.id ? '#f0f9ff' : '#f8fafc',
+                      border: `1px solid ${currentVineyard?.id === vineyard.id ? '#0ea5e9' : '#e2e8f0'}`,
+                      borderRadius: '6px'
                     }}
                   >
-                    {vineyard.name}
-                  </button>
+                    {/* Vineyard name or edit input */}
+                    {editingVineyardId === vineyard.id ? (
+                      <input
+                        type="text"
+                        value={editingVineyardName}
+                        onChange={(e) => setEditingVineyardName(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            saveVineyardName(vineyard.id);
+                          } else if (e.key === 'Escape') {
+                            cancelEditingVineyard();
+                          }
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: '4px 8px',
+                          border: '1px solid #3b82f6',
+                          borderRadius: '4px',
+                          fontSize: '14px'
+                        }}
+                        autoFocus
+                      />
+                    ) : (
+                      <button
+                        onClick={() => switchVineyard(vineyard)}
+                        style={{
+                          flex: 1,
+                          textAlign: 'left',
+                          padding: '4px 8px',
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          fontWeight: currentVineyard?.id === vineyard.id ? '600' : '400',
+                          color: currentVineyard?.id === vineyard.id ? '#0369a1' : '#374151'
+                        }}
+                      >
+                        {currentVineyard?.id === vineyard.id && '📍 '}{vineyard.name}
+                      </button>
+                    )}
+
+                    {/* Edit/Save/Cancel buttons */}
+                    {editingVineyardId === vineyard.id ? (
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        <button
+                          onClick={() => saveVineyardName(vineyard.id)}
+                          style={{
+                            padding: '4px 8px',
+                            backgroundColor: '#22c55e',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '12px'
+                          }}
+                        >
+                          ✓
+                        </button>
+                        <button
+                          onClick={cancelEditingVineyard}
+                          style={{
+                            padding: '4px 8px',
+                            backgroundColor: '#ef4444',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '12px'
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => startEditingVineyard(vineyard)}
+                        style={{
+                          padding: '4px 8px',
+                          backgroundColor: '#f59e0b',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '12px'
+                        }}
+                        title="Rename vineyard"
+                      >
+                        ✏️
+                      </button>
+                    )}
+                  </div>
                 ))}
                 
                 {/* Create new vineyard button */}
@@ -611,10 +757,11 @@ export function WeatherDashboard({
                     fontSize: '14px',
                     display: 'flex',
                     alignItems: 'center',
+                    justifyContent: 'center',
                     gap: '4px'
                   }}
                 >
-                  ➕ Add New
+                  ➕ Add New Vineyard
                 </button>
               </div>
             </div>
