@@ -254,21 +254,21 @@ export function WeatherDashboard({
     }
   }, []);
 
-  // Initialize date range - only up to today's date
+  // Initialize date range - start from April 1st (growing season)
   useEffect(() => {
     const now = new Date();
     const currentYear = now.getFullYear();
     const today = now.toISOString().split('T')[0]; // YYYY-MM-DD format
 
-    // For current year: Jan 1 to today (not full year)
-    const startDate = `${currentYear}-01-01`;
+    // For current year: April 1 to today (growing season)
+    const startDate = `${currentYear}-04-01`;
     const endDate = today; // Only up to today
 
-    console.log('📅 Setting current year up to today:', { 
+    console.log('📅 Setting current year growing season (April 1 to today):', { 
       startDate, 
       endDate, 
       year: currentYear,
-      note: 'Historical data only - no future dates'
+      note: 'Growing season data - starts April 1st'
     });
 
     setDateRange({
@@ -470,11 +470,11 @@ export function WeatherDashboard({
     const today = now.toISOString().split('T')[0];
 
     const newDateRange = {
-      start: `${currentYear}-01-01`,
+      start: `${currentYear}-04-01`, // Start from April 1st
       end: today // Only up to today
     };
 
-    console.log('📅 Setting current year (up to today):', newDateRange);
+    console.log('📅 Setting current year growing season (April 1 to today):', newDateRange);
     setDateRange(newDateRange);
     setDateRangeMode('current');
     setShowCustomRange(false);
@@ -483,11 +483,11 @@ export function WeatherDashboard({
   const setPreviousYear = () => {
     const previousYear = new Date().getFullYear() - 1;
     const newDateRange = {
-      start: `${previousYear}-01-01`,
-      end: `${previousYear}-12-31` // Full previous year is OK
+      start: `${previousYear}-04-01`, // Start from April 1st
+      end: `${previousYear}-10-31` // End of growing season (October 31)
     };
 
-    console.log('📅 Setting previous year (full year):', newDateRange);
+    console.log('📅 Setting previous year growing season (April 1 to October 31):', newDateRange);
     setDateRange(newDateRange);
     setDateRangeMode('previous');
     setShowCustomRange(false);
@@ -1046,7 +1046,7 @@ export function WeatherDashboard({
               fontWeight: dateRangeMode === 'current' ? '600' : '400'
             }}
           >
-            Current Year ({currentYear}) - YTD
+            {currentYear} Growing Season (Apr 1 - Today)
           </button>
 
           <button
@@ -1061,7 +1061,7 @@ export function WeatherDashboard({
               fontWeight: dateRangeMode === 'previous' ? '600' : '400'
             }}
           >
-            Previous Year ({previousYear})
+            {previousYear} Growing Season (Apr 1 - Oct 31)
           </button>
 
           <button
