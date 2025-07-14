@@ -5,25 +5,7 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ozesvylffpvktxldvthi.supabase.co'
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96ZXN2eWxmZnB2a3R4bGR2dGhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEwNDE5NjksImV4cCI6MjA2NjYxNzk2OX0.R-7u_ptj2XbvIWLe6qGelf5PqjrACLZChYdKTNVX3Ow'
 
-// Create a single instance to avoid multiple client warnings
-const createSupabaseClient = () => {
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-    },
-  });
-};
-
-// Use a proper singleton pattern
-let supabaseInstance: ReturnType<typeof createClient> | null = null;
-
-export const supabase = (() => {
-  if (!supabaseInstance) {
-    supabaseInstance = createSupabaseClient();
-  }
-  return supabaseInstance;
-})();
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // ========================================
 // AUTH FUNCTIONS (NEW)

@@ -24,7 +24,7 @@ export interface PhenologyEvent {
 }
 
 export class DataValidator {
-
+  
   /**
    * Validate coordinates
    */
@@ -83,7 +83,7 @@ export class DataValidator {
     }
 
     const date = new Date(dateString);
-
+    
     // Check if date is valid
     if (isNaN(date.getTime())) {
       errors.push(`${fieldName} is not a valid date`);
@@ -93,7 +93,7 @@ export class DataValidator {
     // Check if date is not too far in the past
     const currentYear = new Date().getFullYear();
     const dateYear = date.getFullYear();
-
+    
     if (dateYear < 1950) {
       warnings.push(`${fieldName} is quite old (${dateYear}) - weather data may not be available`);
     }
@@ -181,12 +181,12 @@ export class DataValidator {
 
     // Check for date continuity
     const sortedData = [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
+    
     for (let i = 1; i < sortedData.length; i++) {
       const currentDate = new Date(sortedData[i].date);
       const previousDate = new Date(sortedData[i - 1].date);
       const diffDays = Math.round((currentDate.getTime() - previousDate.getTime()) / (1000 * 60 * 60 * 24));
-
+      
       if (diffDays > 1) {
         warnings.push(`Gap of ${diffDays} days between ${sortedData[i - 1].date} and ${sortedData[i].date}`);
       }
@@ -308,7 +308,7 @@ export class DataValidator {
       if (event.end_date) {
         warnings.push('Harvest events typically use single dates rather than date ranges');
       }
-
+      
       if (event.harvest_block && event.harvest_block.length > 50) {
         warnings.push('Harvest block name is quite long - consider shortening');
       }
@@ -379,18 +379,18 @@ export class DataValidator {
 // Utility function to display validation results
 export function formatValidationResults(result: ValidationResult): string {
   let message = '';
-
+  
   if (result.errors.length > 0) {
     message += `❌ Errors:\n${result.errors.map(e => `  • ${e}`).join('\n')}\n\n`;
   }
-
+  
   if (result.warnings.length > 0) {
     message += `⚠️ Warnings:\n${result.warnings.map(w => `  • ${w}`).join('\n')}\n\n`;
   }
-
+  
   if (result.isValid && result.warnings.length === 0) {
     message = '✅ All data is valid!';
   }
-
+  
   return message.trim();
 }
