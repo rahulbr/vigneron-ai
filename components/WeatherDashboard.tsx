@@ -341,6 +341,26 @@ export function WeatherDashboard({
     }
   }, [vineyardId]);
 
+  // Map activity types to database-compatible values
+  const mapActivityTypeToDb = (activityType: string): string => {
+    const mapping: { [key: string]: string } = {
+      'Bud Break': 'bud_break',
+      'Bloom': 'bloom', 
+      'Veraison': 'veraison',
+      'Harvest': 'harvest',
+      'Pruning': 'other',
+      'Irrigation': 'other',
+      'Spray Application': 'other', 
+      'Fertilization': 'other',
+      'Canopy Management': 'other',
+      'Soil Work': 'other',
+      'Equipment Maintenance': 'other',
+      'Fruit Set': 'other',
+      'Other': 'other'
+    };
+    return mapping[activityType] || 'other';
+  };
+
   // Save new activity
   const saveActivity = async () => {
     if (!vineyardId || !activityForm.activity_type || !activityForm.start_date) {
@@ -353,11 +373,13 @@ export function WeatherDashboard({
       console.log('💾 Saving activity:', activityForm);
       
       const { savePhenologyEvent } = await import('../lib/supabase');
+      const dbEventType = mapActivityTypeToDb(activityForm.activity_type);
+      
       await savePhenologyEvent(
         vineyardId,
-        activityForm.activity_type,
+        dbEventType,
         activityForm.start_date,
-        activityForm.notes,
+        `${activityForm.activity_type}: ${activityForm.notes}`, // Include original activity type in notes
         activityForm.end_date || undefined
       );
 
