@@ -185,13 +185,24 @@ export function useWeatherConnection() {
 
 // Basic data validation function
 function validateWeatherData(data: WeatherData[]): WeatherData[] {
-  return data.filter(item => {
+  return data.filter((item, index) => {
     // Check if temp_high, temp_low, gdd, and rainfall are valid numbers
     const isValid =
-      typeof item.temp_high === 'number' && !isNaN(item.temp_high) &&
-      typeof item.temp_low === 'number' && !isNaN(item.temp_low) &&
-      typeof item.gdd === 'number' && !isNaN(item.gdd) &&
-      typeof item.rainfall === 'number' && !isNaN(item.rainfall);
+      typeof item.temp_high === 'number' && !isNaN(item.temp_high) && item.temp_high > -100 && item.temp_high < 150 &&
+      typeof item.temp_low === 'number' && !isNaN(item.temp_low) && item.temp_low > -100 && item.temp_low < 150 &&
+      typeof item.gdd === 'number' && !isNaN(item.gdd) && item.gdd >= 0 && item.gdd < 100 &&
+      typeof item.rainfall === 'number' && !isNaN(item.rainfall) && item.rainfall >= 0 && item.rainfall < 50 &&
+      item.date && typeof item.date === 'string' && item.date.length > 0;
+
+    if (!isValid) {
+      console.warn(`⚠️ Invalid data point at index ${index}, values:`, {
+        temp_high: item.temp_high,
+        temp_low: item.temp_low,
+        gdd: item.gdd,
+        rainfall: item.rainfall,
+        date: item.date
+      });
+    }
 
     return isValid;
   });

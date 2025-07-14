@@ -88,12 +88,27 @@ export function EnhancedGDDChart({ weatherData, locationName = "Vineyard", viney
   let cumulativeGDD = 0;
 
   weatherData.forEach((day, index) => {
-    // Validate the data point
-    if (!day || typeof day.gdd !== 'number' || isNaN(day.gdd)) {
-      console.warn('⚠️ Invalid data point at index', index, ', skipping');
+    // Validate the data point more thoroughly
+    if (!day || 
+        typeof day.gdd !== 'number' || 
+        isNaN(day.gdd) || 
+        day.gdd < 0 || 
+        day.gdd > 100 ||
+        typeof day.temp_high !== 'number' || 
+        isNaN(day.temp_high) ||
+        typeof day.temp_low !== 'number' || 
+        isNaN(day.temp_low) ||
+        !day.date) {
+      console.warn('⚠️ Invalid data point at index', index, ', skipping:', {
+        gdd: day?.gdd,
+        temp_high: day?.temp_high,
+        temp_low: day?.temp_low,
+        date: day?.date
+      });
       return;
     }
 
+    // Only add valid GDD values
     cumulativeGDD += day.gdd;
 
     const date = new Date(day.date);
