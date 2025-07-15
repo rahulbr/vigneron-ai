@@ -1,7 +1,6 @@
 // hooks/useWeather.ts
 import { useState, useEffect, useCallback } from 'react';
-import { hybridWeatherService } from '../lib/hybridWeatherService';
-import { saveWeatherData, getWeatherData } from '../lib/supabase';
+import { weatherService } from '../lib/weatherService';
 
 interface WeatherData {
   date: string;
@@ -66,7 +65,7 @@ export function useWeather(options: UseWeatherOptions) {
 
       if (startDate && endDate) {
         // Fetch specific date range
-        weatherData = await hybridWeatherService.getHistoricalWeather(
+        weatherData = await weatherService.getHistoricalWeather(
           latitude, 
           longitude, 
           startDate, 
@@ -75,7 +74,7 @@ export function useWeather(options: UseWeatherOptions) {
         );
       } else {
         // Fetch current growing season
-        weatherData = await hybridWeatherService.getCurrentSeasonWeather(
+        weatherData = await weatherService.getCurrentSeasonWeather(
           latitude, 
           longitude, 
           new Date().getFullYear(), 
@@ -97,7 +96,7 @@ export function useWeather(options: UseWeatherOptions) {
 
       if (error instanceof Error) {
         errorMessage = error.message;
-
+        
         // Categorize errors
         if (errorMessage.includes('Invalid coordinates')) {
           errorCode = 'INVALID_COORDS';
@@ -148,22 +147,25 @@ export function useWeatherConnection() {
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [testing, setTesting] = useState(false);
 
-  const testConnection = async () => {
+  const testConnection = useCallback(async () => {
     setTesting(true);
     try {
-      const connected = await hybridWeatherService.testConnection();
-      setIsConnected(connected);
+      const result = await weatherService.testConnection();
+      setIsConnected(result);
     } catch (error) {
-      console.error('Connection test failed:', error);
       setIsConnected(false);
     } finally {
       setTesting(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     testConnection();
-  }, []);
+  }, [testConnection]);
 
-  return { isConnected, testing, testConnection };
+  return {
+    isConnected,
+    testing,
+    testConnection
+  };
 }

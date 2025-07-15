@@ -855,8 +855,8 @@ export function WeatherDashboard({
                       cursor: isSearching ? 'not-allowed' : 'pointer',
                       fontSize: '14px'
                     }}
-                  >```python
-                    {isSearching ? 'Searching...' : 'Search'}
+                  >
+                    {isSearching: 'Searching...' : 'Search'}
                   </button>
                 </div>
 
@@ -1309,12 +1309,12 @@ export function WeatherDashboard({
         ) : isConnected === true ? (
           <>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22c55e' }}></div>
-            <span style={{ color: '#065f46' }}>Hybrid Weather Service Connected (NOAA + WeatherAPI.com)</span>
+            <span style={{ color: '#065f46' }}>Weather API Connected</span>
           </>
         ) : isConnected === false ? (
           <>
             <AlertCircle size={16} style={{ color: '#dc2626' }} />
-            <span style={{ color: '#991b1b' }}>Hybrid Weather Service Connection Failed</span>
+            <span style={{ color: '#991b1b' }}>Weather API Connection Failed</span>
             <button 
               onClick={testConnection}
               style={{ 
@@ -1837,7 +1837,7 @@ export function WeatherDashboard({
                   style={{
                     width: '100%',
                     padding: '8px 12px',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid #d1d5db,
                     borderRadius: '6px',
                     minHeight: '80px',
                     resize: 'vertical'
