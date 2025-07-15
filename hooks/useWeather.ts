@@ -1,6 +1,6 @@
 // hooks/useWeather.ts
 import { useState, useEffect, useCallback } from 'react';
-import { weatherService } from '../lib/weatherService';
+import { hybridWeatherService } from '../lib/hybridWeatherService';
 
 interface WeatherData {
   date: string;
@@ -65,20 +65,22 @@ export function useWeather(options: UseWeatherOptions) {
 
       if (startDate && endDate) {
         // Fetch specific date range
-        weatherData = await weatherService.getHistoricalWeather(
+        weatherData = await hybridWeatherService.getHistoricalWeather(
           latitude, 
           longitude, 
           startDate, 
-          endDate, 
-          baseGDDTemp
+          endDate
         );
       } else {
         // Fetch current growing season
-        weatherData = await weatherService.getCurrentSeasonWeather(
+        const currentYear = new Date().getFullYear();
+        const startOfSeason = `${currentYear}-03-01`;
+        const endOfSeason = `${currentYear}-11-30`;
+        weatherData = await hybridWeatherService.getHistoricalWeather(
           latitude, 
           longitude, 
-          new Date().getFullYear(), 
-          baseGDDTemp
+          startOfSeason, 
+          endOfSeason
         );
       }
 
@@ -150,7 +152,7 @@ export function useWeatherConnection() {
   const testConnection = useCallback(async () => {
     setTesting(true);
     try {
-      const result = await weatherService.testConnection();
+      const result = await hybridWeatherService.testConnection();
       setIsConnected(result);
     } catch (error) {
       setIsConnected(false);
