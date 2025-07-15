@@ -258,6 +258,53 @@ export function WeatherDashboard({
     }
   };
 
+  // Delete a vineyard
+  const deleteVineyard = async (vineyardId: string, vineyardName: string) => {
+    if (!window.confirm(`Are you sure you want to delete "${vineyardName}"?\n\nThis will permanently remove the vineyard and all its associated data (weather data, events, etc.). This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      console.log('🗑️ Deleting vineyard:', { vineyardId, vineyardName });
+
+      // Delete from database
+      const { error } = await supabase
+        .from('vineyards')
+        .delete()
+        .eq('id', vineyardId);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      // Remove from local state
+      setUserVineyards(prev => prev.filter(v => v.id !== vineyardId));
+
+      // If this was the current vineyard, switch to another one or show create form
+      if (currentVineyard?.id === vineyardId) {
+        const remainingVineyards = userVineyards.filter(v => v.id !== vineyardId);
+        
+        if (remainingVineyards.length > 0) {
+          // Switch to the first remaining vineyard
+          const nextVineyard = remainingVineyards[0];
+          await switchVineyard(nextVineyard);
+        } else {
+          // No vineyards left, show create form
+          setCurrentVineyard(null);
+          setVineyardId('');
+          setShowCreateVineyard(true);
+          localStorage.removeItem('currentVineyardId');
+        }
+      }
+
+      console.log('✅ Vineyard deleted successfully:', vineyardName);
+
+    } catch (error) {
+      console.error('❌ Error deleting vineyard:', error);
+      alert('Failed to delete vineyard: ' + (error as Error).message);
+    }
+  };
+
   // Load saved locations from localStorage
   useEffect(() => {
     const stored = localStorage.getItem('saved_vineyard_locations');
@@ -853,7 +900,7 @@ export function WeatherDashboard({
                       </button>
                     )}
 
-                    {/* Edit/Save/Cancel buttons */}
+                    {/* Edit/Save/Cancel/Delete buttons */}
                     {editingVineyardId === vineyard.id ? (
                       <div style={{ display: 'flex', gap: '4px' }}>
                         <button
@@ -886,21 +933,38 @@ export function WeatherDashboard({
                         </button>
                       </div>
                     ) : (
-                      <button
-                        onClick={() => startEditingVineyard(vineyard)}
-                        style={{
-                          padding: '4px 8px',
-                          backgroundColor: '#f59e0b',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontSize: '12px'
-                        }}
-                        title="Rename vineyard"
-                      >
-                        ✏️
-                      </button>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        <button
+                          onClick={() => startEditingVineyard(vineyard)}
+                          style={{
+                            padding: '4px 8px',
+                            backgroundColor: '#f59e0b',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '12px'
+                          }}
+                          title="Rename vineyard"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => deleteVineyard(vineyard.id, vineyard.name)}
+                          style={{
+                            padding: '4px 8px',
+                            backgroundColor: '#ef4444',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '12px'
+                          }}
+                          title="Delete vineyard"
+                        >
+                          🗑️
+                        </button>
+                      </div>
                     )}
                   </div>
                 ))}
