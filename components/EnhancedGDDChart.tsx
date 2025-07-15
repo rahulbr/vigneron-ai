@@ -172,11 +172,21 @@ export function EnhancedGDDChart({
   };
 
   // Phenology event colors and labels
-  const eventStyles = {
+  const eventStyles: { [key: string]: { color: string, label: string, emoji: string } } = {
     bud_break: { color: "#22c55e", label: "Bud Break", emoji: "🌱" },
     bloom: { color: "#f59e0b", label: "Bloom", emoji: "🌸" },
     veraison: { color: "#8b5cf6", label: "Veraison", emoji: "🍇" },
     harvest: { color: "#ef4444", label: "Harvest", emoji: "🍷" },
+    // Activity log types
+    pruning: { color: "#6366f1", label: "Pruning", emoji: "✂️" },
+    irrigation: { color: "#06b6d4", label: "Irrigation", emoji: "💧" },
+    spray_application: { color: "#f97316", label: "Spray Application", emoji: "🌿" },
+    fertilization: { color: "#84cc16", label: "Fertilization", emoji: "🌱" },
+    canopy_management: { color: "#10b981", label: "Canopy Management", emoji: "🍃" },
+    soil_work: { color: "#8b5cf6", label: "Soil Work", emoji: "🌍" },
+    equipment_maintenance: { color: "#6b7280", label: "Equipment Maintenance", emoji: "🔧" },
+    fruit_set: { color: "#f59e0b", label: "Fruit Set", emoji: "🫐" },
+    other: { color: "#9ca3af", label: "Other", emoji: "📝" },
   };
 
   // Check if selected event type uses date ranges
@@ -349,7 +359,7 @@ export function EnhancedGDDChart({
             const startX =
               padding +
               (startDataIndex / (chartData.length - 1)) * (width - 2 * padding);
-            const style = eventStyles[event.event_type];
+            const style = eventStyles[event.event_type] || eventStyles.other;
 
             // If it's a date range event with end_date
             if (event.end_date && event.event_type !== "harvest") {
@@ -759,7 +769,7 @@ export function EnhancedGDDChart({
           </h4>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "15px" }}>
             {phenologyEvents.map((event, index) => {
-              const style = eventStyles[event.event_type];
+              const style = eventStyles[event.event_type] || eventStyles.other;
               const gddAtEvent =
                 chartData.find((d) => d.date === event.event_date)
                   ?.cumulativeGDD || 0;
