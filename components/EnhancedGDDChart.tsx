@@ -61,7 +61,7 @@ export function EnhancedGDDChart({
         );
 
         const events = await getPhenologyEvents(vineyardId);
-        setPhenologyEvents((events || []) as PhenologyEvent[]);
+        setPhenologyEvents(events || []);
         console.log(
           "✅ Loaded phenology events from database:",
           events?.length || 0,
