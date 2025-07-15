@@ -85,7 +85,7 @@ export function WeatherDashboard({
       try {
         setIsLoadingVineyards(true);
         console.log('🔍 Loading user vineyards...');
-        
+
         // Get authenticated user
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
@@ -97,7 +97,7 @@ export function WeatherDashboard({
         // Load user's vineyards
         const { getUserVineyards } = await import('../lib/supabase');
         const vineyards = await getUserVineyards();
-        
+
         console.log('🍇 Loaded user vineyards:', vineyards.length);
         setUserVineyards(vineyards);
 
@@ -108,7 +108,7 @@ export function WeatherDashboard({
         if (storedVineyardId) {
           selectedVineyard = vineyards.find(v => v.id === storedVineyardId);
         }
-        
+
         if (!selectedVineyard && vineyards.length > 0) {
           selectedVineyard = vineyards[0];
         }
@@ -140,7 +140,7 @@ export function WeatherDashboard({
   const createNewVineyard = async () => {
     try {
       console.log('🆕 Creating new vineyard:', { customLocation, latitude, longitude });
-      
+
       const { createVineyard } = await import('../lib/supabase');
       const newVineyard = await createVineyard(
         customLocation || 'New Vineyard',
@@ -150,7 +150,7 @@ export function WeatherDashboard({
       );
 
       console.log('✅ Created new vineyard:', newVineyard);
-      
+
       // Update state
       setUserVineyards(prev => [newVineyard, ...prev]);
       setCurrentVineyard(newVineyard);
@@ -162,7 +162,7 @@ export function WeatherDashboard({
       if (isInitialized && dateRange.start && dateRange.end) {
         refetch();
       }
-      
+
     } catch (error) {
       console.error('❌ Error creating vineyard:', error);
       alert('Failed to create vineyard: ' + (error as Error).message);
@@ -173,7 +173,7 @@ export function WeatherDashboard({
   const switchVineyard = async (vineyard: any) => {
     try {
       console.log('🔄 Switching to vineyard:', vineyard.name);
-      
+
       setCurrentVineyard(vineyard);
       setVineyardId(vineyard.id);
       setLatitude(vineyard.latitude);
@@ -218,7 +218,7 @@ export function WeatherDashboard({
 
     try {
       console.log('✏️ Renaming vineyard:', { vineyardId, newName: editingVineyardName });
-      
+
       // Find the vineyard to get its coordinates
       const vineyard = userVineyards.find(v => v.id === vineyardId);
       if (!vineyard) {
@@ -235,7 +235,7 @@ export function WeatherDashboard({
 
       // Update the vineyard in our local state
       setUserVineyards(prev => prev.map(v => v.id === vineyardId ? updatedVineyard : v));
-      
+
       // If this is the current vineyard, update it too
       if (currentVineyard?.id === vineyardId) {
         setCurrentVineyard(updatedVineyard);
@@ -247,7 +247,7 @@ export function WeatherDashboard({
       setEditingVineyardName('');
 
       console.log('✅ Vineyard renamed successfully:', updatedVineyard.name);
-      
+
     } catch (error) {
       console.error('❌ Error renaming vineyard:', error);
       alert('Failed to rename vineyard: ' + (error as Error).message);
@@ -313,7 +313,7 @@ export function WeatherDashboard({
     setIsLoadingActivities(true);
     try {
       console.log('📋 Loading activities for vineyard:', vineyardId);
-      
+
       const { data, error } = await supabase
         .from('phenology_events')
         .select('*')
@@ -351,9 +351,9 @@ export function WeatherDashboard({
     setIsSavingActivity(true);
     try {
       console.log('💾 Saving activity:', activityForm);
-      
+
       const { savePhenologyEvent } = await import('../lib/supabase');
-      
+
       await savePhenologyEvent(
         vineyardId,
         activityForm.activity_type.toLowerCase().replace(' ', '_'),
@@ -373,7 +373,7 @@ export function WeatherDashboard({
 
       // Reload activities
       await loadActivities();
-      
+
       console.log('✅ Activity saved successfully');
     } catch (error) {
       console.error('❌ Failed to save activity:', error);
@@ -477,7 +477,7 @@ export function WeatherDashboard({
 
     } catch (error) {
       console.error('❌ Failed to generate AI insights:', error);
-      
+
       // Show more user-friendly error message
       const errorMessage = (error as Error).message;
       if (errorMessage.includes('quota exceeded')) {
@@ -544,7 +544,7 @@ export function WeatherDashboard({
 
     try {
       console.log('📍 Updating vineyard location:', { vineyard: currentVineyard.name, latitude, longitude, customLocation });
-      
+
       const { saveVineyardLocation } = await import('../lib/supabase');
       const updatedVineyard = await saveVineyardLocation(
         currentVineyard.id,
@@ -558,7 +558,7 @@ export function WeatherDashboard({
       setCurrentVineyard(updatedVineyard);
 
       console.log('✅ Vineyard location updated:', updatedVineyard);
-      
+
       clearError();
       if (isInitialized && dateRange.start && dateRange.end) {
         refetch();
@@ -669,7 +669,7 @@ export function WeatherDashboard({
         <p style={{ color: '#6b7280', margin: '0', fontSize: '1rem' }}>
           Advanced weather tracking and phenology management for your vineyards
         </p>
-        
+
         {/* Current Vineyard Display */}
         {currentVineyard && (
           <div style={{ 
@@ -880,7 +880,7 @@ export function WeatherDashboard({
                     )}
                   </div>
                 ))}
-                
+
                 {/* Create new vineyard button */}
                 <button
                   onClick={() => setShowCreateVineyard(true)}
@@ -965,7 +965,7 @@ export function WeatherDashboard({
         )}
       </div>
 
-      
+
 
       {/* Location Controls */}
       <div className="card section-spacing">
@@ -1418,6 +1418,7 @@ export function WeatherDashboard({
             weatherData={data}
             locationName={customLocation}
             vineyardId={vineyardId}
+            onEventsChange={loadActivities}
           />
         </div>
       )}
@@ -1445,7 +1446,7 @@ export function WeatherDashboard({
         </div>
       )}
 
-      
+
 
       {/* Events Section - Combined Activity Log and Phenology Events */}
       {currentVineyard && (
@@ -1483,7 +1484,7 @@ export function WeatherDashboard({
               marginBottom: '20px'
             }}>
               <h4 style={{ margin: '0 0 15px 0', color: '#374151' }}>Log New Event</h4>
-              
+
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '15px' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
@@ -1584,7 +1585,7 @@ export function WeatherDashboard({
                   {isSavingActivity ? <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> : '💾'}
                   {isSavingActivity ? 'Saving...' : 'Save Event'}
                 </button>
-                
+
                 <button
                   onClick={() => setShowActivityForm(false)}
                   style={{
@@ -1676,10 +1677,10 @@ export function WeatherDashboard({
                     fruit_set: { color: "#f59e0b", label: "Fruit Set", emoji: "🫐" },
                     other: { color: "#9ca3af", label: "Other", emoji: "📝" },
                   };
-                  
+
                   const eventType = activity.event_type?.toLowerCase().replace(' ', '_') || 'other';
                   const style = eventStyles[eventType] || eventStyles.other;
-                  
+
                   // Calculate GDD at event date
                   const gddAtEvent = data.find(d => d.date === activity.event_date)?.gdd || 0;
                   const cumulativeGDD = data.filter(d => d.date <= activity.event_date).reduce((sum, d) => sum + d.gdd, 0);
@@ -1731,26 +1732,26 @@ export function WeatherDashboard({
                             </span>
                           )}
                         </div>
-                        
+
                         {activity.end_date && (
                           <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
                             Duration: {activity.event_date} to {activity.end_date}
                           </div>
                         )}
-                        
+
                         {activity.harvest_block && (
                           <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
                             Block: {activity.harvest_block}
                           </div>
                         )}
-                        
+
                         {activity.notes && (
                           <div style={{ fontSize: '13px', color: '#4b5563', lineHeight: '1.4' }}>
                             {activity.notes}
                           </div>
                         )}
                       </div>
-                      
+
                       <div style={{ fontSize: '11px', color: '#9ca3af', marginLeft: '15px' }}>
                         {activity.created_at && (
                           <div>Logged: {new Date(activity.created_at).toLocaleDateString()}</div>

@@ -23,12 +23,14 @@ interface EnhancedChartProps {
   weatherData: WeatherDay[];
   locationName: string;
   vineyardId?: string;
+  onEventsChange?: () => void; // Callback to notify parent when events change
 }
 
 export function EnhancedGDDChart({
   weatherData,
   locationName,
   vineyardId,
+  onEventsChange,
 }: EnhancedChartProps) {
   const [phenologyEvents, setPhenologyEvents] = useState<PhenologyEvent[]>([]);
   const [showPhenologyForm, setShowPhenologyForm] = useState(false);
@@ -39,6 +41,8 @@ export function EnhancedGDDChart({
   const [notes, setNotes] = useState("");
   const [harvestBlock, setHarvestBlock] = useState("");
   const [loading, setLoading] = useState(false);
+  const [eventTypeFilter, setEventTypeFilter] = useState<string[]>([]);
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
   console.log(
     "📈 EnhancedGDDChart rendering with:",
@@ -47,36 +51,43 @@ export function EnhancedGDDChart({
   );
 
   // Load existing phenology events from SUPABASE DATABASE
-  useEffect(() => {
-    const loadPhenologyEvents = async () => {
-      if (vineyardId) {
-        try {
-          setLoading(true);
-          console.log(
-            "🔄 Loading phenology events from database for vineyard:",
-            vineyardId,
-          );
+  const loadPhenologyEvents = async () => {
+    if (vineyardId) {
+      try {
+        setLoading(true);
+        console.log(
+          "🔄 Loading phenology events from database for vineyard:",
+          vineyardId,
+        );
 
-          const events = await getPhenologyEvents(vineyardId);
-          setPhenologyEvents(events || []);
-          console.log(
-            "✅ Loaded phenology events from database:",
-            events?.length || 0,
-          );
-        } catch (error) {
-          console.error(
-            "❌ Error loading phenology events from database:",
-            error,
-          );
-          // Fallback to empty array if database fails
-          setPhenologyEvents([]);
-        } finally {
-          setLoading(false);
-        }
+        const events = await getPhenologyEvents(vineyardId);
+        setPhenologyEvents(events || []);
+        console.log(
+          "✅ Loaded phenology events from database:",
+          events?.length || 0,
+        );
+      } catch (error) {
+        console.error(
+          "❌ Error loading phenology events from database:",
+          error,
+        );
+        // Fallback to empty array if database fails
+        setPhenologyEvents([]);
+      } finally {
+        setLoading(false);
       }
-    };
+    }
+  };
 
+  useEffect(() => {
     loadPhenologyEvents();
+  }, [vineyardId]);
+
+  // Expose refresh function to parent
+  useEffect(() => {
+    if (window) {
+      (window as any).refreshChartEvents = loadPhenologyEvents;
+    }
   }, [vineyardId]);
 
   // Process data for chart
@@ -155,6 +166,11 @@ export function EnhancedGDDChart({
       // Update local state with the saved event
       const updatedEvents = [...phenologyEvents, savedEvent];
       setPhenologyEvents(updatedEvents);
+
+      // Notify parent component that events have changed
+      if (onEventsChange) {
+        onEventsChange();
+      }
 
       // Clear form
       setShowPhenologyForm(false);
@@ -235,21 +251,118 @@ export function EnhancedGDDChart({
           </p>
         </div>
 
-        <button
-          onClick={() => setShowPhenologyForm(true)}
-          disabled={loading}
-          style={{
-            padding: "8px 16px",
-            backgroundColor: loading ? "#ccc" : "#22c55e",
-            color: "white",
-            border: "none",
-            borderRadius: "6px",
-            cursor: loading ? "not-allowed" : "pointer",
-            fontSize: "14px",
-          }}
-        >
-          Add Event
-        </button>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          {/* Event Type Filter */}
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+              style={{
+                padding: "8px 16px",
+                backgroundColor: "#3b82f6",
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontSize: "14px",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px"
+              }}
+            >
+              🔍 Filter ({eventTypeFilter.length > 0 ? eventTypeFilter.length : 'All'})
+            </button>
+            
+            {showFilterDropdown && (
+              <div style={{
+                position: "absolute",
+                top: "100%",
+                right: "0",
+                backgroundColor: "white",
+                border: "1px solid #ddd",
+                borderRadius: "6px",
+                boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
+                zIndex: 1000,
+                minWidth: "200px",
+                maxHeight: "300px",
+                overflowY: "auto"
+              }}>
+                <div style={{ padding: "8px 12px", borderBottom: "1px solid #eee", fontWeight: "bold", fontSize: "12px" }}>
+                  Filter by Event Type:
+                </div>
+                <div style={{ padding: "4px" }}>
+                  <button
+                    onClick={() => setEventTypeFilter([])}
+                    style={{
+                      width: "100%",
+                      padding: "6px 12px",
+                      backgroundColor: eventTypeFilter.length === 0 ? "#e0f2fe" : "transparent",
+                      border: "none",
+                      textAlign: "left",
+                      cursor: "pointer",
+                      fontSize: "12px"
+                    }}
+                  >
+                    Show All Events
+                  </button>
+                  {Object.entries(eventStyles).map(([type, style]) => {
+                    const isSelected = eventTypeFilter.includes(type);
+                    return (
+                      <button
+                        key={type}
+                        onClick={() => {
+                          if (isSelected) {
+                            setEventTypeFilter(prev => prev.filter(t => t !== type));
+                          } else {
+                            setEventTypeFilter(prev => [...prev, type]);
+                          }
+                        }}
+                        style={{
+                          width: "100%",
+                          padding: "6px 12px",
+                          backgroundColor: isSelected ? "#e0f2fe" : "transparent",
+                          border: "none",
+                          textAlign: "left",
+                          cursor: "pointer",
+                          fontSize: "12px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px"
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: "8px",
+                            height: "8px",
+                            backgroundColor: style.color,
+                            borderRadius: "50%"
+                          }}
+                        ></div>
+                        {style.emoji} {style.label}
+                        {isSelected && <span style={{ marginLeft: "auto", color: "#22c55e" }}>✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={() => setShowPhenologyForm(true)}
+            disabled={loading}
+            style={{
+              padding: "8px 16px",
+              backgroundColor: loading ? "#ccc" : "#22c55e",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              cursor: loading ? "not-allowed" : "pointer",
+              fontSize: "14px",
+            }}
+          >
+            Add Event
+          </button>
+        </div>
       </div>
 
       {/* Chart Container */}
@@ -350,7 +463,11 @@ export function EnhancedGDDChart({
             })}
 
           {/* Phenology Event Vertical Lines and Ranges */}
-          {phenologyEvents.map((event, index) => {
+          {phenologyEvents.filter(event => {
+            // Apply event type filter
+            if (eventTypeFilter.length === 0) return true;
+            return eventTypeFilter.includes(event.event_type);
+          }).map((event, index) => {
             const startDataIndex = chartData.findIndex(
               (d) => d.date === event.event_date,
             );
@@ -768,7 +885,11 @@ export function EnhancedGDDChart({
             Events:
           </h4>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "15px" }}>
-            {phenologyEvents.map((event, index) => {
+            {phenologyEvents.filter(event => {
+              // Apply event type filter
+              if (eventTypeFilter.length === 0) return true;
+              return eventTypeFilter.includes(event.event_type);
+            }).map((event, index) => {
               const style = eventStyles[event.event_type] || eventStyles.other;
               const gddAtEvent =
                 chartData.find((d) => d.date === event.event_date)
