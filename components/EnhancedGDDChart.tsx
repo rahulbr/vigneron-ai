@@ -882,7 +882,7 @@ export function EnhancedGDDChart({
           }}
         >
           <h4 style={{ margin: "0 0 10px 0", fontSize: "16px" }}>
-            Events:
+            Displayed Events:
           </h4>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "15px" }}>
             {phenologyEvents.filter(event => {

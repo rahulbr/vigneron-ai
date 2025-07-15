@@ -66,6 +66,10 @@ export function WeatherDashboard({
   });
   const [isLoadingActivities, setIsLoadingActivities] = useState(false);
   const [isSavingActivity, setIsSavingActivity] = useState(false);
+  
+  // Event filtering for Events section
+  const [eventFilterTypes, setEventFilterTypes] = useState<string[]>([]);
+  const [showEventFilterDropdown, setShowEventFilterDropdown] = useState(false);
 
   const { isConnected, testing, testConnection } = useWeatherConnection();
 
@@ -1455,23 +1459,116 @@ export function WeatherDashboard({
             <h3 style={{ margin: '0', fontSize: '1.25rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
               🌱 Events
             </h3>
-            <button
-              onClick={() => setShowActivityForm(!showActivityForm)}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: showActivityForm ? '#ef4444' : '#22c55e',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
-              }}
-            >
-              {showActivityForm ? '✕ Cancel' : '➕ Log Event'}
-            </button>
+            <div style={{ position: "relative" }}>
+              <button
+                onClick={() => setShowEventFilterDropdown(!showEventFilterDropdown)}
+                style={{
+                  padding: "8px 16px",
+                  backgroundColor: "#3b82f6",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px"
+                }}
+              >
+                🔍 Filter ({eventFilterTypes.length > 0 ? eventFilterTypes.length : 'All'})
+              </button>
+              
+              {showEventFilterDropdown && (
+                <div style={{
+                  position: "absolute",
+                  top: "100%",
+                  right: "0",
+                  backgroundColor: "white",
+                  border: "1px solid #ddd",
+                  borderRadius: "6px",
+                  boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
+                  zIndex: 1000,
+                  minWidth: "200px",
+                  maxHeight: "300px",
+                  overflowY: "auto"
+                }}>
+                  <div style={{ padding: "8px 12px", borderBottom: "1px solid #eee", fontWeight: "bold", fontSize: "12px" }}>
+                    Filter by Event Type:
+                  </div>
+                  <div style={{ padding: "4px" }}>
+                    <button
+                      onClick={() => setEventFilterTypes([])}
+                      style={{
+                        width: "100%",
+                        padding: "6px 12px",
+                        backgroundColor: eventFilterTypes.length === 0 ? "#e0f2fe" : "transparent",
+                        border: "none",
+                        textAlign: "left",
+                        cursor: "pointer",
+                        fontSize: "12px"
+                      }}
+                    >
+                      Show All Events
+                    </button>
+                    {activityTypes.map((type) => {
+                      const eventType = type.toLowerCase().replace(' ', '_');
+                      const eventStyles: { [key: string]: { color: string, label: string, emoji: string } } = {
+                        bud_break: { color: "#22c55e", label: "Bud Break", emoji: "🌱" },
+                        bloom: { color: "#f59e0b", label: "Bloom", emoji: "🌸" },
+                        veraison: { color: "#8b5cf6", label: "Veraison", emoji: "🍇" },
+                        harvest: { color: "#ef4444", label: "Harvest", emoji: "🍷" },
+                        pruning: { color: "#6366f1", label: "Pruning", emoji: "✂️" },
+                        irrigation: { color: "#06b6d4", label: "Irrigation", emoji: "💧" },
+                        spray_application: { color: "#f97316", label: "Spray Application", emoji: "🌿" },
+                        fertilization: { color: "#84cc16", label: "Fertilization", emoji: "🌱" },
+                        canopy_management: { color: "#10b981", label: "Canopy Management", emoji: "🍃" },
+                        soil_work: { color: "#8b5cf6", label: "Soil Work", emoji: "🌍" },
+                        equipment_maintenance: { color: "#6b7280", label: "Equipment Maintenance", emoji: "🔧" },
+                        fruit_set: { color: "#f59e0b", label: "Fruit Set", emoji: "🫐" },
+                        other: { color: "#9ca3af", label: "Other", emoji: "📝" },
+                      };
+                      const style = eventStyles[eventType] || eventStyles.other;
+                      const isSelected = eventFilterTypes.includes(eventType);
+                      return (
+                        <button
+                          key={type}
+                          onClick={() => {
+                            if (isSelected) {
+                              setEventFilterTypes(prev => prev.filter(t => t !== eventType));
+                            } else {
+                              setEventFilterTypes(prev => [...prev, eventType]);
+                            }
+                          }}
+                          style={{
+                            width: "100%",
+                            padding: "6px 12px",
+                            backgroundColor: isSelected ? "#e0f2fe" : "transparent",
+                            border: "none",
+                            textAlign: "left",
+                            cursor: "pointer",
+                            fontSize: "12px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px"
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: "8px",
+                              height: "8px",
+                              backgroundColor: style.color,
+                              borderRadius: "50%"
+                            }}
+                          ></div>
+                          {style.emoji} {style.label}
+                          {isSelected && <span style={{ marginLeft: "auto", color: "#22c55e" }}>✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Event Form */}
@@ -1660,7 +1757,12 @@ export function WeatherDashboard({
                 borderRadius: '8px',
                 backgroundColor: 'white'
               }}>
-                {activities.map((activity, index) => {
+                {activities.filter(activity => {
+                  // Apply event type filter
+                  if (eventFilterTypes.length === 0) return true;
+                  const eventType = activity.event_type?.toLowerCase().replace(' ', '_') || 'other';
+                  return eventFilterTypes.includes(eventType);
+                }).map((activity, index) => {
                   // Get event style with icon and color
                   const eventStyles: { [key: string]: { color: string, label: string, emoji: string } } = {
                     bud_break: { color: "#22c55e", label: "Bud Break", emoji: "🌱" },
