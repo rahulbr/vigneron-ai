@@ -102,6 +102,10 @@ export function useWeather(options: UseWeatherOptions) {
           errorCode = 'INVALID_COORDS';
         } else if (errorMessage.includes('Invalid date range')) {
           errorCode = 'INVALID_DATE_RANGE';
+        } else if (errorMessage.includes('OpenWeatherMap API key')) {
+          errorCode = 'INVALID_API_KEY';
+        } else if (errorMessage.includes('rate limit')) {
+          errorCode = 'RATE_LIMIT';
         } else if (errorMessage.includes('HTTP')) {
           errorCode = 'API_ERROR';
         } else if (errorMessage.includes('failed after')) {
@@ -153,6 +157,7 @@ export function useWeatherConnection() {
       const result = await weatherService.testConnection();
       setIsConnected(result);
     } catch (error) {
+      console.error('Weather connection test failed:', error);
       setIsConnected(false);
     } finally {
       setTesting(false);
