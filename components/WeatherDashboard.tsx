@@ -697,6 +697,37 @@ export function WeatherDashboard({
         )}
       </div>
 
+      {/* Help Section - Moved to top */}
+      <div className="card" style={{ 
+        marginBottom: '2rem', 
+        backgroundColor: '#fefce8',
+        borderColor: '#fde68a'
+      }}>
+        <h4 style={{ margin: '0 0 1rem 0', color: '#92400e', fontSize: '1.125rem' }}>
+          💡 How to Use This Dashboard
+        </h4>
+        <ul style={{ margin: '0', paddingLeft: '1.25rem', color: '#92400e', fontSize: '0.875rem', lineHeight: '1.6' }}>
+          <li style={{ marginBottom: '0.5rem' }}>🔍 Search for any location worldwide using Google Maps</li>
+          <li style={{ marginBottom: '0.5rem' }}>📅 Select current year (YTD), previous year, or custom date range</li>
+          <li style={{ marginBottom: '0.5rem' }}>📊 View growing degree days accumulation on the interactive chart</li>
+          <li style={{ marginBottom: '0.5rem' }}>🌱 Click on the chart to add phenology events (bud break, bloom, etc.)</li>
+          <li style={{ marginBottom: '0.5rem' }}>🤖 Click "Generate AI Vineyard Insights" for expert recommendations</li>
+          <li style={{ marginBottom: '0.5rem' }}>💾 Your phenology events are saved to your personal database!</li>
+          <li>🌧️ Track rainfall and temperature patterns throughout the season</li>
+        </ul>
+
+        <div style={{ 
+          marginTop: '1rem', 
+          padding: '0.75rem', 
+          backgroundColor: '#fef3cd',
+          borderRadius: '6px',
+          fontSize: '0.875rem',
+          color: '#92400e'
+        }}>
+          <strong>🎉 Professional Features:</strong> Multi-vineyard management, persistent data storage, AI-powered insights, and mobile-optimized design for field use.
+        </div>
+      </div>
+
       {/* Vineyard Management Panel */}
       {!isLoadingVineyards && (
         <div className="card section-spacing">
@@ -1414,36 +1445,7 @@ export function WeatherDashboard({
         </div>
       )}
 
-      {/* Help Section */}
-      <div className="card" style={{ 
-        marginTop: '2rem', 
-        backgroundColor: '#fefce8',
-        borderColor: '#fde68a'
-      }}>
-        <h4 style={{ margin: '0 0 1rem 0', color: '#92400e', fontSize: '1.125rem' }}>
-          💡 How to Use This Dashboard
-        </h4>
-        <ul style={{ margin: '0', paddingLeft: '1.25rem', color: '#92400e', fontSize: '0.875rem', lineHeight: '1.6' }}>
-          <li style={{ marginBottom: '0.5rem' }}>🔍 Search for any location worldwide using Google Maps</li>
-          <li style={{ marginBottom: '0.5rem' }}>📅 Select current year (YTD), previous year, or custom date range</li>
-          <li style={{ marginBottom: '0.5rem' }}>📊 View growing degree days accumulation on the interactive chart</li>
-          <li style={{ marginBottom: '0.5rem' }}>🌱 Click on the chart to add phenology events (bud break, bloom, etc.)</li>
-          <li style={{ marginBottom: '0.5rem' }}>🤖 Click "Generate AI Vineyard Insights" for expert recommendations</li>
-          <li style={{ marginBottom: '0.5rem' }}>💾 Your phenology events are saved to your personal database!</li>
-          <li>🌧️ Track rainfall and temperature patterns throughout the season</li>
-        </ul>
-
-        <div style={{ 
-          marginTop: '1rem', 
-          padding: '0.75rem', 
-          backgroundColor: '#fef3cd',
-          borderRadius: '6px',
-          fontSize: '0.875rem',
-          color: '#92400e'
-        }}>
-          <strong>🎉 Professional Features:</strong> Multi-vineyard management, persistent data storage, AI-powered insights, and mobile-optimized design for field use.
-        </div>
-      </div>
+      
 
       {/* Activity Log Section */}
       {currentVineyard && (
