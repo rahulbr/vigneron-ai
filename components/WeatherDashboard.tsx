@@ -1477,7 +1477,7 @@ export function WeatherDashboard({
         <div className="card section-spacing">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <h3 style={{ margin: '0', fontSize: '1.25rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              🌱 Events
+              🌱 Event Log
             </h3>
             <div style={{ position: "relative" }}>
               <button
@@ -1912,28 +1912,7 @@ export function WeatherDashboard({
             )}
           </div>
 
-          {/* Add activity button */}
-          <div style={{ marginTop: '15px', textAlign: 'center' }}>
-            <button
-              onClick={() => setShowActivityForm(!showActivityForm)}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#22c55e',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                margin: '0 auto'
-              }}
-            >
-              <Calendar size={16} />
-              {showActivityForm ? 'Cancel' : 'Log New Event'}
-            </button>
-          </div>
+          
         </div>
       )}
 
