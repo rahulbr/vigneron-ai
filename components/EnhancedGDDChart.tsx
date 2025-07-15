@@ -61,7 +61,7 @@ export function EnhancedGDDChart({
         );
 
         const events = await getPhenologyEvents(vineyardId);
-        setPhenologyEvents(events || []);
+        setPhenologyEvents((events || []) as PhenologyEvent[]);
         console.log(
           "✅ Loaded phenology events from database:",
           events?.length || 0,
@@ -271,7 +271,7 @@ export function EnhancedGDDChart({
             >
               🔍 Filter ({eventTypeFilter.length > 0 ? eventTypeFilter.length : 'All'})
             </button>
-            
+
             {showFilterDropdown && (
               <div style={{
                 position: "absolute",
