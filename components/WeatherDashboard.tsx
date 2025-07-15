@@ -1837,7 +1837,7 @@ export function WeatherDashboard({
                   style={{
                     width: '100%',
                     padding: '8px 12px',
-                    border: '1px solid #d1d5db,
+                    border: '1px solid #d1d5db',
                     borderRadius: '6px',
                     minHeight: '80px',
                     resize: 'vertical'

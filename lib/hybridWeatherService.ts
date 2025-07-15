@@ -255,3 +255,87 @@ class HybridWeatherService {
 }
 
 export const hybridWeatherService = HybridWeatherService.getInstance();
+import { NOAAWeatherService } from './weatherService';
+import { weatherApiService } from './weatherService';
+
+interface WeatherDay {
+  date: string;
+  temp_high: number;
+  temp_low: number;
+  gdd: number;
+  rainfall: number;
+}
+
+interface WeatherServiceOptions {
+  latitude: number;
+  longitude: number;
+  startDate?: string;
+  endDate?: string;
+}
+
+class HybridWeatherService {
+  private noaaService: NOAAWeatherService;
+  private weatherApiService: typeof weatherApiService;
+
+  constructor() {
+    this.noaaService = new NOAAWeatherService();
+    this.weatherApiService = weatherApiService;
+  }
+
+  // Determine if coordinates are in the US
+  private isUSLocation(latitude: number, longitude: number): boolean {
+    // Continental US, Alaska, and Hawaii bounds
+    const mainlandUS = latitude >= 24.396308 && latitude <= 49.384358 && 
+                      longitude >= -125.0 && longitude <= -66.93457;
+    const alaska = latitude >= 51.0 && latitude <= 71.5 && 
+                  longitude >= -179.0 && longitude <= -129.0;
+    const hawaii = latitude >= 18.0 && latitude <= 23.0 && 
+                  longitude >= -161.0 && longitude <= -154.0;
+    
+    return mainlandUS || alaska || hawaii;
+  }
+
+  async getWeatherData(options: WeatherServiceOptions): Promise<WeatherDay[]> {
+    const { latitude, longitude, startDate, endDate } = options;
+
+    console.log('🌍 Hybrid Weather Service: Determining best data source...');
+    
+    if (this.isUSLocation(latitude, longitude)) {
+      console.log('📍 US location detected, using NOAA');
+      try {
+        return await this.noaaService.getWeatherData(latitude, longitude, startDate, endDate);
+      } catch (error) {
+        console.warn('⚠️ NOAA failed, falling back to WeatherAPI.com:', error);
+        return await this.weatherApiService.getWeatherData(latitude, longitude, startDate, endDate);
+      }
+    } else {
+      console.log('🌍 Global location detected, using WeatherAPI.com');
+      try {
+        return await this.weatherApiService.getWeatherData(latitude, longitude, startDate, endDate);
+      } catch (error) {
+        console.warn('⚠️ WeatherAPI.com failed, trying NOAA as backup:', error);
+        return await this.noaaService.getWeatherData(latitude, longitude, startDate, endDate);
+      }
+    }
+  }
+
+  async testConnection(): Promise<boolean> {
+    try {
+      // Test with a known US location (San Francisco)
+      const testData = await this.getWeatherData({
+        latitude: 37.7749,
+        longitude: -122.4194,
+        startDate: '2024-01-01',
+        endDate: '2024-01-02'
+      });
+      
+      return testData.length > 0;
+    } catch (error) {
+      console.error('Hybrid weather service connection test failed:', error);
+      return false;
+    }
+  }
+}
+
+export const hybridWeatherService = new HybridWeatherService();
+export default hybridWeatherService;
