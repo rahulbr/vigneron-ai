@@ -283,7 +283,7 @@ export function WeatherDashboard({
       // If this was the current vineyard, switch to another one or show create form
       if (currentVineyard?.id === vineyardId) {
         const remainingVineyards = userVineyards.filter(v => v.id !== vineyardId);
-        
+
         if (remainingVineyards.length > 0) {
           // Switch to the first remaining vineyard
           const nextVineyard = remainingVineyards[0];
@@ -502,7 +502,9 @@ export function WeatherDashboard({
       }
 
       // Calculate summary statistics
-      const totalGDD = data.reduce((sum, day) => sum + day.gdd, 0);
+      const totalGDD = data && Array.isArray(data) 
+          ? data.reduce((sum, day) => sum + (day.gdd || 0), 0) 
+          : 0;
       const totalRainfall = data.reduce((sum, day) => sum + day.rainfall, 0);
       const avgTempHigh = data.reduce((sum, day) => sum + day.temp_high, 0) / data.length;
       const avgTempLow = data.reduce((sum, day) => sum + day.temp_low, 0) / data.length;
@@ -684,7 +686,9 @@ export function WeatherDashboard({
   };
 
   // Calculate summary statistics
-  const totalGDD = data.reduce((sum, day) => sum + day.gdd, 0);
+  const totalGDD = data && Array.isArray(data) 
+    ? data.reduce((sum, day) => sum + (day.gdd || 0), 0) 
+    : 0;
   const totalRainfall = data.reduce((sum, day) => sum + day.rainfall, 0);
   const avgTempHigh = data.length > 0 ? data.reduce((sum, day) => sum + day.temp_high, 0) / data.length : 0;
   const avgTempLow = data.length > 0 ? data.reduce((sum, day) => sum + day.temp_low, 0) / data.length : 0;
@@ -818,7 +822,7 @@ export function WeatherDashboard({
               <h4 style={{ margin: '0 0 15px 0', color: '#92400e' }}>
                 🆕 Create Your First Vineyard
               </h4>
-              
+
               {/* Location Search for new vineyard */}
               <div style={{ marginBottom: '15px' }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>
@@ -852,7 +856,7 @@ export function WeatherDashboard({
                       fontSize: '14px'
                     }}
                   >
-                    {isSearching ? 'Searching...' : 'Search'}
+                    {isSearching: 'Searching...' : 'Search'}
                   </button>
                 </div>
 
@@ -1337,7 +1341,7 @@ export function WeatherDashboard({
 
 
 
-      
+
 
       {/* Date Range Controls - 3 Buttons */}
       <div style={{ 
@@ -1833,8 +1837,7 @@ export function WeatherDashboard({
                   style={{
                     width: '100%',
                     padding: '8px 12px',
-                    border: '1px solid #d1d5db```text
-,
+                    border: '1px solid #d1d5db,
                     borderRadius: '6px',
                     minHeight: '80px',
                     resize: 'vertical'
@@ -2071,7 +2074,7 @@ export function WeatherDashboard({
             )}
           </div>
 
-          
+
         </div>
       )}
 
