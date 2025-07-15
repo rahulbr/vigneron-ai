@@ -26,12 +26,12 @@ interface EnhancedChartProps {
   onEventsChange?: () => void; // Callback to notify parent when events change
 }
 
-const EnhancedGDDChart: React.FC<EnhancedChartProps> = ({
+export function EnhancedGDDChart({
   weatherData,
   locationName,
   vineyardId,
   onEventsChange,
-}: EnhancedChartProps) => {
+}: EnhancedChartProps) {
   const [phenologyEvents, setPhenologyEvents] = useState<PhenologyEvent[]>([]);
   const [showPhenologyForm, setShowPhenologyForm] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
@@ -940,5 +940,3 @@ const EnhancedGDDChart: React.FC<EnhancedChartProps> = ({
     </div>
   );
 }
-
-export default EnhancedGDDChart;
