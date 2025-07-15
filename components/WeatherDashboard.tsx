@@ -1345,7 +1345,7 @@ export function WeatherDashboard({
               <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280' }}>Total GDD</span>
             </div>
             <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#059669' }}>
-              {Math.round(totalGDD)}°F
+              {Math.round(totalGDD)} GDDs
             </div>
             <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '4px' }}>
               {data.length} days
@@ -1447,12 +1447,12 @@ export function WeatherDashboard({
 
       
 
-      {/* Activity Log Section */}
+      {/* Events Section - Combined Activity Log and Phenology Events */}
       {currentVineyard && (
         <div className="card section-spacing">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <h3 style={{ margin: '0', fontSize: '1.25rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              📋 Activity Log
+              🌱 Events
             </h3>
             <button
               onClick={() => setShowActivityForm(!showActivityForm)}
@@ -1469,11 +1469,11 @@ export function WeatherDashboard({
                 gap: '4px'
               }}
             >
-              {showActivityForm ? '✕ Cancel' : '➕ Log Activity'}
+              {showActivityForm ? '✕ Cancel' : '➕ Log Event'}
             </button>
           </div>
 
-          {/* Activity Form */}
+          {/* Event Form */}
           {showActivityForm && (
             <div style={{
               padding: '20px',
@@ -1482,12 +1482,12 @@ export function WeatherDashboard({
               borderRadius: '8px',
               marginBottom: '20px'
             }}>
-              <h4 style={{ margin: '0 0 15px 0', color: '#374151' }}>Log New Activity</h4>
+              <h4 style={{ margin: '0 0 15px 0', color: '#374151' }}>Log New Event</h4>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '15px' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
-                    Activity Type *
+                    Event Type *
                   </label>
                   <select
                     value={activityForm.activity_type}
@@ -1501,7 +1501,7 @@ export function WeatherDashboard({
                     }}
                     required
                   >
-                    <option value="">Select activity type...</option>
+                    <option value="">Select event type...</option>
                     {activityTypes.map(type => (
                       <option key={type} value={type}>{type}</option>
                     ))}
@@ -1552,7 +1552,7 @@ export function WeatherDashboard({
                 <textarea
                   value={activityForm.notes}
                   onChange={(e) => setActivityForm(prev => ({ ...prev, notes: e.target.value }))}
-                  placeholder="Add any additional details about this activity..."
+                  placeholder="Add any additional details about this event..."
                   style={{
                     width: '100%',
                     padding: '8px 12px',
@@ -1582,7 +1582,7 @@ export function WeatherDashboard({
                   }}
                 >
                   {isSavingActivity ? <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> : '💾'}
-                  {isSavingActivity ? 'Saving...' : 'Save Activity'}
+                  {isSavingActivity ? 'Saving...' : 'Save Event'}
                 </button>
                 
                 <button
@@ -1603,11 +1603,11 @@ export function WeatherDashboard({
             </div>
           )}
 
-          {/* Activities List */}
+          {/* Events List */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'between', alignItems: 'center', marginBottom: '15px' }}>
               <h4 style={{ margin: '0', fontSize: '16px', color: '#374151' }}>
-                Recent Activities {activities.length > 0 && `(${activities.length})`}
+                Event History {activities.length > 0 && `(${activities.length})`}
               </h4>
               {activities.length > 0 && (
                 <button
@@ -1635,7 +1635,7 @@ export function WeatherDashboard({
             {isLoadingActivities ? (
               <div style={{ textAlign: 'center', padding: '20px', color: '#6b7280' }}>
                 <RefreshCw size={20} style={{ animation: 'spin 1s linear infinite', marginBottom: '8px' }} />
-                <div>Loading activities...</div>
+                <div>Loading events...</div>
               </div>
             ) : activities.length === 0 ? (
               <div style={{
@@ -1645,10 +1645,10 @@ export function WeatherDashboard({
                 borderRadius: '8px',
                 border: '2px dashed #cbd5e1'
               }}>
-                <div style={{ fontSize: '48px', marginBottom: '10px' }}>📝</div>
-                <h4 style={{ margin: '0 0 8px 0', color: '#374151' }}>No Activities Logged</h4>
+                <div style={{ fontSize: '48px', marginBottom: '10px' }}>📅</div>
+                <h4 style={{ margin: '0 0 8px 0', color: '#374151' }}>No Events Logged</h4>
                 <p style={{ margin: '0', color: '#6b7280', fontSize: '14px' }}>
-                  Start logging your vineyard activities to track your work throughout the season.
+                  Start logging your vineyard events to track phenology and activities throughout the season.
                 </p>
               </div>
             ) : (
@@ -1659,53 +1659,106 @@ export function WeatherDashboard({
                 borderRadius: '8px',
                 backgroundColor: 'white'
               }}>
-                {activities.map((activity, index) => (
-                  <div
-                    key={activity.id || index}
-                    style={{
-                      padding: '15px',
-                      borderBottom: index < activities.length - 1 ? '1px solid #f3f4f6' : 'none',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start'
-                    }}
-                  >
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                        <span style={{ fontWeight: '600', color: '#374151', fontSize: '14px' }}>
-                          {activity.event_type}
-                        </span>
-                        <span style={{ 
-                          fontSize: '11px', 
-                          color: '#6b7280',
-                          padding: '2px 6px',
-                          backgroundColor: '#f1f5f9',
-                          borderRadius: '10px'
-                        }}>
-                          {new Date(activity.event_date).toLocaleDateString()}
-                        </span>
+                {activities.map((activity, index) => {
+                  // Get event style with icon and color
+                  const eventStyles: { [key: string]: { color: string, label: string, emoji: string } } = {
+                    bud_break: { color: "#22c55e", label: "Bud Break", emoji: "🌱" },
+                    bloom: { color: "#f59e0b", label: "Bloom", emoji: "🌸" },
+                    veraison: { color: "#8b5cf6", label: "Veraison", emoji: "🍇" },
+                    harvest: { color: "#ef4444", label: "Harvest", emoji: "🍷" },
+                    pruning: { color: "#6366f1", label: "Pruning", emoji: "✂️" },
+                    irrigation: { color: "#06b6d4", label: "Irrigation", emoji: "💧" },
+                    spray_application: { color: "#f97316", label: "Spray Application", emoji: "🌿" },
+                    fertilization: { color: "#84cc16", label: "Fertilization", emoji: "🌱" },
+                    canopy_management: { color: "#10b981", label: "Canopy Management", emoji: "🍃" },
+                    soil_work: { color: "#8b5cf6", label: "Soil Work", emoji: "🌍" },
+                    equipment_maintenance: { color: "#6b7280", label: "Equipment Maintenance", emoji: "🔧" },
+                    fruit_set: { color: "#f59e0b", label: "Fruit Set", emoji: "🫐" },
+                    other: { color: "#9ca3af", label: "Other", emoji: "📝" },
+                  };
+                  
+                  const eventType = activity.event_type?.toLowerCase().replace(' ', '_') || 'other';
+                  const style = eventStyles[eventType] || eventStyles.other;
+                  
+                  // Calculate GDD at event date
+                  const gddAtEvent = data.find(d => d.date === activity.event_date)?.gdd || 0;
+                  const cumulativeGDD = data.filter(d => d.date <= activity.event_date).reduce((sum, d) => sum + d.gdd, 0);
+
+                  return (
+                    <div
+                      key={activity.id || index}
+                      style={{
+                        padding: '15px',
+                        borderBottom: index < activities.length - 1 ? '1px solid #f3f4f6' : 'none',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start'
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                          <div
+                            style={{
+                              width: '12px',
+                              height: '12px',
+                              backgroundColor: style.color,
+                              borderRadius: '50%',
+                            }}
+                          ></div>
+                          <span style={{ fontSize: '16px', marginRight: '4px' }}>{style.emoji}</span>
+                          <span style={{ fontWeight: '600', color: '#374151', fontSize: '14px' }}>
+                            {style.label}
+                          </span>
+                          <span style={{ 
+                            fontSize: '11px', 
+                            color: '#6b7280',
+                            padding: '2px 6px',
+                            backgroundColor: '#f1f5f9',
+                            borderRadius: '10px'
+                          }}>
+                            {new Date(activity.event_date).toLocaleDateString()}
+                          </span>
+                          {cumulativeGDD > 0 && (
+                            <span style={{
+                              fontSize: '11px',
+                              color: '#059669',
+                              padding: '2px 6px',
+                              backgroundColor: '#ecfdf5',
+                              borderRadius: '10px',
+                              fontWeight: '500'
+                            }}>
+                              {Math.round(cumulativeGDD)} GDDs
+                            </span>
+                          )}
+                        </div>
+                        
+                        {activity.end_date && (
+                          <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                            Duration: {activity.event_date} to {activity.end_date}
+                          </div>
+                        )}
+                        
+                        {activity.harvest_block && (
+                          <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                            Block: {activity.harvest_block}
+                          </div>
+                        )}
+                        
+                        {activity.notes && (
+                          <div style={{ fontSize: '13px', color: '#4b5563', lineHeight: '1.4' }}>
+                            {activity.notes}
+                          </div>
+                        )}
                       </div>
                       
-                      {activity.end_date && (
-                        <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
-                          Duration: {activity.event_date} to {activity.end_date}
-                        </div>
-                      )}
-                      
-                      {activity.notes && (
-                        <div style={{ fontSize: '13px', color: '#4b5563', lineHeight: '1.4' }}>
-                          {activity.notes}
-                        </div>
-                      )}
+                      <div style={{ fontSize: '11px', color: '#9ca3af', marginLeft: '15px' }}>
+                        {activity.created_at && (
+                          <div>Logged: {new Date(activity.created_at).toLocaleDateString()}</div>
+                        )}
+                      </div>
                     </div>
-                    
-                    <div style={{ fontSize: '11px', color: '#9ca3af', marginLeft: '15px' }}>
-                      {activity.created_at && (
-                        <div>Logged: {new Date(activity.created_at).toLocaleDateString()}</div>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

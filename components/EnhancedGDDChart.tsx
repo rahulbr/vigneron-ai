@@ -220,11 +220,11 @@ export function EnhancedGDDChart({
           <p style={{ color: "#666", margin: "0" }}>
             Total GDD:{" "}
             <strong>
-              {chartData[chartData.length - 1]?.cumulativeGDD || 0}°F
+              {chartData[chartData.length - 1]?.cumulativeGDD || 0} GDDs
             </strong>
             {phenologyEvents.length > 0 && (
               <span style={{ marginLeft: "20px" }}>
-                Phenology Events: <strong>{phenologyEvents.length}</strong>
+                Events: <strong>{phenologyEvents.length}</strong>
               </span>
             )}
             {loading && (
@@ -248,7 +248,7 @@ export function EnhancedGDDChart({
             fontSize: "14px",
           }}
         >
-          + Add Phenology Event
+          Add Event
         </button>
       </div>
 
@@ -312,7 +312,7 @@ export function EnhancedGDDChart({
             fontSize="12"
             fill="#666"
           >
-            {maxGDD}°F
+            {maxGDD} GDDs
           </text>
           <text
             x={padding - 10}
@@ -321,7 +321,7 @@ export function EnhancedGDDChart({
             fontSize="12"
             fill="#666"
           >
-            {minGDD}°F
+            {minGDD} GDDs
           </text>
 
           {/* X-axis date labels (every 30 days) */}
@@ -503,7 +503,7 @@ export function EnhancedGDDChart({
             fontWeight="bold"
             fill="#333"
           >
-            Cumulative Growing Degree Days (Click to add phenology events)
+            Cumulative Growing Degree Days (Click to add events)
           </text>
         </svg>
       </div>
@@ -535,7 +535,7 @@ export function EnhancedGDDChart({
             }}
           >
             <h3 style={{ margin: "0 0 20px 0", fontSize: "20px" }}>
-              Add Phenology Event
+              Add Event
             </h3>
 
             <div style={{ marginBottom: "15px" }}>
@@ -753,7 +753,7 @@ export function EnhancedGDDChart({
         </div>
       )}
 
-      {/* Phenology Legend */}
+      {/* Events Section */}
       {phenologyEvents.length > 0 && (
         <div
           style={{
@@ -765,7 +765,7 @@ export function EnhancedGDDChart({
           }}
         >
           <h4 style={{ margin: "0 0 10px 0", fontSize: "16px" }}>
-            Phenology Events:
+            Events:
           </h4>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "15px" }}>
             {phenologyEvents.map((event, index) => {
@@ -791,7 +791,7 @@ export function EnhancedGDDChart({
                     {style.emoji} {style.label}: {event.event_date}
                     {event.end_date && ` - ${event.end_date}`}
                     {event.harvest_block && ` (${event.harvest_block})`}
-                    {` (${gddAtEvent}°F)`}
+                    {` (${gddAtEvent} GDDs)`}
                   </span>
                 </div>
               );
@@ -811,12 +811,12 @@ export function EnhancedGDDChart({
         }}
       >
         <strong>Instructions:</strong> Click on the chart or use the button to
-        add phenology events. Development stages (bud break, bloom, veraison)
+        add events. Development stages (bud break, bloom, veraison)
         can be date ranges. Harvest picks are individual dates with block
         labels.
         <br />
         <strong>🎉 NEW:</strong> Events are now saved to your personal database
-        and will persist across sessions!
+        and will appear in the Events section below!
       </div>
     </div>
   );
