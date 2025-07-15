@@ -855,3 +855,715 @@ export function WeatherDashboard({
                             backgroundColor: '#ef4444',
                             color: 'white',
                             border: 'none',
+                            borderRadius: '4px',
+</recursor: 'pointer',
+                            fontSize: '12px'
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => startEditingVineyard(vineyard)}
+                        style={{
+                          padding: '4px 8px',
+                          backgroundColor: '#cbd5e1',
+                          color: '#1e293b',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '12px'
+                        }}
+                      >
+                        ✏️
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Create new vineyard button */}
+          {!showCreateVineyard && (
+            <button
+              onClick={() => setShowCreateVineyard(true)}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                marginTop: '10px'
+              }}
+            >
+              ➕ Add New Vineyard
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Location Search and Display */}
+      <div className="card section-spacing">
+        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.25rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <MapPin size={20} /> Location
+        </h3>
+
+        {/* Location Search Bar */}
+        <div style={{ display: 'flex', marginBottom: '15px' }}>
+          <input
+            type="text"
+            placeholder="Search for a location"
+            value={locationSearch}
+            onChange={(e) => setLocationSearch(e.target.value)}
+            style={{
+              flex: 1,
+              padding: '8px 12px',
+              border: '1px solid #cbd5e1',
+              borderRadius: '6px',
+              fontSize: '14px'
+            }}
+          />
+          <button
+            onClick={handleLocationSearch}
+            disabled={isSearching || !locationSearch.trim()}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: isSearching || !locationSearch.trim() ? '#9ca3af' : '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: isSearching || !locationSearch.trim() ? 'not-allowed' : 'pointer',
+              fontSize: '14px',
+              marginLeft: '8px'
+            }}
+          >
+            {isSearching ? 'Searching...' : <Search size={16} />}
+          </button>
+        </div>
+
+        {/* Search Results */}
+        {showSearchResults && (
+          <div style={{ marginBottom: '15px' }}>
+            <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', color: '#4b5563' }}>
+              Search Results:
+            </h4>
+            {searchResults.length > 0 ? (
+              <ul style={{ margin: '0', padding: '0', listStyle: 'none' }}>
+                {searchResults.map((result) => (
+                  <li
+                    key={result.placeId}
+                    onClick={() => selectLocation(result)}
+                    style={{
+                      padding: '8px 12px',
+                      backgroundColor: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '6px',
+                      marginBottom: '5px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      color: '#374151'
+                    }}
+                  >
+                    {result.name} ({result.latitude.toFixed(4)}, {result.longitude.toFixed(4)})
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p style={{ fontSize: '14px', color: '#6b7280' }}>No results found.</p>
+            )}
+          </div>
+        )}
+
+        {/* Manual Coordinate Input */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
+          <div>
+            <label htmlFor="latitude" style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
+              Latitude:
+            </label>
+            <input
+              type="number"
+              id="latitude"
+              value={latitude}
+              onChange={(e) => setLatitude(parseFloat(e.target.value))}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid #cbd5e1',
+                borderRadius: '6px',
+                fontSize: '14px'
+              }}
+            />
+          </div>
+          <div>
+            <label htmlFor="longitude" style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
+              Longitude:
+            </label>
+            <input
+              type="number"
+              id="longitude"
+              value={longitude}
+              onChange={(e) => setLongitude(parseFloat(e.target.value))}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid #cbd5e1',
+                borderRadius: '6px',
+                fontSize: '14px'
+              }}
+            />
+          </div>
+        </div>
+        <div style={{display: 'flex', flexDirection: 'column'}}>
+          <label htmlFor="customLocation" style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
+              Location Name:
+          </label>
+          <input
+              type="text"
+              id="customLocation"
+              value={customLocation}
+              onChange={(e) => setCustomLocation(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid #cbd5e1',
+                borderRadius: '6px',
+                fontSize: '14px',
+                marginBottom: '15px'
+              }}
+            />
+            <button
+              onClick={handleManualLocationUpdate}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              Update Location
+            </button>
+        </div>
+        {/* Saved Locations */}
+        {savedLocations.length > 0 && (
+          <div>
+            <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', color: '#4b5563' }}>
+              Recent Locations:
+            </h4>
+            <ul style={{ margin: '0', padding: '0', listStyle: 'none' }}>
+              {savedLocations.map((location) => (
+                <li
+                  key={location.placeId}
+                  onClick={() => selectLocation(location)}
+                  style={{
+                    padding: '8px 12px',
+                    backgroundColor: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '6px',
+                    marginBottom: '5px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    color: '#374151'
+                  }}
+                >
+                  {location.name} ({location.latitude.toFixed(4)}, {location.longitude.toFixed(4)})
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+
+      {/* Date Range Selection */}
+      <div className="card section-spacing">
+        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.25rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Calendar size={20} /> Date Range
+        </h3>
+
+        {/* Date Range Buttons */}
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+          <button
+            onClick={setCurrentYear}
+            disabled={dateRangeMode === 'current'}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: dateRangeMode === 'current' ? '#9ca3af' : '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: dateRangeMode === 'current' ? 'not-allowed' : 'pointer',
+              fontSize: '14px'
+            }}
+          >
+            Current Year ({currentYear})
+          </button>
+          <button
+            onClick={setPreviousYear}
+            disabled={dateRangeMode === 'previous'}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: dateRangeMode === 'previous' ? '#9ca3af' : '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: dateRangeMode === 'previous' ? 'not-allowed' : 'pointer',
+              fontSize: '14px'
+            }}
+          >
+            Previous Year ({previousYear})
+          </button>
+          <button
+            onClick={setCustomDateRange}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: showCustomRange ? '#22c55e' : '#cbd5e1',
+              color: showCustomRange ? 'white' : '#4b5563',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '14px'
+            }}
+          >
+            Custom Range
+          </button>
+        </div>
+
+        {/* Custom Date Range Inputs */}
+        {showCustomRange && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
+            <div>
+              <label htmlFor="startDate" style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
+                Start Date:
+              </label>
+              <input
+                type="date"
+                id="startDate"
+                value={dateRange.start}
+                onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+            <div>
+              <label htmlFor="endDate" style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
+                End Date:
+              </label>
+              <input
+                type="date"
+                id="endDate"
+                value={dateRange.end}
+                onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+            <button
+              onClick={handleCustomDateRangeUpdate}
+              disabled={!dateRange.start || !dateRange.end}
+              style={{
+                gridColumn: '1 / span 2',
+                padding: '8px 16px',
+                backgroundColor: !dateRange.start || !dateRange.end ? '#9ca3af' : '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: !dateRange.start || !dateRange.end ? 'not-allowed' : 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              Update Date Range
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Weather Data Display */}
+      <div className="card section-spacing">
+        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.25rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Thermometer size={20} /> Weather Data
+        </h3>
+
+        {/* Loading and Error States */}
+        {loading && (
+          <div style={{ padding: '15px', textAlign: 'center', color: '#4b5563' }}>
+            Loading weather data...
+          </div>
+        )}
+        {error && (
+          <div style={{ padding: '15px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', color: '#991b1b' }}>
+            <AlertCircle size={16} style={{ marginRight: '5px', verticalAlign: 'middle' }} />
+            Error fetching weather data: {error.message}
+            <button
+              onClick={retry}
+              style={{
+                marginLeft: '10px',
+                padding: '4px 8px',
+                backgroundColor: '#ef4444',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '12px'
+              }}
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Last Updated Time */}
+        {lastUpdated && !loading && !error && (
+          <div style={{ marginBottom: '15px', fontSize: '0.875rem', color: '#4b5563' }}>
+            Last updated: {lastUpdated.toLocaleString()}
+            <button
+              onClick={refetch}
+              style={{
+                marginLeft: '10px',
+                padding: '4px 8px',
+                backgroundColor: '#cbd5e1',
+                color: '#4b5563',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '12px'
+              }}
+            >
+              <RefreshCw size={14} style={{ marginRight: '3px', verticalAlign: 'middle' }} />
+              Refresh
+            </button>
+          </div>
+        )}
+
+        {/* Summary Statistics */}
+        {data && data.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+            <div style={{ padding: '12px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', color: '#065f46' }}>
+              <TrendingUp size={20} style={{ marginRight: '5px', verticalAlign: 'middle' }} />
+              Total GDD: {totalGDD.toFixed(1)}
+            </div>
+            <div style={{ padding: '12px', backgroundColor: '#e0f2fe', border: '1px solid #90caf9', borderRadius: '6px', color: '#1e3a8a' }}>
+              <CloudRain size={20} style={{ marginRight: '5px', verticalAlign: 'middle' }} />
+              Total Rainfall: {totalRainfall.toFixed(2)} mm
+            </div>
+            <div style={{ padding: '12px', backgroundColor: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '6px', color: '#0369a1' }}>
+              <Thermometer size={20} style={{ marginRight: '5px', verticalAlign: 'middle' }} />
+              Avg. High Temp: {avgTempHigh.toFixed(1)} °C
+            </div>
+            <div style={{ padding: '12px', backgroundColor: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '6px', color: '#0369a1' }}>
+              <Thermometer size={20} style={{ marginRight: '5px', verticalAlign: 'middle' }} />
+              Avg. Low Temp: {avgTempLow.toFixed(1)} °C
+            </div>
+          </div>
+        )}
+
+        {/* Weather Chart */}
+        {data && data.length > 0 && (
+          <div>
+            <EnhancedGDDChart data={data} vineyardId={vineyardId} />
+          </div>
+        )}
+      </div>
+
+      {/* AI Insights Panel */}
+      <div className="card section-spacing">
+        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.25rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Brain size={20} /> AI Vineyard Insights
+        </h3>
+
+        {/* Generate Insights Button */}
+        <button
+          onClick={generateAIInsights}
+          disabled={isGeneratingInsights || !data || data.length === 0}
+          style={{
+            padding: '8px 16px',
+            backgroundColor: isGeneratingInsights || !data || data.length === 0 ? '#9ca3af' : '#7c3aed',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: isGeneratingInsights || !data || data.length === 0 ? 'not-allowed' : 'pointer',
+            fontSize: '14px',
+            marginBottom: '15px'
+          }}
+        >
+          {isGeneratingInsights ? 'Generating Insights...' : '✨ Generate AI Vineyard Insights'}
+        </button>
+
+        {/* AI Insights Display */}
+        {showAIPanel && (
+          <div>
+            {/* Weather Analysis */}
+            {weatherAnalysis && (
+              <div style={{ marginBottom: '15px', padding: '12px', backgroundColor: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '6px', color: '#0369a1' }}>
+                <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', color: '#0369a1' }}>
+                  Weather Analysis:
+                </h4>
+                <p style={{ fontSize: '14px', color: '#374151' }}>
+                  {weatherAnalysis}
+                </p>
+              </div>
+            )}
+
+            {/* Phenology Analysis */}
+            {phenologyAnalysis && (
+              <div style={{ marginBottom: '15px', padding: '12px', backgroundColor: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '6px', color: '#0369a1' }}>
+                <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', color: '#0369a1' }}>
+                  Phenology Analysis:
+                </h4>
+                <p style={{ fontSize: '14px', color: '#374151' }}>
+                  {phenologyAnalysis}
+                </p>
+              </div>
+            )}
+
+            {/* Recommendations */}
+            {aiInsights.length > 0 && (
+              <div>
+                <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', color: '#4b5563' }}>
+                  Recommendations:
+                </h4>
+                <ul style={{ margin: '0', padding: '0', listStyle: 'none' }}>
+                  {aiInsights.map((insight, index) => {
+                    const { bg, border, text } = getInsightColor(insight.type);
+                    return (
+                      <li
+                        key={index}
+                        style={{
+                          padding: '12px',
+                          backgroundColor: bg,
+                          border: `1px solid ${border}`,
+                          borderRadius: '6px',
+                          marginBottom: '5px',
+                          color: text,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}
+                      >
+                        {getInsightIcon(insight.type)}
+                        {insight.text}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Activity Log */}
+      <div className="card section-spacing">
+        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.25rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Calendar size={20} /> Activity Log
+        </h3>
+
+        {/* Add Activity Button */}
+        <button
+          onClick={() => setShowActivityForm(true)}
+          style={{
+            padding: '8px 16px',
+            backgroundColor: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            marginBottom: '15px'
+          }}
+        >
+          ➕ Add Activity
+        </button>
+
+        {/* Activity Form */}
+        {showActivityForm && (
+          <div style={{ marginBottom: '15px', padding: '15px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+            <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: '#4b5563' }}>
+              Add New Activity:
+            </h4>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
+              <div>
+                <label htmlFor="activity_type" style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
+                  Activity Type:
+                </label>
+                <select
+                  id="activity_type"
+                  value={activityForm.activity_type}
+                  onChange={(e) => setActivityForm({ ...activityForm, activity_type: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    backgroundColor: 'white'
+                  }}
+                >
+                  <option value="">Select Activity Type</option>
+                  {activityTypes.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="start_date" style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
+                  Start Date:
+                </label>
+                <input
+                  type="date"
+                  id="start_date"
+                  value={activityForm.start_date}
+                  onChange={(e) => setActivityForm({ ...activityForm, start_date: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+              <div>
+                <label htmlFor="end_date" style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
+                  End Date (Optional):
+                </label>
+                <input
+                  type="date"
+                  id="end_date"
+                  value={activityForm.end_date}
+                  onChange={(e) => setActivityForm({ ...activityForm, end_date: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+            </div>
+            <div>
+              <label htmlFor="notes" style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
+                Notes:
+              </label>
+              <textarea
+                id="notes"
+                value={activityForm.notes}
+                onChange={(e) => setActivityForm({ ...activityForm, notes: e.target.value })}
+                rows={3}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  resize: 'vertical'
+                }}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                onClick={saveActivity}
+                disabled={isSavingActivity}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: isSavingActivity ? '#9ca3af' : '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: isSavingActivity ? 'not-allowed' : 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                {isSavingActivity ? 'Saving...' : 'Save Activity'}
+              </button>
+              <button
+                onClick={() => setShowActivityForm(false)}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#cbd5e1',
+                  color: '#4b5563',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Activity List */}
+        {isLoadingActivities ? (
+          <div style={{ padding: '15px', textAlign: 'center', color: '#4b5563' }}>
+            Loading activities...
+          </div>
+        ) : activities.length === 0 ? (
+          <div style={{ padding: '15px', color: '#6b7280' }}>
+            No activities recorded yet. Add one above!
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#f9fafb' }}>
+                  <th style={{ padding: '10px', borderBottom: '1px solid #e5e7eb', textAlign: 'left', fontWeight: '600', fontSize: '14px', color: '#374151' }}>
+                    Type
+                  </th>
+                  <th style={{ padding: '10px', borderBottom: '1px solid #e5e7eb', textAlign: 'left', fontWeight: '600', fontSize: '14px', color: '#374151' }}>
+                    Start Date
+                  </th>
+                  <th style={{ padding: '10px', borderBottom: '1px solid #e5e7eb', textAlign: 'left', fontWeight: '600', fontSize: '14px', color: '#374151' }}>
+                    End Date
+                  </th>
+                  <th style={{ padding: '10px', borderBottom: '1px solid #e5e7eb', textAlign: 'left', fontWeight: '600', fontSize: '14px', color: '#374151' }}>
+                    Notes
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {activities.map((activity) => (
+                  <tr key={activity.id} style={{ borderBottom: '1px solid #f2f4f6' }}>
+                    <td style={{ padding: '10px', fontSize: '14px', color: '#4b5563' }}>
+                      {activity.event_type.replace(/_/g, ' ')}
+                    </td>
+                    <td style={{ padding: '10px', fontSize: '14px', color: '#4b5563' }}>
+                      {new Date(activity.event_date).toLocaleDateString()}
+                    </td>
+                    <td style={{ padding: '10px', fontSize: '14px', color: '#4b5563' }}>
+                      {activity.end_date ? new Date(activity.end_date).toLocaleDateString() : 'N/A'}
+                    </td>
+                    <td style={{ padding: '10px', fontSize: '14px', color: '#4b5563' }}>
+                      {activity.notes}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default WeatherDashboard;
