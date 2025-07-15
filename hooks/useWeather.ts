@@ -1,6 +1,7 @@
 // hooks/useWeather.ts
 import { useState, useEffect, useCallback } from 'react';
 import { hybridWeatherService } from '../lib/hybridWeatherService';
+import { saveWeatherData, getWeatherData } from '../lib/supabase';
 
 interface WeatherData {
   date: string;
@@ -96,7 +97,7 @@ export function useWeather(options: UseWeatherOptions) {
 
       if (error instanceof Error) {
         errorMessage = error.message;
-        
+
         // Categorize errors
         if (errorMessage.includes('Invalid coordinates')) {
           errorCode = 'INVALID_COORDS';
@@ -147,25 +148,22 @@ export function useWeatherConnection() {
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [testing, setTesting] = useState(false);
 
-  const testConnection = useCallback(async () => {
+  const testConnection = async () => {
     setTesting(true);
     try {
-      const result = await hybridWeatherService.testConnection();
-      setIsConnected(result);
+      const connected = await hybridWeatherService.testConnection();
+      setIsConnected(connected);
     } catch (error) {
+      console.error('Connection test failed:', error);
       setIsConnected(false);
     } finally {
       setTesting(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
     testConnection();
-  }, [testConnection]);
+  }, []);
 
-  return {
-    isConnected,
-    testing,
-    testConnection
-  };
+  return { isConnected, testing, testConnection };
 }
