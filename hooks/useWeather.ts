@@ -18,6 +18,30 @@ interface UseWeatherReturn {
   refetch: () => void;
 }
 
+export function useWeatherConnection() {
+  const [isConnected, setIsConnected] = useState<boolean | null>(null);
+  const [testing, setTesting] = useState(false);
+
+  const testConnection = async () => {
+    setTesting(true);
+    try {
+      const connected = await weatherService.testConnection();
+      setIsConnected(connected);
+    } catch (error) {
+      console.error('Connection test failed:', error);
+      setIsConnected(false);
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  useEffect(() => {
+    testConnection();
+  }, []);
+
+  return { isConnected, testing, testConnection };
+}
+
 export function useWeather(
   latitude: number | null, 
   longitude: number | null,

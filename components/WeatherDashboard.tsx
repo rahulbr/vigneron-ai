@@ -1305,12 +1305,12 @@ export function WeatherDashboard({
         ) : isConnected === true ? (
           <>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22c55e' }}></div>
-            <span style={{ color: '#065f46' }}>OpenWeatherMap API Connected</span>
+            <span style={{ color: '#065f46' }}>Open-Meteo ERA5 API Connected</span>
           </>
         ) : isConnected === false ? (
           <>
             <AlertCircle size={16} style={{ color: '#dc2626' }} />
-            <span style={{ color: '#991b1b' }}>OpenWeatherMap API Connection Failed</span>
+            <span style={{ color: '#991b1b' }}>Open-Meteo ERA5 API Connection Failed</span>
             <button 
               onClick={testConnection}
               style={{ 
