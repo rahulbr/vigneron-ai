@@ -66,7 +66,7 @@ export function WeatherDashboard({
   });
   const [isLoadingActivities, setIsLoadingActivities] = useState(false);
   const [isSavingActivity, setIsSavingActivity] = useState(false);
-  
+
   // Event filtering for Events section
   const [eventFilterTypes, setEventFilterTypes] = useState<string[]>([]);
   const [showEventFilterDropdown, setShowEventFilterDropdown] = useState(false);
@@ -338,13 +338,6 @@ export function WeatherDashboard({
     }
   };
 
-  // Load activities when vineyard changes
-  useEffect(() => {
-    if (vineyardId) {
-      loadActivities();
-    }
-  }, [vineyardId]);
-
   // Save new activity
   const saveActivity = async () => {
     if (!vineyardId || !activityForm.activity_type || !activityForm.start_date) {
@@ -384,6 +377,28 @@ export function WeatherDashboard({
       alert('Failed to save activity: ' + (error as Error).message);
     } finally {
       setIsSavingActivity(false);
+    }
+  };
+
+  // Delete an activity
+  const deleteActivity = async (activityId: string, activityType: string) => {
+    if (!window.confirm(`Are you sure you want to delete this ${activityType} event?`)) {
+      return;
+    }
+
+    try {
+      console.log('🗑️ Deleting activity:', activityId);
+
+      const { deletePhenologyEvent } = await import('../lib/supabase');
+      await deletePhenologyEvent(activityId);
+
+      // Reload activities
+      await loadActivities();
+
+      console.log('✅ Activity deleted successfully');
+    } catch (error) {
+      console.error('❌ Failed to delete activity:', error);
+      alert('Failed to delete activity: ' + (error as Error).message);
     }
   };
 
@@ -837,7 +852,7 @@ export function WeatherDashboard({
                     {editingVineyardId === vineyard.id ? (
                       <div style={{ display: 'flex', gap: '4px' }}>
                         <button
-                          onClick={() => saveVineyardName(vineyard.id)}
+                          onClick={() => saveVineyardName(vineyard.id)}```text
                           style={{
                             padding: '4px 8px',
                             backgroundColor: '#22c55e',
@@ -1477,7 +1492,7 @@ export function WeatherDashboard({
               >
                 🔍 Filter ({eventFilterTypes.length > 0 ? eventFilterTypes.length : 'All'})
               </button>
-              
+
               {showEventFilterDropdown && (
                 <div style={{
                   position: "absolute",
@@ -1655,7 +1670,7 @@ export function WeatherDashboard({
                     width: '100%',
                     padding: '8px 12px',
                     border: '1px solid #d1d5db',
-                    borderRadius: '6px',
+                    borderRadius: '6px',```text
                     minHeight: '80px',
                     resize: 'vertical'
                   }}
@@ -1854,10 +1869,35 @@ export function WeatherDashboard({
                         )}
                       </div>
 
-                      <div style={{ fontSize: '11px', color: '#9ca3af', marginLeft: '15px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginLeft: '15px', gap: '8px' }}>
                         {activity.created_at && (
-                          <div>Logged: {new Date(activity.created_at).toLocaleDateString()}</div>
+                          <div style={{ fontSize: '11px', color: '#9ca3af' }}>
+                            Logged: {new Date(activity.created_at).toLocaleDateString()}
+                          </div>
                         )}
+
+                        {/* Delete button */}
+                        <button
+                          onClick={() => deleteActivity(activity.id, style.label)}
+                          style={{
+                            padding: '4px 8px',
+                            backgroundColor: '#ef4444',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '11px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
+                          title={`Delete this ${style.label} event`}
+                        >
+                          🗑️ Delete
+                        </button>
                       </div>
                     </div>
                   );
