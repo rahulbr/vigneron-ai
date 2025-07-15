@@ -852,7 +852,7 @@ export function WeatherDashboard({
                     {editingVineyardId === vineyard.id ? (
                       <div style={{ display: 'flex', gap: '4px' }}>
                         <button
-                          onClick={() => saveVineyardName(vineyard.id)}```text
+                          onClick={()=> saveVineyardName(vineyard.id)}
                           style={{
                             padding: '4px 8px',
                             backgroundColor: '#22c55e',
@@ -1669,8 +1669,9 @@ export function WeatherDashboard({
                   style={{
                     width: '100%',
                     padding: '8px 12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',```text
+                    border: '1px solid #d1d5db```text
+,
+                    borderRadius: '6px',
                     minHeight: '80px',
                     resize: 'vertical'
                   }}
@@ -1904,6 +1905,29 @@ export function WeatherDashboard({
                 })}
               </div>
             )}
+          </div>
+
+          {/* Add activity button */}
+          <div style={{ marginTop: '15px', textAlign: 'center' }}>
+            <button
+              onClick={() => setShowActivityForm(!showActivityForm)}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#22c55e',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                margin: '0 auto'
+              }}
+            >
+              <Calendar size={16} />
+              {showActivityForm ? 'Cancel' : 'Log New Event'}
+            </button>
           </div>
         </div>
       )}
