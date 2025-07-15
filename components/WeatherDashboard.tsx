@@ -778,13 +778,13 @@ export function WeatherDashboard({
           💡 How to Use This Dashboard
         </h4>
         <ul style={{ margin: '0', paddingLeft: '1.25rem', color: '#92400e', fontSize: '0.875rem', lineHeight: '1.6' }}>
-          <li style={{ marginBottom: '0.5rem' }}>🔍 Search for any location worldwide using Google Maps geocoding</li>
+          <li style={{ marginBottom: '0.5rem' }}>🔍 Search for any location worldwide using Google Maps</li>
           <li style={{ marginBottom: '0.5rem' }}>📅 Select current year (YTD), previous year, or custom date range</li>
           <li style={{ marginBottom: '0.5rem' }}>📊 View growing degree days accumulation on the interactive chart</li>
           <li style={{ marginBottom: '0.5rem' }}>🌱 Click on the chart to add phenology events (bud break, bloom, etc.)</li>
           <li style={{ marginBottom: '0.5rem' }}>🤖 Click "Generate AI Vineyard Insights" for expert recommendations</li>
           <li style={{ marginBottom: '0.5rem' }}>💾 Your phenology events are saved to your personal database!</li>
-          <li>🌧️ Weather data powered by OpenWeatherMap API for accuracy</li>
+          <li>🌧️ Track rainfall and temperature patterns throughout the season</li>
         </ul>
 
         <div style={{ 
@@ -1305,12 +1305,12 @@ export function WeatherDashboard({
         ) : isConnected === true ? (
           <>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22c55e' }}></div>
-            <span style={{ color: '#065f46' }}>Open-Meteo ERA5 API Connected</span>
+            <span style={{ color: '#065f46' }}>Weather API Connected</span>
           </>
         ) : isConnected === false ? (
           <>
             <AlertCircle size={16} style={{ color: '#dc2626' }} />
-            <span style={{ color: '#991b1b' }}>Open-Meteo ERA5 API Connection Failed</span>
+            <span style={{ color: '#991b1b' }}>Weather API Connection Failed</span>
             <button 
               onClick={testConnection}
               style={{ 
