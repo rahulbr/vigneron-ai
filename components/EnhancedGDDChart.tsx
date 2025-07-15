@@ -12,7 +12,7 @@ interface WeatherDay {
 
 interface PhenologyEvent {
   id?: string;
-  event_type: "bud_break" | "bloom" | "veraison" | "harvest";
+  event_type: string; // Change to string to match database return type
   event_date: string; // For single dates or start date for ranges
   end_date?: string; // For date ranges (bud break, bloom, veraison)
   notes?: string;
@@ -37,7 +37,7 @@ export function EnhancedGDDChart({
   const [selectedDate, setSelectedDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [selectedEventType, setSelectedEventType] =
-    useState<PhenologyEvent["event_type"]>("bud_break");
+    useState<string>("bud_break");
   const [notes, setNotes] = useState("");
   const [harvestBlock, setHarvestBlock] = useState("");
   const [loading, setLoading] = useState(false);
@@ -668,9 +668,7 @@ export function EnhancedGDDChart({
               <select
                 value={selectedEventType}
                 onChange={(e) =>
-                  setSelectedEventType(
-                    e.target.value as PhenologyEvent["event_type"],
-                  )
+                  setSelectedEventType(e.target.value)
                 }
                 style={{
                   width: "100%",
