@@ -83,12 +83,21 @@ export function EnhancedGDDChart({
     loadPhenologyEvents();
   }, [vineyardId]);
 
-  // Expose refresh function to parent
+  // Expose refresh function to parent and window for external calls
   useEffect(() => {
     if (window) {
       (window as any).refreshChartEvents = loadPhenologyEvents;
     }
   }, [vineyardId]);
+
+  // Clean up window reference on unmount
+  useEffect(() => {
+    return () => {
+      if (window && (window as any).refreshChartEvents) {
+        delete (window as any).refreshChartEvents;
+      }
+    };
+  }, []);
 
   // Process data for chart
   let cumulativeGDD = 0;

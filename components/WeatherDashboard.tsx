@@ -395,6 +395,11 @@ export function WeatherDashboard({
       // Reload activities
       await loadActivities();
 
+      // Refresh chart events - call the chart's refresh function if available
+      if (window && (window as any).refreshChartEvents) {
+        (window as any).refreshChartEvents();
+      }
+
       console.log('✅ Activity deleted successfully');
     } catch (error) {
       console.error('❌ Failed to delete activity:', error);
