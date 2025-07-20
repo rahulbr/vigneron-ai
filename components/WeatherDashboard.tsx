@@ -441,6 +441,96 @@ export function WeatherDashboard({
     }
   };
 
+  // Delete a vineyard and all associated data
+  const deleteVineyard = async (vineyard: any) => {
+    const confirmMessage = `⚠️ WARNING: Delete Vineyard "${vineyard.name}"?\n\n` +
+      `This action will permanently delete:\n` +
+      `• The vineyard "${vineyard.name}"\n` +
+      `• All weather data for this vineyard\n` +
+      `• All phenology events and activity logs\n` +
+      `• All associated historical data\n\n` +
+      `This action CANNOT be undone!\n\n` +
+      `Type "DELETE" to confirm:`;
+
+    const confirmation = window.prompt(confirmMessage);
+    
+    if (confirmation !== 'DELETE') {
+      if (confirmation !== null) {
+        alert('Deletion cancelled. You must type "DELETE" exactly to confirm.');
+      }
+      return;
+    }
+
+    try {
+      console.log('🗑️ Deleting vineyard and all associated data:', vineyard.name);
+
+      // Delete all weather data for this vineyard
+      try {
+        const { data: weatherData, error: weatherError } = await supabase
+          .from('weather_data')
+          .delete()
+          .eq('vineyard_id', vineyard.id);
+
+        if (weatherError) {
+          // Try the old table name
+          await supabase
+            .from('daily_weather')
+            .delete()
+            .eq('vineyard_id', vineyard.id);
+        }
+
+        console.log('✅ Deleted weather data for vineyard');
+      } catch (error) {
+        console.warn('⚠️ Could not delete weather data:', error);
+      }
+
+      // Delete all phenology events for this vineyard
+      try {
+        await supabase
+          .from('phenology_events')
+          .delete()
+          .eq('vineyard_id', vineyard.id);
+
+        console.log('✅ Deleted phenology events for vineyard');
+      } catch (error) {
+        console.warn('⚠️ Could not delete phenology events:', error);
+      }
+
+      // Delete the vineyard itself
+      const { error: vineyardError } = await supabase
+        .from('vineyards')
+        .delete()
+        .eq('id', vineyard.id);
+
+      if (vineyardError) {
+        throw new Error(vineyardError.message);
+      }
+
+      // Update local state
+      const updatedVineyards = userVineyards.filter(v => v.id !== vineyard.id);
+      setUserVineyards(updatedVineyards);
+
+      // If this was the current vineyard, switch to another one or show create form
+      if (currentVineyard?.id === vineyard.id) {
+        if (updatedVineyards.length > 0) {
+          switchVineyard(updatedVineyards[0]);
+        } else {
+          setCurrentVineyard(null);
+          setVineyardId('');
+          setShowCreateVineyard(true);
+          localStorage.removeItem('currentVineyardId');
+        }
+      }
+
+      console.log('✅ Vineyard deleted successfully:', vineyard.name);
+      alert(`✅ Vineyard "${vineyard.name}" and all associated data has been deleted.`);
+
+    } catch (error) {
+      console.error('❌ Failed to delete vineyard:', error);
+      alert('Failed to delete vineyard: ' + (error as Error).message);
+    }
+  };
+
   // Activity type options
   const activityTypes = [
     'Pruning',
@@ -801,49 +891,167 @@ export function WeatherDashboard({
       {/* Vineyard Management Panel */}
       {!isLoadingVineyards && (
         <div className="card section-spacing">
-          <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.25rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            🍇 My Vineyards
-          </h3>
-
-          {/* Show create vineyard form if no current vineyard */}
-          {showCreateVineyard && (
-            <div style={{
-              padding: '15px',
-              backgroundColor: '#fefce8',
-              border: '1px solid #fde68a',
-              borderRadius: '8px',
-              marginBottom: '15px'
-            }}>
-              <h4 style={{ margin: '0 0 10px 0', color: '#92400e' }}>
-                🆕 Create Your First Vineyard
-              </h4>
-              <p style={{ margin: '0 0 15px 0', fontSize: '14px', color: '#92400e' }}>
-                Enter a location below and click "Create New Vineyard" to get started.
-              </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h3 style={{ margin: '0', fontSize: '1.25rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              🍇 My Vineyards
+            </h3>
+            <div style={{ display: 'flex', gap: '8px' }}>
               <button
-                onClick={createNewVineyard}
-                disabled={!customLocation.trim()}
+                onClick={() => setShowCreateVineyard(!showCreateVineyard)}
                 style={{
-                  padding: '8px 16px',
-                  backgroundColor: !customLocation.trim() ? '#9ca3af' : '#22c55e',
+                  padding: '6px 12px',
+                  backgroundColor: '#22c55e',
                   color: 'white',
                   border: 'none',
                   borderRadius: '6px',
-                  cursor: !customLocation.trim() ? 'not-allowed' : 'pointer',
-                  fontSize: '14px'
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontWeight: '500'
                 }}
               >
-                ✨ Create New Vineyard
+                ➕ Add Vineyard
               </button>
+            </div>
+          </div>
+
+          {/* Show create vineyard form */}
+          {showCreateVineyard && (
+            <div style={{
+              padding: '20px',
+              backgroundColor: '#f0fdf4',
+              border: '1px solid #bbf7d0',
+              borderRadius: '8px',
+              marginBottom: '20px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
+                <div>
+                  <h4 style={{ margin: '0 0 5px 0', color: '#065f46', fontSize: '16px' }}>
+                    🆕 Add New Vineyard
+                  </h4>
+                  <p style={{ margin: '0', fontSize: '14px', color: '#047857' }}>
+                    Enter location details to create a new vineyard.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowCreateVineyard(false)}
+                  style={{
+                    padding: '4px 8px',
+                    backgroundColor: '#6b7280',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px'
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px', color: '#065f46' }}>
+                  Vineyard Name:
+                </label>
+                <input
+                  type="text"
+                  value={customLocation}
+                  onChange={(e) => setCustomLocation(e.target.value)}
+                  placeholder="e.g., Napa Valley Estate, Bordeaux Vineyard..."
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '1px solid #a7f3d0',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px', color: '#065f46' }}>
+                    Latitude:
+                  </label>
+                  <input
+                    type="number"
+                    value={latitude}
+                    onChange={(e) => setLatitude(parseFloat(e.target.value) || 0)}
+                    step="0.0001"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #a7f3d0',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                    placeholder="37.3272"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px', color: '#065f46' }}>
+                    Longitude:
+                  </label>
+                  <input
+                    type="number"
+                    value={longitude}
+                    onChange={(e) => setLongitude(parseFloat(e.target.value) || 0)}
+                    step="0.0001"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #a7f3d0',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                    placeholder="-122.2813"
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={createNewVineyard}
+                  disabled={!customLocation.trim()}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: !customLocation.trim() ? '#9ca3af' : '#22c55e',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: !customLocation.trim() ? 'not-allowed' : 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  ✨ Create Vineyard
+                </button>
+                <button
+                  onClick={() => setShowCreateVineyard(false)}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#f3f4f6',
+                    color: '#374151',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px'
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           )}
 
-          {/* Vineyard selector */}
-          {userVineyards.length > 0 && (
+          {/* Vineyard List */}
+          {userVineyards.length > 0 ? (
             <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
-                My Vineyards:
-              </label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {userVineyards.map((vineyard) => (
                   <div 
@@ -852,10 +1060,11 @@ export function WeatherDashboard({
                       display: 'flex',
                       alignItems: 'center',
                       gap: '8px',
-                      padding: '8px',
+                      padding: '12px',
                       backgroundColor: currentVineyard?.id === vineyard.id ? '#f0f9ff' : '#f8fafc',
-                      border: `1px solid ${currentVineyard?.id === vineyard.id ? '#0ea5e9' : '#e2e8f0'}`,
-                      borderRadius: '6px'
+                      border: `2px solid ${currentVineyard?.id === vineyard.id ? '#0ea5e9' : '#e2e8f0'}`,
+                      borderRadius: '8px',
+                      transition: 'all 0.2s ease'
                     }}
                   >
                     {/* Vineyard name or edit input */}
@@ -873,10 +1082,11 @@ export function WeatherDashboard({
                         }}
                         style={{
                           flex: 1,
-                          padding: '4px 8px',
-                          border: '1px solid #3b82f6',
-                          borderRadius: '4px',
-                          fontSize: '14px'
+                          padding: '6px 10px',
+                          border: '2px solid #3b82f6',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          fontWeight: '500'
                         }}
                         autoFocus
                       />
@@ -886,103 +1096,143 @@ export function WeatherDashboard({
                         style={{
                           flex: 1,
                           textAlign: 'left',
-                          padding: '4px 8px',
+                          padding: '6px 10px',
                           backgroundColor: 'transparent',
                           border: 'none',
                           cursor: 'pointer',
-                          fontSize: '14px',
-                          fontWeight: currentVineyard?.id === vineyard.id ? '600' : '400',
+                          fontSize: '15px',
+                          fontWeight: currentVineyard?.id === vineyard.id ? '600' : '500',
                           color: currentVineyard?.id === vineyard.id ? '#0369a1' : '#374151'
                         }}
                       >
-                        {currentVineyard?.id === vineyard.id && '📍 '}{vineyard.name}
+                        {currentVineyard?.id === vineyard.id ? '📍 ' : '🍇 '}{vineyard.name}
                       </button>
                     )}
 
-                    {/* Edit/Save/Cancel buttons */}
-                    {editingVineyardId === vineyard.id ? (
-                      <div style={{ display: 'flex', gap: '4px' }}>
-                        <button
-                          onClick={()=> saveVineyardName(vineyard.id)}
-                          style={{
-                            padding: '4px 8px',
-                            backgroundColor: '#22c55e',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '12px'
-                          }}
-                        >
-                          ✓
-                        </button>
-                        <button
-                          onClick={cancelEditingVineyard}
-                          style={{
-                            padding: '4px 8px',
-                            backgroundColor: '#ef4444',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '12px'
-                          }}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => startEditingVineyard(vineyard)}
-                        style={{
-                          padding: '4px 8px',
-                          backgroundColor: '#f59e0b',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontSize: '12px'
-                        }}
-                        title="Rename vineyard"
-                      >
-                        ✏️
-                      </button>
-                    )}
+                    {/* Action buttons */}
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      {editingVineyardId === vineyard.id ? (
+                        <>
+                          <button
+                            onClick={() => saveVineyardName(vineyard.id)}
+                            style={{
+                              padding: '6px 10px',
+                              backgroundColor: '#22c55e',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: '500'
+                            }}
+                            title="Save name"
+                          >
+                            ✓ Save
+                          </button>
+                          <button
+                            onClick={cancelEditingVineyard}
+                            style={{
+                              padding: '6px 10px',
+                              backgroundColor: '#6b7280',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px'
+                            }}
+                            title="Cancel editing"
+                          >
+                            ✕ Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => startEditingVineyard(vineyard)}
+                            style={{
+                              padding: '6px 10px',
+                              backgroundColor: '#f59e0b',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: '500'
+                            }}
+                            title="Rename vineyard"
+                          >
+                            ✏️ Rename
+                          </button>
+                          <button
+                            onClick={() => deleteVineyard(vineyard)}
+                            style={{
+                              padding: '6px 10px',
+                              backgroundColor: '#ef4444',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: '500'
+                            }}
+                            title="Delete vineyard and all data"
+                          >
+                            🗑️ Delete
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 ))}
-
-                {/* Create new vineyard button */}
-                <button
-                  onClick={() => setShowCreateVineyard(true)}
-                  style={{
-                    padding: '8px 12px',
-                    backgroundColor: '#3b82f6',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '4px'
-                  }}
-                >
-                  ➕ Add New Vineyard
-                </button>
               </div>
+            </div>
+          ) : (
+            <div style={{
+              padding: '30px',
+              textAlign: 'center',
+              backgroundColor: '#f8fafc',
+              borderRadius: '8px',
+              border: '2px dashed #cbd5e1',
+              marginBottom: '15px'
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '15px' }}>🍇</div>
+              <h4 style={{ margin: '0 0 10px 0', color: '#374151', fontSize: '18px' }}>No Vineyards Yet</h4>
+              <p style={{ margin: '0 0 15px 0', color: '#6b7280', fontSize: '14px' }}>
+                Create your first vineyard to start tracking weather data and phenology events.
+              </p>
+              <button
+                onClick={() => setShowCreateVineyard(true)}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#22c55e',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  margin: '0 auto'
+                }}
+              >
+                ➕ Create First Vineyard
+              </button>
             </div>
           )}
 
           {/* Show vineyard count */}
           <div style={{ 
-            fontSize: '12px', 
+            fontSize: '13px', 
             color: '#6b7280',
-            padding: '8px',
+            padding: '10px',
             backgroundColor: '#f1f5f9',
-            borderRadius: '4px'
+            borderRadius: '6px',
+            textAlign: 'center'
           }}>
-            📊 You have {userVineyards.length} vineyard{userVineyards.length !== 1 ? 's' : ''} configured
+            📊 {userVineyards.length === 0 ? 'No vineyards configured' : 
+                 `${userVineyards.length} vineyard${userVineyards.length !== 1 ? 's' : ''} configured`}
           </div>
         </div>
       )}
