@@ -1,6 +1,7 @@
 // components/EnhancedGDDChart.tsx - Supabase Database Version
 import { useState, useEffect, useCallback } from "react";
 import { savePhenologyEvent, getPhenologyEvents, deletePhenologyEvent } from '../lib/supabase';
+import { RefreshCw } from 'lucide-react';
 
 interface WeatherDay {
   date: string;
@@ -17,6 +18,7 @@ interface PhenologyEvent {
   end_date?: string; // For date ranges (bud break, bloom, veraison)
   notes?: string;
   harvest_block?: string; // For harvest picks - which block/vineyard section
+  created_at?: string;
 }
 
 interface EnhancedChartProps {
@@ -24,6 +26,9 @@ interface EnhancedChartProps {
   locationName: string;
   vineyardId?: string;
   onEventsChange?: () => void; // Callback to notify parent when events change
+  vineyardName?: string;
+  onEditEvent?: (event: PhenologyEvent) => void;
+  onDeleteEvent?: (eventId: string, eventLabel: string) => void;
 }
 
 export function EnhancedGDDChart({
@@ -31,6 +36,9 @@ export function EnhancedGDDChart({
   locationName,
   vineyardId,
   onEventsChange,
+  vineyardName,
+  onEditEvent,
+  onDeleteEvent,
 }: EnhancedChartProps) {
   const [phenologyEvents, setPhenologyEvents] = useState<PhenologyEvent[]>([]);
   const [showPhenologyForm, setShowPhenologyForm] = useState(false);
@@ -60,18 +68,21 @@ export function EnhancedGDDChart({
 
       const events = await getPhenologyEvents(vineyardId);
 
-      console.log('✅ Loaded phenology events from database:', events?.length);
-
+      console.log('✅ Loaded phenology events from database:', events?.length || 0);
       setPhenologyEvents(events || []);
     } catch (error) {
       console.error('❌ Failed to load phenology events:', error);
-      setPhenologyEvents([]); // Ensure state is updated even on error
     } finally {
       setLoading(false);
     }
   }, [vineyardId]);
 
-  // Listen for custom events to refresh phenology data
+  // Load events when vineyard changes
+  useEffect(() => {
+    loadPhenologyEvents();
+  }, [loadPhenologyEvents]);
+
+  // Listen for external changes to phenology events
   useEffect(() => {
     const handlePhenologyEventsChanged = (event: CustomEvent) => {
       if (event.detail?.vineyardId === vineyardId) {
@@ -80,21 +91,47 @@ export function EnhancedGDDChart({
       }
     };
 
-    if (typeof window !== 'undefined') {
-      window.addEventListener('phenologyEventsChanged', handlePhenologyEventsChanged as EventListener);
-    }
-
+    window.addEventListener('phenologyEventsChanged', handlePhenologyEventsChanged as EventListener);
     return () => {
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('phenologyEventsChanged', handlePhenologyEventsChanged as EventListener);
-      }
+      window.removeEventListener('phenologyEventsChanged', handlePhenologyEventsChanged as EventListener);
     };
   }, [vineyardId, loadPhenologyEvents]);
 
-  // Load events on component mount
-  useEffect(() => {
-    loadPhenologyEvents();
-  }, [loadPhenologyEvents]);
+  // Get displayed events (events within the chart date range) with GDD values
+  const getDisplayedEvents = () => {
+    if (!weatherData.length || !phenologyEvents.length) return [];
+
+    const startDate = weatherData[0]?.date;
+    const endDate = weatherData[weatherData.length - 1]?.date;
+
+    return phenologyEvents
+      .filter(event => {
+        // Filter by date range
+        const eventDate = event.event_date;
+        const isInRange = eventDate >= startDate && eventDate <= endDate;
+
+        // Apply event type filter if active
+        if (eventTypeFilter.length > 0) {
+          const eventType = event.event_type?.toLowerCase().replace(' ', '_') || 'other';
+          return isInRange && eventTypeFilter.includes(eventType);
+        }
+
+        return isInRange;
+      })
+      .map(event => {
+        // Calculate cumulative GDD at event date
+        const eventDate = event.event_date;
+        const cumulativeGDD = weatherData
+          .filter(d => d.date <= eventDate)
+          .reduce((sum, d) => sum + d.gdd, 0);
+
+        return {
+          ...event,
+          cumulativeGDD: Math.round(cumulativeGDD)
+        };
+      })
+      .sort((a, b) => a.event_date.localeCompare(b.event_date));
+  };
 
   // Expose refresh function to parent and window for external calls
   useEffect(() => {
@@ -734,7 +771,7 @@ export function EnhancedGDDChart({
             }}
           >
             <h3 style={{ margin: "0 0 20px 0", fontSize: "20px" }}>
-              Add Event
+              Add Event - {vineyardName}
             </h3>
 
             <div style={{ marginBottom: "15px" }}>
@@ -949,6 +986,131 @@ export function EnhancedGDDChart({
           </div>
         </div>
       )}
+
+      {/* Displayed Events - Shows only events visible on chart */}
+      <div style={{ marginTop: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+          <h4 style={{ margin: '0', fontSize: '16px', color: '#374151' }}>
+            📊 Displayed Events {getDisplayedEvents().length > 0 && `(${getDisplayedEvents().length})`}
+          </h4>
+          <div style={{ fontSize: '12px', color: '#6b7280' }}>
+            Events shown on chart
+          </div>
+        </div>
+
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '20px', color: '#6b7280' }}>
+            <RefreshCw size={20} style={{ animation: 'spin 1s linear infinite', marginBottom: '8px' }} />
+            <div>Loading events...</div>
+          </div>
+        ) : getDisplayedEvents().length === 0 ? (
+          <div style={{
+            padding: '20px',
+            textAlign: 'center',
+            backgroundColor: '#f8fafc',
+            borderRadius: '8px',
+            border: '1px solid #e2e8f0'
+          }}>
+            <div style={{ fontSize: '24px', marginBottom: '8px' }}>📈</div>
+            <p style={{ margin: '0', color: '#6b7280', fontSize: '14px' }}>
+              {eventTypeFilter.length > 0
+                ? 'No events match current filter for this date range'
+                : 'No events in current chart date range'
+              }
+            </p>
+          </div>
+        ) : (
+          <div style={{
+            maxHeight: '200px',
+            overflowY: 'auto',
+            border: '1px solid #e5e7eb',
+            borderRadius: '8px',
+            backgroundColor: 'white'
+          }}>
+            {getDisplayedEvents().map((event, index) => {
+              // Get event style with icon and color
+              const eventStyles: { [key: string]: { color: string, label: string, emoji: string } } = {
+                bud_break: { color: "#22c55e", label: "Bud Break", emoji: "🌱" },
+                bloom: { color: "#f59e0b", label: "Bloom", emoji: "🌸" },
+                veraison: { color: "#8b5cf6", label: "Veraison", emoji: "🍇" },
+                harvest: { color: "#ef4444", label: "Harvest", emoji: "🍷" },
+                pruning: { color: "#6366f1", label: "Pruning", emoji: "✂️" },
+                irrigation: { color: "#06b6d4", label: "Irrigation", emoji: "💧" },
+                spray_application: { color: "#f97316", label: "Spray Application", emoji: "🌿" },
+                fertilization: { color: "#84cc16", label: "Fertilization", emoji: "🌱" },
+                canopy_management: { color: "#10b981", label: "Canopy Management", emoji: "🍃" },
+                soil_work: { color: "#8b5cf6", label: "Soil Work", emoji: "🌍" },
+                equipment_maintenance: { color: "#6b7280", label: "Equipment Maintenance", emoji: "🔧" },
+                fruit_set: { color: "#f59e0b", label: "Fruit Set", emoji: "🫐" },
+                other: { color: "#9ca3af", label: "Other", emoji: "📝" },
+              };
+
+              const eventType = event.event_type?.toLowerCase().replace(' ', '_') || 'other';
+              const style = eventStyles[eventType] || eventStyles.other;
+
+              return (
+                <div
+                  key={event.id || index}
+                  style={{
+                    padding: '12px 15px',
+                    borderBottom: index < getDisplayedEvents().length - 1 ? '1px solid #f3f4f6' : 'none',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div
+                      style={{
+                        width: '8px',
+                        height: '8px',
+                        backgroundColor: style.color,
+                        borderRadius: '50%',
+                      }}
+                    ></div>
+                    <span style={{ fontSize: '14px' }}>{style.emoji}</span>
+                    <span style={{ fontWeight: '500', color: '#374151', fontSize: '14px' }}>
+                      {style.label}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{
+                      fontSize: '12px',
+                      color: '#6b7280',
+                      padding: '2px 6px',
+                      backgroundColor: '#f1f5f9',
+                      borderRadius: '10px'
+                    }}>
+                      {new Date(event.event_date).toLocaleDateString()}
+                    </span>
+                    <span style={{
+                      fontSize: '12px',
+                      color: '#059669',
+                      padding: '2px 6px',
+                      backgroundColor: '#ecfdf5',
+                      borderRadius: '10px',
+                      fontWeight: '500'
+                    }}>
+                      {event.cumulativeGDD} GDDs
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div style={{
+          fontSize: '11px',
+          color: '#9ca3af',
+          marginTop: '8px',
+          textAlign: 'center',
+          fontStyle: 'italic'
+        }}>
+          For editing or deleting events, use the main Event Log section below
+        </div>
+      </div>
 
       {/* Events Section */}
       <div

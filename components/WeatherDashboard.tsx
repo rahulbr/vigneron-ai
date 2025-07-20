@@ -2162,7 +2162,22 @@ export function WeatherDashboard({
               borderRadius: '8px',
               marginBottom: '20px'
             }}>
-              <h4 style={{ margin: '0 0 15px 0', color: '#374151' }}>Log New Event</h4>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                <h4 style={{ margin: '0', color: '#374151' }}>Log New Event</h4>
+                {currentVineyard && (
+                  <div style={{
+                    padding: '6px 12px',
+                    backgroundColor: '#e0f2fe',
+                    border: '1px solid #7dd3fc',
+                    borderRadius: '20px',
+                    fontSize: '12px',
+                    color: '#0369a1',
+                    fontWeight: '500'
+                  }}>
+                    📍 {currentVineyard.name}
+                  </div>
+                )}
+              </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '15px' }}>
                 <div>
