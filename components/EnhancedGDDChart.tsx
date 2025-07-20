@@ -26,12 +26,12 @@ interface EnhancedChartProps {
   onEventsChange?: () => void; // Callback to notify parent when events change
 }
 
-export function EnhancedGDDChart({
+const EnhancedGDDChart: React.FC<EnhancedChartProps> = ({
   weatherData,
   locationName,
   vineyardId,
   onEventsChange,
-}: EnhancedChartProps) {
+}: EnhancedChartProps) => {
   const [phenologyEvents, setPhenologyEvents] = useState<PhenologyEvent[]>([]);
   const [showPhenologyForm, setShowPhenologyForm] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
@@ -83,21 +83,12 @@ export function EnhancedGDDChart({
     loadPhenologyEvents();
   }, [vineyardId]);
 
-  // Expose refresh function to parent and window for external calls
+  // Expose refresh function to parent
   useEffect(() => {
     if (window) {
       (window as any).refreshChartEvents = loadPhenologyEvents;
     }
   }, [vineyardId]);
-
-  // Clean up window reference on unmount
-  useEffect(() => {
-    return () => {
-      if (window && (window as any).refreshChartEvents) {
-        delete (window as any).refreshChartEvents;
-      }
-    };
-  }, []);
 
   // Process data for chart
   let cumulativeGDD = 0;
@@ -949,3 +940,5 @@ export function EnhancedGDDChart({
     </div>
   );
 }
+
+export default EnhancedGDDChart;

@@ -559,24 +559,3 @@ export const saveVineyardSimple = async (vineyard: Omit<Vineyard, 'id' | 'user_i
       user_id: user.id
     })
 }
-
-export async function deletePhenologyEvent(eventId: string): Promise<void> {
-  try {
-    console.log('🗑️ Deleting phenology event:', eventId);
-
-    const { error } = await supabase
-      .from('phenology_events')
-      .delete()
-      .eq('id', eventId);
-
-    if (error) {
-      console.error('❌ Database error deleting phenology event:', error);
-      throw new Error(`Database error: ${error.message}`);
-    }
-
-    console.log('✅ Phenology event deleted successfully');
-  } catch (error) {
-    console.error('❌ Failed to delete phenology event:', error);
-    throw error;
-  }
-}
