@@ -276,20 +276,34 @@ export function WeatherDashboard({
     const currentYear = now.getFullYear();
     const today = now.toISOString().split('T')[0]; // YYYY-MM-DD format
 
-    // For current year: April 1 to today (growing season)
+    // For current year: April 1 to today (growing season), but never in the future
     const startDate = `${currentYear}-04-01`;
-    const endDate = today; // Only up to today
+    const aprilFirst = new Date(currentYear, 3, 1); // April 1st
+    
+    // If we're before April 1st of current year, use previous year's full growing season
+    let actualStartDate: string;
+    let actualEndDate: string;
+    
+    if (now < aprilFirst) {
+      // Use previous year's growing season (April 1 to October 31)
+      actualStartDate = `${currentYear - 1}-04-01`;
+      actualEndDate = `${currentYear - 1}-10-31`;
+    } else {
+      // Use current year from April 1 to today
+      actualStartDate = startDate;
+      actualEndDate = today;
+    }
 
-    console.log('📅 Setting current year growing season (April 1 to today):', { 
-      startDate, 
-      endDate, 
+    console.log('📅 Setting growing season date range:', { 
+      actualStartDate, 
+      actualEndDate, 
       year: currentYear,
-      note: 'Growing season data - starts April 1st'
+      note: 'Growing season data - never extends beyond today'
     });
 
     setDateRange({
-      start: startDate,
-      end: endDate
+      start: actualStartDate,
+      end: actualEndDate
     });
 
     setDateRangeMode('current');
@@ -598,13 +612,25 @@ export function WeatherDashboard({
     const now = new Date();
     const currentYear = now.getFullYear();
     const today = now.toISOString().split('T')[0];
+    const aprilFirst = new Date(currentYear, 3, 1); // April 1st
 
-    const newDateRange = {
-      start: `${currentYear}-04-01`, // Start from April 1st
-      end: today // Only up to today
-    };
+    let newDateRange;
+    
+    if (now < aprilFirst) {
+      // Use previous year's growing season if we're before April 1st
+      newDateRange = {
+        start: `${currentYear - 1}-04-01`,
+        end: `${currentYear - 1}-10-31`
+      };
+    } else {
+      // Use current year from April 1st to today
+      newDateRange = {
+        start: `${currentYear}-04-01`,
+        end: today
+      };
+    }
 
-    console.log('📅 Setting current year growing season (April 1 to today):', newDateRange);
+    console.log('📅 Setting current year growing season:', newDateRange);
     setDateRange(newDateRange);
     setDateRangeMode('current');
     setShowCustomRange(false);
