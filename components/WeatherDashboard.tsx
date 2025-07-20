@@ -68,6 +68,16 @@ export function WeatherDashboard({
   const [isLoadingActivities, setIsLoadingActivities] = useState(false);
   const [isSavingActivity, setIsSavingActivity] = useState(false);
 
+  // Edit activity state
+  const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
+  const [editActivityForm, setEditActivityForm] = useState({
+    activity_type: '',
+    start_date: '',
+    end_date: '',
+    notes: ''
+  });
+  const [isUpdatingActivity, setIsUpdatingActivity] = useState(false);
+
   // Event filtering for Events section
   const [eventFilterTypes, setEventFilterTypes] = useState<string[]>([]);
   const [showEventFilterDropdown, setShowEventFilterDropdown] = useState(false);
@@ -472,6 +482,82 @@ export function WeatherDashboard({
       alert('Failed to save activity: ' + (error as Error).message);
     } finally {
       setIsSavingActivity(false);
+    }
+  };
+
+  // Start editing an activity
+  const startEditingActivity = (activity: any) => {
+    setEditingActivityId(activity.id);
+    setEditActivityForm({
+      activity_type: activity.event_type || '',
+      start_date: activity.event_date || '',
+      end_date: activity.end_date || '',
+      notes: activity.notes || ''
+    });
+  };
+
+  // Cancel editing activity
+  const cancelEditingActivity = () => {
+    setEditingActivityId(null);
+    setEditActivityForm({
+      activity_type: '',
+      start_date: '',
+      end_date: '',
+      notes: ''
+    });
+  };
+
+  // Update an activity
+  const updateActivity = async (activityId: string) => {
+    if (!vineyardId || !editActivityForm.activity_type || !editActivityForm.start_date) {
+      alert('Please fill in activity type and start date');
+      return;
+    }
+
+    setIsUpdatingActivity(true);
+    try {
+      console.log('✏️ Updating activity:', { activityId, form: editActivityForm });
+
+      // Delete the old event and create a new one (since we don't have an update function)
+      const { deletePhenologyEvent, savePhenologyEvent } = await import('../lib/supabase');
+      
+      // Delete the old event
+      await deletePhenologyEvent(activityId);
+      
+      // Create the updated event
+      await savePhenologyEvent(
+        vineyardId,
+        editActivityForm.activity_type.toLowerCase().replace(' ', '_'),
+        editActivityForm.start_date,
+        editActivityForm.notes,
+        editActivityForm.end_date || undefined
+      );
+
+      // Clear editing state
+      setEditingActivityId(null);
+      setEditActivityForm({
+        activity_type: '',
+        start_date: '',
+        end_date: '',
+        notes: ''
+      });
+
+      // Reload activities
+      await loadActivities();
+
+      // Force the chart to refresh its events
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('phenologyEventsChanged', { 
+          detail: { vineyardId } 
+        }));
+      }
+
+      console.log('✅ Activity updated successfully');
+    } catch (error) {
+      console.error('❌ Failed to update activity:', error);
+      alert('Failed to update activity: ' + (error as Error).message);
+    } finally {
+      setIsUpdatingActivity(false);
     }
   };
 
@@ -2281,103 +2367,283 @@ export function WeatherDashboard({
                   const gddAtEvent = data.find(d => d.date === activity.event_date)?.gdd || 0;
                   const cumulativeGDD = data.filter(d => d.date <= activity.event_date).reduce((sum, d) => sum + d.gdd, 0);
 
+                  // Check if this activity is being edited
+                  const isBeingEdited = editingActivityId === activity.id;
+
                   return (
                     <div
                       key={activity.id || index}
                       style={{
                         padding: '15px',
                         borderBottom: index < activities.length - 1 ? '1px solid #f3f4f6' : 'none',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'flex-start'
+                        backgroundColor: isBeingEdited ? '#f0f9ff' : 'transparent',
+                        border: isBeingEdited ? '2px solid #0ea5e9' : 'none',
+                        borderRadius: isBeingEdited ? '8px' : '0'
                       }}
                     >
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                          <div
-                            style={{
-                              width: '12px',
-                              height: '12px',
-                              backgroundColor: style.color,
-                              borderRadius: '50%',
-                            }}
-                          ></div>
-                          <span style={{ fontSize: '16px', marginRight: '4px' }}>{style.emoji}</span>
-                          <span style={{ fontWeight: '600', color: '#374151', fontSize: '14px' }}>
-                            {style.label}
-                          </span>
-                          <span style={{ 
-                            fontSize: '11px', 
-                            color: '#6b7280',
-                            padding: '2px 6px',
-                            backgroundColor: '#f1f5f9',
-                            borderRadius: '10px'
-                          }}>
-                            {new Date(activity.event_date).toLocaleDateString()}
-                          </span>
-                          {cumulativeGDD > 0 && (
-                            <span style={{
-                              fontSize: '11px',
-                              color: '#059669',
-                              padding: '2px 6px',
-                              backgroundColor: '#ecfdf5',
-                              borderRadius: '10px',
-                              fontWeight: '500'
-                            }}>
-                              {Math.round(cumulativeGDD)} GDDs
-                            </span>
-                          )}
+                      {isBeingEdited ? (
+                        // Edit form
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                            <h5 style={{ margin: '0', color: '#0369a1', fontSize: '14px', fontWeight: '600' }}>
+                              ✏️ Editing {style.emoji} {style.label}
+                            </h5>
+                            <button
+                              onClick={cancelEditingActivity}
+                              style={{
+                                padding: '4px 8px',
+                                backgroundColor: '#6b7280',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '12px'
+                              }}
+                            >
+                              ✕
+                            </button>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px', marginBottom: '10px' }}>
+                            <div>
+                              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '12px', color: '#374151' }}>
+                                Event Type *
+                              </label>
+                              <select
+                                value={editActivityForm.activity_type}
+                                onChange={(e) => setEditActivityForm(prev => ({ ...prev, activity_type: e.target.value }))}
+                                style={{
+                                  width: '100%',
+                                  padding: '6px 10px',
+                                  border: '1px solid #d1d5db',
+                                  borderRadius: '6px',
+                                  backgroundColor: 'white',
+                                  fontSize: '13px'
+                                }}
+                                required
+                              >
+                                <option value="">Select event type...</option>
+                                {activityTypes.map(type => (
+                                  <option key={type} value={type}>{type}</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div>
+                              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '12px', color: '#374151' }}>
+                                Start Date *
+                              </label>
+                              <input
+                                type="date"
+                                value={editActivityForm.start_date}
+                                onChange={(e) => setEditActivityForm(prev => ({ ...prev, start_date: e.target.value }))}
+                                style={{
+                                  width: '100%',
+                                  padding: '6px 10px',
+                                  border: '1px solid #d1d5db',
+                                  borderRadius: '6px',
+                                  fontSize: '13px'
+                                }}
+                                required
+                              />
+                            </div>
+
+                            <div>
+                              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '12px', color: '#374151' }}>
+                                End Date (Optional)
+                              </label>
+                              <input
+                                type="date"
+                                value={editActivityForm.end_date}
+                                onChange={(e) => setEditActivityForm(prev => ({ ...prev, end_date: e.target.value }))}
+                                style={{
+                                  width: '100%',
+                                  padding: '6px 10px',
+                                  border: '1px solid #d1d5db',
+                                  borderRadius: '6px',
+                                  fontSize: '13px'
+                                }}
+                                min={editActivityForm.start_date}
+                              />
+                            </div>
+                          </div>
+
+                          <div style={{ marginBottom: '10px' }}>
+                            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '12px', color: '#374151' }}>
+                              Notes (Optional)
+                            </label>
+                            <textarea
+                              value={editActivityForm.notes}
+                              onChange={(e) => setEditActivityForm(prev => ({ ...prev, notes: e.target.value }))}
+                              placeholder="Add any additional details about this event..."
+                              style={{
+                                width: '100%',
+                                padding: '6px 10px',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '6px',
+                                minHeight: '60px',
+                                resize: 'vertical',
+                                fontSize: '13px'
+                              }}
+                            />
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              onClick={() => updateActivity(activity.id)}
+                              disabled={isUpdatingActivity || !editActivityForm.activity_type || !editActivityForm.start_date}
+                              style={{
+                                padding: '6px 12px',
+                                backgroundColor: isUpdatingActivity || !editActivityForm.activity_type || !editActivityForm.start_date ? '#9ca3af' : '#22c55e',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: isUpdatingActivity || !editActivityForm.activity_type || !editActivityForm.start_date ? 'not-allowed' : 'pointer',
+                                fontSize: '12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                fontWeight: '500'
+                              }}
+                            >
+                              {isUpdatingActivity ? <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} /> : '💾'}
+                              {isUpdatingActivity ? 'Updating...' : 'Save Changes'}
+                            </button>
+
+                            <button
+                              onClick={cancelEditingActivity}
+                              disabled={isUpdatingActivity}
+                              style={{
+                                padding: '6px 12px',
+                                backgroundColor: '#6b7280',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: isUpdatingActivity ? 'not-allowed' : 'pointer',
+                                fontSize: '12px'
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
                         </div>
+                      ) : (
+                        // Normal display
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                              <div
+                                style={{
+                                  width: '12px',
+                                  height: '12px',
+                                  backgroundColor: style.color,
+                                  borderRadius: '50%',
+                                }}
+                              ></div>
+                              <span style={{ fontSize: '16px', marginRight: '4px' }}>{style.emoji}</span>
+                              <span style={{ fontWeight: '600', color: '#374151', fontSize: '14px' }}>
+                                {style.label}
+                              </span>
+                              <span style={{ 
+                                fontSize: '11px', 
+                                color: '#6b7280',
+                                padding: '2px 6px',
+                                backgroundColor: '#f1f5f9',
+                                borderRadius: '10px'
+                              }}>
+                                {new Date(activity.event_date).toLocaleDateString()}
+                              </span>
+                              {cumulativeGDD > 0 && (
+                                <span style={{
+                                  fontSize: '11px',
+                                  color: '#059669',
+                                  padding: '2px 6px',
+                                  backgroundColor: '#ecfdf5',
+                                  borderRadius: '10px',
+                                  fontWeight: '500'
+                                }}>
+                                  {Math.round(cumulativeGDD)} GDDs
+                                </span>
+                              )}
+                            </div>
 
-                        {activity.end_date && (
-                          <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
-                            Duration: {activity.event_date} to {activity.end_date}
+                            {activity.end_date && (
+                              <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                                Duration: {activity.event_date} to {activity.end_date}
+                              </div>
+                            )}
+
+                            {activity.harvest_block && (
+                              <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                                Block: {activity.harvest_block}
+                              </div>
+                            )}
+
+                            {activity.notes && (
+                              <div style={{ fontSize: '13px', color: '#4b5563', lineHeight: '1.4' }}>
+                                {activity.notes}
+                              </div>
+                            )}
                           </div>
-                        )}
 
-                        {activity.harvest_block && (
-                          <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
-                            Block: {activity.harvest_block}
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginLeft: '15px', gap: '6px' }}>
+                            {activity.created_at && (
+                              <div style={{ fontSize: '11px', color: '#9ca3af' }}>
+                                Logged: {new Date(activity.created_at).toLocaleDateString()}
+                              </div>
+                            )}
+
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              {/* Edit button */}
+                              <button
+                                onClick={() => startEditingActivity(activity)}
+                                style={{
+                                  padding: '4px 8px',
+                                  backgroundColor: '#f59e0b',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontSize: '11px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  transition: 'all 0.2s ease',
+                                  fontWeight: '500'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d97706'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f59e0b'}
+                                title={`Edit this ${style.label} event`}
+                              >
+                                ✏️ Edit
+                              </button>
+
+                              {/* Delete button */}
+                              <button
+                                onClick={() => deleteActivity(activity.id, style.label)}
+                                style={{
+                                  padding: '4px 8px',
+                                  backgroundColor: '#ef4444',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontSize: '11px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  transition: 'all 0.2s ease'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
+                                title={`Delete this ${style.label} event`}
+                              >
+                                🗑️ Delete
+                              </button>
+                            </div>
                           </div>
-                        )}
-
-                        {activity.notes && (
-                          <div style={{ fontSize: '13px', color: '#4b5563', lineHeight: '1.4' }}>
-                            {activity.notes}
-                          </div>
-                        )}
-                      </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginLeft: '15px', gap: '8px' }}>
-                        {activity.created_at && (
-                          <div style={{ fontSize: '11px', color: '#9ca3af' }}>
-                            Logged: {new Date(activity.created_at).toLocaleDateString()}
-                          </div>
-                        )}
-
-                        {/* Delete button */}
-                        <button
-                          onClick={() => deleteActivity(activity.id, style.label)}
-                          style={{
-                            padding: '4px 8px',
-                            backgroundColor: '#ef4444',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '11px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            transition: 'all 0.2s ease'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
-                          title={`Delete this ${style.label} event`}
-                        >
-                          🗑️ Delete
-                        </button>
-                      </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
