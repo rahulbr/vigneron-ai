@@ -1,3 +1,5 @@
+// components/WeatherDashboard.tsx - COMPLETE Fixed Version with All Features
+
 import React, { useState, useEffect } from 'react';
 import { useWeather, useWeatherConnection } from '../hooks/useWeather';
 import { EnhancedGDDChart } from './EnhancedGDDChart';
@@ -336,13 +338,6 @@ export function WeatherDashboard({
     }
   };
 
-  // Load activities when vineyard changes
-  useEffect(() => {
-    if (vineyardId) {
-      loadActivities();
-    }
-  }, [vineyardId]);
-
   // Save new activity
   const saveActivity = async () => {
     if (!vineyardId || !activityForm.activity_type || !activityForm.start_date) {
@@ -382,6 +377,33 @@ export function WeatherDashboard({
       alert('Failed to save activity: ' + (error as Error).message);
     } finally {
       setIsSavingActivity(false);
+    }
+  };
+
+  // Delete an activity
+  const deleteActivity = async (activityId: string, activityType: string) => {
+    if (!window.confirm(`Are you sure you want to delete this ${activityType} event?`)) {
+      return;
+    }
+
+    try {
+      console.log('🗑️ Deleting activity:', activityId);
+
+      const { deletePhenologyEvent } = await import('../lib/supabase');
+      await deletePhenologyEvent(activityId);
+
+      // Reload activities
+      await loadActivities();
+
+      // Refresh chart events - call the chart's refresh function if available
+      if (window && (window as any).refreshChartEvents) {
+        (window as any).refreshChartEvents();
+      }
+
+      console.log('✅ Activity deleted successfully');
+    } catch (error) {
+      console.error('❌ Failed to delete activity:', error);
+      alert('Failed to delete activity: ' + (error as Error).message);
     }
   };
 
@@ -835,7 +857,7 @@ export function WeatherDashboard({
                     {editingVineyardId === vineyard.id ? (
                       <div style={{ display: 'flex', gap: '4px' }}>
                         <button
-                          onClick={() => saveVineyardName(vineyard.id)}
+                          onClick={()=> saveVineyardName(vineyard.id)}
                           style={{
                             padding: '4px 8px',
                             backgroundColor: '#22c55e',
@@ -855,3 +877,1212 @@ export function WeatherDashboard({
                             backgroundColor: '#ef4444',
                             color: 'white',
                             border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '12px'
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => startEditingVineyard(vineyard)}
+                        style={{
+                          padding: '4px 8px',
+                          backgroundColor: '#f59e0b',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '12px'
+                        }}
+                        title="Rename vineyard"
+                      >
+                        ✏️
+                      </button>
+                    )}
+                  </div>
+                ))}
+
+                {/* Create new vineyard button */}
+                <button
+                  onClick={() => setShowCreateVineyard(true)}
+                  style={{
+                    padding: '8px 12px',
+                    backgroundColor: '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  ➕ Add New Vineyard
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Show vineyard count */}
+          <div style={{ 
+            fontSize: '12px', 
+            color: '#6b7280',
+            padding: '8px',
+            backgroundColor: '#f1f5f9',
+            borderRadius: '4px'
+          }}>
+            📊 You have {userVineyards.length} vineyard{userVineyards.length !== 1 ? 's' : ''} configured
+          </div>
+        </div>
+      )}
+
+      {/* Connection Status */}
+      <div className={`status-indicator section-spacing ${
+        isConnected === true ? 'status-success' : 
+        isConnected === false ? 'status-error' : 
+        'status-warning'
+      }`} style={{ 
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px'
+      }}>
+        {testing ? (
+          <>
+            <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} />
+            <span>Testing weather API connection...</span>
+          </>
+        ) : isConnected === true ? (
+          <>
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22c55e' }}></div>
+            <span style={{ color: '#065f46' }}>Weather API Connected</span>
+          </>
+        ) : isConnected === false ? (
+          <>
+            <AlertCircle size={16} style={{ color: '#dc2626' }} />
+            <span style={{ color: '#991b1b' }}>Weather API Connection Failed</span>
+            <button 
+              onClick={testConnection}
+              style={{ 
+                marginLeft: 'auto', 
+                padding: '4px 8px', 
+                fontSize: '12px',
+                backgroundColor: '#dc2626',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Retry Connection
+            </button>
+          </>
+        ) : (
+          <>
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#eab308' }}></div>
+            <span style={{ color: '#92400e' }}>Checking connection...</span>
+          </>
+        )}
+      </div>
+
+
+
+      {/* Location Controls */}
+      <div className="card section-spacing">
+        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.25rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <MapPin size={20} />
+          Location Settings
+        </h3>
+
+        {/* Location Search */}
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>
+            Search for Location (Google Maps):
+          </label>
+          <div className="flex-responsive" style={{ display: 'flex', gap: '10px' }}>
+            <input
+              type="text"
+              value={locationSearch}
+              onChange={(e) => setLocationSearch(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleLocationSearch()}
+              placeholder="e.g., Napa Valley CA, Bordeaux France, Tuscany Italy..."
+              style={{ 
+                flex: 1, 
+                minWidth: '0'
+              }}
+            />
+            <button
+              onClick={handleLocationSearch}
+              disabled={isSearching || !locationSearch.trim()}
+              style={{
+                backgroundColor: isSearching ? '#9ca3af' : '#4285f4',
+                color: 'white',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {isSearching ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Search size={16} />}
+              <span className="hide-mobile">Search</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Search Results */}
+        {showSearchResults && searchResults.length > 0 && (
+          <div style={{ 
+            marginBottom: '15px', 
+            border: '1px solid #d1d5db', 
+            borderRadius: '6px', 
+            backgroundColor: 'white',
+            maxHeight: '200px',
+            overflowY: 'auto'
+          }}>
+            <div style={{ padding: '8px 12px', borderBottom: '1px solid #e5e7eb', fontWeight: '500', fontSize: '14px', backgroundColor: '#f9fafb' }}>
+              Google Maps Results:
+            </div>
+            {searchResults.map((result, index) => (
+              <div
+                key={result.placeId}
+                onClick={() => selectLocation(result)}
+                style={{
+                  padding: '12px',
+                  cursor: 'pointer',
+                  borderBottom: index < searchResults.length - 1 ? '1px solid #f3f4f6' : 'none'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+              >
+                <div style={{ fontWeight: '500', marginBottom: '2px' }}>{result.name}</div>
+                <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '2px' }}>
+                  {result.formattedAddress}
+                </div>
+                <div style={{ fontSize: '12px', color: '#9ca3af' }}>
+                  {result.latitude.toFixed(4)}, {result.longitude.toFixed(4)}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Saved Locations */}
+        {savedLocations.length > 0 && (
+          <div style={{ marginBottom: '15px' }}>
+            <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Recent Locations:</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {savedLocations.slice(0, 5).map((location, index) => (
+                <button
+                  key={location.placeId}
+                  onClick={() => selectLocation(location)}
+                  style={{
+                    padding: '6px 12px',
+                    backgroundColor: '#e0f2fe',
+                    color: '#0369a1',
+                    border: '1px solid #7dd3fc',
+                    borderRadius: '20px',
+                    cursor: 'pointer',
+                    fontSize: '12px'
+                  }}
+                >
+                  {location.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Manual Coordinates */}
+        <div className="responsive-grid" style={{ marginBottom: '1rem' }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>
+              Location Name:
+            </label>
+            <input
+              type="text"
+              value={customLocation}
+              onChange={(e) => setCustomLocation(e.target.value)}
+              style={{ width: '100%' }}
+              placeholder="Vineyard Name or Location"
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>
+              Latitude:
+            </label>
+            <input
+              type="number"
+              value={latitude}
+              onChange={(e) => setLatitude(parseFloat(e.target.value) || 0)}
+              step="0.0001"
+              style={{ width: '100%' }}
+              placeholder="37.3272"
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>
+              Longitude:
+            </label>
+            <input
+              type="number"
+              value={longitude}
+              onChange={(e) => setLongitude(parseFloat(e.target.value) || 0)}
+              step="0.0001"
+              style={{ width: '100%' }}
+              placeholder="-122.2813"
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          {currentVineyard ? (
+            <button
+              onClick={handleManualLocationUpdate}
+              disabled={loading}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: loading ? '#9ca3af' : '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              {loading ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <MapPin size={16} />}
+              Update "{currentVineyard.name}" Location
+            </button>
+          ) : (
+            <button
+              onClick={createNewVineyard}
+              disabled={loading || !customLocation.trim()}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: loading || !customLocation.trim() ? '#9ca3af' : '#22c55e',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: loading || !customLocation.trim() ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              {loading ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <MapPin size={16} />}
+              ✨ Create New Vineyard
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Date Range Controls - 3 Buttons */}
+      <div style={{ 
+        marginBottom: '20px', 
+        padding: '20px', 
+        backgroundColor: '#f8fafc', 
+        borderRadius: '12px',
+        border: '1px solid #e2e8f0'
+      }}>
+        <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Calendar size={20} />
+          Date Range Settings
+        </h3>
+
+        {/* Three Date Range Buttons */}
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', flexWrap: 'wrap' }}>
+          <button
+            onClick={setCurrentYear}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: dateRangeMode === 'current' ? '#22c55e' : '#f3f4f6',
+              color: dateRangeMode === 'current' ? 'white' : '#374151',
+              border: '1px solid #d1d5db',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: dateRangeMode === 'current' ? '600' : '400'
+            }}
+          >
+            {currentYear} Growing Season (Apr 1 - Today)
+          </button>
+
+          <button
+            onClick={setPreviousYear}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: dateRangeMode === 'previous' ? '#22c55e' : '#f3f4f6',
+              color: dateRangeMode === 'previous' ? 'white' : '#374151',
+              border: '1px solid #d1d5db',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: dateRangeMode === 'previous' ? '600' : '400'
+            }}
+          >
+            {previousYear} Growing Season (Apr 1 - Oct 31)
+          </button>
+
+          <button
+            onClick={setCustomDateRange}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: dateRangeMode === 'custom' ? '#22c55e' : '#f3f4f6',
+              color: dateRangeMode === 'custom' ? 'white' : '#374151',
+              border: '1px solid #d1d5db',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: dateRangeMode === 'custom' ? '600' : '400'
+            }}
+          >
+            Custom Date Range
+          </button>
+        </div>
+
+        {/* Custom Date Range Inputs */}
+        {showCustomRange && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px', marginBottom: '15px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Start Date:</label>
+              <input
+                type="date"
+                value={dateRange.start}
+                onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px' }}
+                max={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>End Date:</label>
+              <input
+                type="date"
+                value={dateRange.end}
+                onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px' }}
+                max={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'end' }}>
+              <button
+                onClick={handleCustomDateRangeUpdate}
+                disabled={loading}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: loading ? '#9ca3af' : '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                {loading ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Calendar size={16} />}
+                Update Range
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Show current date range */}
+        <div style={{ 
+          padding: '10px', 
+          backgroundColor: '#e0f2fe', 
+          borderRadius: '6px',
+          fontSize: '14px',
+          color: '#0369a1'
+        }}>
+          <strong>Current Range:</strong> {dateRange.start} to {dateRange.end}
+          {dateRange.start && dateRange.end && (
+            <span style={{ marginLeft: '10px' }}>
+              ({Math.ceil((new Date(dateRange.end).getTime() - new Date(dateRange.start).getTime()) / (1000 * 60 * 60 * 24))} days)
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Error Display */}
+      {error && (
+        <div style={{ 
+          marginBottom: '20px', 
+          padding: '16px', 
+          backgroundColor: '#fef2f2',
+          border: '1px solid #fecaca',
+          borderRadius: '8px',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '12px'
+        }}>
+          <AlertCircle size={20} style={{ color: '#dc2626', marginTop: '2px' }} />
+          <div style={{ flex: 1 }}>
+            <h4 style={{ margin: '0 0 8px 0', color: '#991b1b', fontSize: '16px' }}>
+              Weather Data Error ({error.code})
+            </h4>
+            <p style={{ margin: '0 0 12px 0', color: '#7f1d1d' }}>
+              {error.message}
+            </p>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={retry}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: '#dc2626',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Retry
+              </button>
+              <button
+                onClick={clearError}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: 'transparent',
+                  color: '#dc2626',
+                  border: '1px solid #dc2626',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Weather Summary Stats */}
+      {data.length > 0 && (
+        <div className="responsive-grid section-spacing">
+          <div className="card">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <TrendingUp size={20} style={{ color: '#059669' }} />
+              <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280' }}>Total GDD</span>
+            </div>
+            <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#059669' }}>
+              {Math.round(totalGDD)} GDDs
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '4px' }}>
+              {data.length} days
+            </div>
+          </div>
+
+          <div className="card">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <CloudRain size={20} style={{ color: '#3b82f6' }} />
+              <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280' }}>Total Rainfall</span>
+            </div>
+            <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#3b82f6' }}>
+              {totalRainfall.toFixed(2)}"
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '4px' }}>
+              Precipitation
+            </div>
+          </div>
+
+          <div className="card">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <Thermometer size={20} style={{ color: '#ef4444' }} />
+              <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280' }}>Avg High Temp</span>
+            </div>
+            <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#ef4444' }}>
+              {avgTempHigh.toFixed(1)}°F
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '4px' }}>
+              Daily average
+            </div>
+          </div>
+
+          <div className="card">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <Thermometer size={20} style={{ color: '#8b5cf6' }} />
+              <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280' }}>Avg Low Temp</span>
+            </div>
+            <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#8b5cf6' }}>
+              {avgTempLow.toFixed(1)}°F
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '4px' }}>
+              Daily average
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Loading State */}
+      {loading && (
+        <div style={{ 
+          padding: '40px', 
+          textAlign: 'center',
+          backgroundColor: '#f8fafc',
+          borderRadius: '12px',
+          border: '2px dashed #cbd5e1',
+          marginBottom: '20px'
+        }}>
+          <RefreshCw size={32} style={{ color: '#64748b', animation: 'spin 1s linear infinite', marginBottom: '16px' }} />
+          <h3 style={{ margin: '0 0 8px 0', color: '#475569' }}>Loading Weather Data</h3>
+          <p style={{ margin: '0', color: '#64748b' }}>
+            Fetching weather data for {customLocation}...
+          </p>
+        </div>
+      )}
+
+      {/* Enhanced GDD Chart - FIXED WITH VINEYARD ID */}
+      {data.length > 0 && !loading && vineyardId && (
+        <div style={{ marginBottom: '20px' }}>
+          <EnhancedGDDChart 
+            weatherData={data}
+            locationName={customLocation}
+            vineyardId={vineyardId}
+            onEventsChange={loadActivities}
+          />
+        </div>
+      )}
+
+      {/* Data Status Footer */}
+      {lastUpdated && (
+        <div style={{ 
+          padding: '12px 16px', 
+          backgroundColor: '#f1f5f9',
+          borderRadius: '8px',
+          border: '1px solid #e2e8f0',
+          textAlign: 'center',
+          fontSize: '14px',
+          color: '#64748b'
+        }}>
+          <span>Last updated: {lastUpdated.toLocaleString()}</span>
+          <span style={{ margin: '0 12px', color: '#cbd5e1' }}>•</span>
+          <span>{data.length} data points loaded</span>
+          {dateRange.start && dateRange.end && (
+            <>
+              <span style={{ margin: '0 12px', color: '#cbd5e1' }}>•</span>
+              <span>Period: {dateRange.start} to {dateRange.end}</span>
+            </>
+          )}
+        </div>
+      )}
+
+
+
+      {/* Events Section - Combined Activity Log and Phenology Events */}
+      {currentVineyard && (
+        <div className="card section-spacing">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h3 style={{ margin: '0', fontSize: '1.25rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              🌱 Event Log
+            </h3>
+            <div style={{ position: "relative" }}>
+              <button
+                onClick={() => setShowEventFilterDropdown(!showEventFilterDropdown)}
+                style={{
+                  padding: "8px 16px",
+                  backgroundColor: "#3b82f6",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px"
+                }}
+              >
+                🔍 Filter ({eventFilterTypes.length > 0 ? eventFilterTypes.length : 'All'})
+              </button>
+
+              {showEventFilterDropdown && (
+                <div style={{
+                  position: "absolute",
+                  top: "100%",
+                  right: "0",
+                  backgroundColor: "white",
+                  border: "1px solid #ddd",
+                  borderRadius: "6px",
+                  boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
+                  zIndex: 1000,
+                  minWidth: "200px",
+                  maxHeight: "300px",
+                  overflowY: "auto"
+                }}>
+                  <div style={{ padding: "8px 12px", borderBottom: "1px solid #eee", fontWeight: "bold", fontSize: "12px" }}>
+                    Filter by Event Type:
+                  </div>
+                  <div style={{ padding: "4px" }}>
+                    <button
+                      onClick={() => setEventFilterTypes([])}
+                      style={{
+                        width: "100%",
+                        padding: "6px 12px",
+                        backgroundColor: eventFilterTypes.length === 0 ? "#e0f2fe" : "transparent",
+                        border: "none",
+                        textAlign: "left",
+                        cursor: "pointer",
+                        fontSize: "12px"
+                      }}
+                    >
+                      Show All Events
+                    </button>
+                    {activityTypes.map((type) => {
+                      const eventType = type.toLowerCase().replace(' ', '_');
+                      const eventStyles: { [key: string]: { color: string, label: string, emoji: string } } = {
+                        bud_break: { color: "#22c55e", label: "Bud Break", emoji: "🌱" },
+                        bloom: { color: "#f59e0b", label: "Bloom", emoji: "🌸" },
+                        veraison: { color: "#8b5cf6", label: "Veraison", emoji: "🍇" },
+                        harvest: { color: "#ef4444", label: "Harvest", emoji: "🍷" },
+                        pruning: { color: "#6366f1", label: "Pruning", emoji: "✂️" },
+                        irrigation: { color: "#06b6d4", label: "Irrigation", emoji: "💧" },
+                        spray_application: { color: "#f97316", label: "Spray Application", emoji: "🌿" },
+                        fertilization: { color: "#84cc16", label: "Fertilization", emoji: "🌱" },
+                        canopy_management: { color: "#10b981", label: "Canopy Management", emoji: "🍃" },
+                        soil_work: { color: "#8b5cf6", label: "Soil Work", emoji: "🌍" },
+                        equipment_maintenance: { color: "#6b7280", label: "Equipment Maintenance", emoji: "🔧" },
+                        fruit_set: { color: "#f59e0b", label: "Fruit Set", emoji: "🫐" },
+                        other: { color: "#9ca3af", label: "Other", emoji: "📝" },
+                      };
+                      const style = eventStyles[eventType] || eventStyles.other;
+                      const isSelected = eventFilterTypes.includes(eventType);
+                      return (
+                        <button
+                          key={type}
+                          onClick={() => {
+                            if (isSelected) {
+                              setEventFilterTypes(prev => prev.filter(t => t !== eventType));
+                            } else {
+                              setEventFilterTypes(prev => [...prev, eventType]);
+                            }
+                          }}
+                          style={{
+                            width: "100%",
+                            padding: "6px 12px",
+                            backgroundColor: isSelected ? "#e0f2fe" : "transparent",
+                            border: "none",
+                            textAlign: "left",
+                            cursor: "pointer",
+                            fontSize: "12px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px"
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: "8px",
+                              height: "8px",
+                              backgroundColor: style.color,
+                              borderRadius: "50%"
+                            }}
+                          ></div>
+                          {style.emoji} {style.label}
+                          {isSelected && <span style={{ marginLeft: "auto", color: "#22c55e" }}>✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Event Form */}
+          {showActivityForm && (
+            <div style={{
+              padding: '20px',
+              backgroundColor: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              marginBottom: '20px'
+            }}>
+              <h4 style={{ margin: '0 0 15px 0', color: '#374151' }}>Log New Event</h4>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '15px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
+                    Event Type *
+                  </label>
+                  <select
+                    value={activityForm.activity_type}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, activity_type: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      backgroundColor: 'white'
+                    }}
+                    required
+                  >
+                    <option value="">Select event type...</option>
+                    {activityTypes.map(type => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
+                    Start Date *
+                  </label>
+                  <input
+                    type="date"
+                    value={activityForm.start_date}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, start_date: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px'
+                    }}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
+                    End Date (Optional)
+                  </label>
+                  <input
+                    type="date"
+                    value={activityForm.end_date}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, end_date: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px'
+                    }}
+                    min={activityForm.start_date}
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
+                  Notes (Optional)
+                </label>
+                <textarea
+                  value={activityForm.notes}
+                  onChange={(e) => setActivityForm(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Add any additional details about this event..."
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '1px solid #d1d5db```text
+,
+                    borderRadius: '6px',
+                    minHeight: '80px',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={saveActivity}
+                  disabled={isSavingActivity || !activityForm.activity_type || !activityForm.start_date}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: isSavingActivity || !activityForm.activity_type || !activityForm.start_date ? '#9ca3af' : '#22c55e',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: isSavingActivity || !activityForm.activity_type || !activityForm.start_date ? 'not-allowed' : 'pointer',
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  {isSavingActivity ? <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> : '💾'}
+                  {isSavingActivity ? 'Saving...' : 'Save Event'}
+                </button>
+
+                <button
+                  onClick={() => setShowActivityForm(false)}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#6b7280',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px'
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Events List */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'between', alignItems: 'center', marginBottom: '15px' }}>
+              <h4 style={{ margin: '0', fontSize: '16px', color: '#374151' }}>
+                Event History {activities.length > 0 && `(${activities.length})`}
+              </h4>
+              {activities.length > 0 && (
+                <button
+                  onClick={loadActivities}
+                  disabled={isLoadingActivities}
+                  style={{
+                    padding: '4px 8px',
+                    backgroundColor: '#f3f4f6',
+                    color: '#374151',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <RefreshCw size={12} style={{ animation: isLoadingActivities ? 'spin 1s linear infinite' : 'none' }} />
+                  Refresh
+                </button>
+              )}
+            </div>
+
+            {isLoadingActivities ? (
+              <div style={{ textAlign: 'center', padding: '20px', color: '#6b7280' }}>
+                <RefreshCw size={20} style={{ animation: 'spin 1s linear infinite', marginBottom: '8px' }} />
+                <div>Loading events...</div>
+              </div>
+            ) : activities.length === 0 ? (
+              <div style={{
+                padding: '30px',
+                textAlign: 'center',
+                backgroundColor: '#f8fafc',
+                borderRadius: '8px',
+                border: '2px dashed #cbd5e1'
+              }}>
+                <div style={{ fontSize: '48px', marginBottom: '10px' }}>📅</div>
+                <h4 style={{ margin: '0 0 8px 0', color: '#374151' }}>No Events Logged</h4>
+                <p style={{ margin: '0', color: '#6b7280', fontSize: '14px' }}>
+                  Start logging your vineyard events to track phenology and activities throughout the season.
+                </p>
+              </div>
+            ) : (
+              <div style={{
+                maxHeight: '400px',
+                overflowY: 'auto',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                backgroundColor: 'white'
+              }}>
+                {activities.filter(activity => {
+                  // Apply event type filter
+                  if (eventFilterTypes.length === 0) return true;
+                  const eventType = activity.event_type?.toLowerCase().replace(' ', '_') || 'other';
+                  return eventFilterTypes.includes(eventType);
+                }).map((activity, index) => {
+                  // Get event style with icon and color
+                  const eventStyles: { [key: string]: { color: string, label: string, emoji: string } } = {
+                    bud_break: { color: "#22c55e", label: "Bud Break", emoji: "🌱" },
+                    bloom: { color: "#f59e0b", label: "Bloom", emoji: "🌸" },
+                    veraison: { color: "#8b5cf6", label: "Veraison", emoji: "🍇" },
+                    harvest: { color: "#ef4444", label: "Harvest", emoji: "🍷" },
+                    pruning: { color: "#6366f1", label: "Pruning", emoji: "✂️" },
+                    irrigation: { color: "#06b6d4", label: "Irrigation", emoji: "💧" },
+                    spray_application: { color: "#f97316", label: "Spray Application", emoji: "🌿" },
+                    fertilization: { color: "#84cc16", label: "Fertilization", emoji: "🌱" },
+                    canopy_management: { color: "#10b981", label: "Canopy Management", emoji: "🍃" },
+                    soil_work: { color: "#8b5cf6", label: "Soil Work", emoji: "🌍" },
+                    equipment_maintenance: { color: "#6b7280", label: "Equipment Maintenance", emoji: "🔧" },
+                    fruit_set: { color: "#f59e0b", label: "Fruit Set", emoji: "🫐" },
+                    other: { color: "#9ca3af", label: "Other", emoji: "📝" },
+                  };
+
+                  const eventType = activity.event_type?.toLowerCase().replace(' ', '_') || 'other';
+                  const style = eventStyles[eventType] || eventStyles.other;
+
+                  // Calculate GDD at event date
+                  const gddAtEvent = data.find(d => d.date === activity.event_date)?.gdd || 0;
+                  const cumulativeGDD = data.filter(d => d.date <= activity.event_date).reduce((sum, d) => sum + d.gdd, 0);
+
+                  return (
+                    <div
+                      key={activity.id || index}
+                      style={{
+                        padding: '15px',
+                        borderBottom: index < activities.length - 1 ? '1px solid #f3f4f6' : 'none',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start'
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                          <div
+                            style={{
+                              width: '12px',
+                              height: '12px',
+                              backgroundColor: style.color,
+                              borderRadius: '50%',
+                            }}
+                          ></div>
+                          <span style={{ fontSize: '16px', marginRight: '4px' }}>{style.emoji}</span>
+                          <span style={{ fontWeight: '600', color: '#374151', fontSize: '14px' }}>
+                            {style.label}
+                          </span>
+                          <span style={{ 
+                            fontSize: '11px', 
+                            color: '#6b7280',
+                            padding: '2px 6px',
+                            backgroundColor: '#f1f5f9',
+                            borderRadius: '10px'
+                          }}>
+                            {new Date(activity.event_date).toLocaleDateString()}
+                          </span>
+                          {cumulativeGDD > 0 && (
+                            <span style={{
+                              fontSize: '11px',
+                              color: '#059669',
+                              padding: '2px 6px',
+                              backgroundColor: '#ecfdf5',
+                              borderRadius: '10px',
+                              fontWeight: '500'
+                            }}>
+                              {Math.round(cumulativeGDD)} GDDs
+                            </span>
+                          )}
+                        </div>
+
+                        {activity.end_date && (
+                          <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                            Duration: {activity.event_date} to {activity.end_date}
+                          </div>
+                        )}
+
+                        {activity.harvest_block && (
+                          <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                            Block: {activity.harvest_block}
+                          </div>
+                        )}
+
+                        {activity.notes && (
+                          <div style={{ fontSize: '13px', color: '#4b5563', lineHeight: '1.4' }}>
+                            {activity.notes}
+                          </div>
+                        )}
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginLeft: '15px', gap: '8px' }}>
+                        {activity.created_at && (
+                          <div style={{ fontSize: '11px', color: '#9ca3af' }}>
+                            Logged: {new Date(activity.created_at).toLocaleDateString()}
+                          </div>
+                        )}
+
+                        {/* Delete button */}
+                        <button
+                          onClick={() => deleteActivity(activity.id, style.label)}
+                          style={{
+                            padding: '4px 8px',
+                            backgroundColor: '#ef4444',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '11px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
+                          title={`Delete this ${style.label} event`}
+                        >
+                          🗑️ Delete
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          
+        </div>
+      )}
+
+      {/* Generate AI Insights Button */}
+      {data.length > 0 && !isGeneratingInsights && (
+        <div style={{ 
+          marginTop: '30px',
+          marginBottom: '20px', 
+          textAlign: 'center'
+        }}>
+          <button
+            onClick={generateAIInsights}
+            disabled={!process.env.NEXT_PUBLIC_OPENAI_API_KEY}
+            style={{
+              padding: '12px 24px',
+              backgroundColor: !process.env.NEXT_PUBLIC_OPENAI_API_KEY ? '#9ca3af' : '#8b5cf6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: !process.env.NEXT_PUBLIC_OPENAI_API_KEY ? 'not-allowed' : 'pointer',
+              fontSize: '16px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              margin: '0 auto'
+            }}
+          >
+            <Brain size={20} />
+            {!process.env.NEXT_PUBLIC_OPENAI_API_KEY ? 'AI Insights (API Key Required)' : 'Generate AI Vineyard Insights'}
+          </button>
+          {!process.env.NEXT_PUBLIC_OPENAI_API_KEY && (
+            <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
+              Add NEXT_PUBLIC_OPENAI_API_KEY to enable AI features
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* AI Insights Panel - Moved to Bottom */}
+      {showAIPanel && (
+        <div style={{ 
+          marginTop: '20px',
+          marginBottom: '20px', 
+          padding: '20px', 
+          backgroundColor: '#fefce8', 
+          borderRadius: '12px',
+          border: '1px solid #fde68a'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+            <h3 style={{ margin: '0', fontSize: '18px', color: '#92400e', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Brain size={20} />
+              AI Vineyard Insights
+            </h3>
+            {isGeneratingInsights ? (
+              <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite', color: '#92400e' }} />
+            ) : (
+              <button
+                onClick={generateAIInsights}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: '#eab308',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                <RefreshCw size={12} />
+                Refresh Insights
+              </button>
+            )}
+          </div>
+
+          {isGeneratingInsights ? (
+            <div style={{ textAlign: 'center', padding: '20px' }}>
+              <div style={{ marginBottom: '10px' }}>🤖 AI is analyzing your vineyard data...</div>
+              <div style={{ fontSize: '14px', color: '#92400e' }}>
+                This may take a few seconds
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
+              {/* AI Recommendations */}
+              {aiInsights.length > 0 && (
+                <div>
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', color: '#92400e' }}>
+                    🎯 Recommendations
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {aiInsights.map((insight) => {
+                      const colors = getInsightColor(insight.type);
+                      return (
+                        <div
+                          key={insight.id}
+                          style={{
+                            padding: '12px',
+                            backgroundColor: colors.bg,
+                            border: `1px solid ${colors.border}`,
+                            borderRadius: '8px'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '6px' }}>
+                            {getInsightIcon(insight.type)}
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: '600', fontSize: '14px', color: colors.text, marginBottom: '4px' }}>
+                                {insight.title}
+                              </div>
+                              <div style={{ fontSize: '13px', color: colors.text, lineHeight: '1.4' }}>
+                                {insight.message}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
+                                Confidence: {(insight.confidence * 100).toFixed(0)}% • {insight.category}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Weather Analysis */}
+              {weatherAnalysis && (
+                <div>
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', color: '#92400e' }}>
+                    🌤️ Weather Pattern Analysis
+                  </h4>
+                  <div style={{
+                    padding: '12px',
+                    backgroundColor: '#f0f9ff',
+                    border: '1px solid #bae6fd',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    lineHeight: '1.5',
+                    color: '#0c4a6e'
+                  }}>
+                    {weatherAnalysis}
+                  </div>
+                </div>
+              )}
+
+              {/* Phenology Analysis */}
+              {phenologyAnalysis && (
+                <div>
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', color: '#92400e' }}>
+                    🌱 Phenology Insights
+                  </h4>
+                  <div style={{
+                    padding: '12px',
+                    backgroundColor: '#f0fdf4',
+                    border: '1px solid #bbf7d0',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    lineHeight: '1.5',
+                    color: '#065f46'
+                  }}>
+                    {phenologyAnalysis}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
