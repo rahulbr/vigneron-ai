@@ -140,8 +140,8 @@ export function WeatherDashboard({
     loadUserVineyards();
   }, []);
 
-  // Create a new vineyard
-  const createNewVineyard = async () => {
+   // Create a new vineyard
+   const createNewVineyard = async () => {
     try {
       console.log('🆕 Creating new vineyard:', { customLocation, latitude, longitude });
 
@@ -185,11 +185,11 @@ export function WeatherDashboard({
       setCustomLocation(vineyard.name);
       localStorage.setItem('currentVineyardId', vineyard.id);
 
-      // Clear AI insights when switching vineyards
-      setAiInsights([]);
-      setWeatherAnalysis('');
-      setPhenologyAnalysis('');
-      setShowAIPanel(false);
+       // Clear AI insights when switching vineyards
+       setAiInsights([]);
+       setWeatherAnalysis('');
+       setPhenologyAnalysis('');
+       setShowAIPanel(false);
 
       // Refresh weather data for new vineyard
       if (isInitialized && dateRange.start && dateRange.end) {
@@ -258,54 +258,54 @@ export function WeatherDashboard({
     }
   };
 
-  // Delete a vineyard
-  const deleteVineyard = async (vineyardId: string, vineyardName: string) => {
-    if (!window.confirm(`Are you sure you want to delete "${vineyardName}"?\n\nThis will permanently remove the vineyard and all its associated data (weather data, events, etc.). This action cannot be undone.`)) {
-      return;
-    }
-
-    try {
-      console.log('🗑️ Deleting vineyard:', { vineyardId, vineyardName });
-
-      // Delete from database
-      const { error } = await supabase
-        .from('vineyards')
-        .delete()
-        .eq('id', vineyardId);
-
-      if (error) {
-        throw new Error(error.message);
+    // Delete a vineyard
+    const deleteVineyard = async (vineyardId: string, vineyardName: string) => {
+      if (!window.confirm(`Are you sure you want to delete "${vineyardName}"?\n\nThis will permanently remove the vineyard and all its associated data (weather data, events, etc.). This action cannot be undone.`)) {
+        return;
       }
-
-      // Remove from local state
-      setUserVineyards(prev => prev.filter(v => v.id !== vineyardId));
-
-      // If this was the current vineyard, switch to another one or show create form
-      if (currentVineyard?.id === vineyardId) {
-        const remainingVineyards = userVineyards.filter(v => v.id !== vineyardId);
-
-        if (remainingVineyards.length > 0) {
-          // Switch to the first remaining vineyard
-          const nextVineyard = remainingVineyards[0];
-          await switchVineyard(nextVineyard);
-        } else {
-          // No vineyards left, show create form
-          setCurrentVineyard(null);
-          setVineyardId('');
-          setShowCreateVineyard(true);
-          localStorage.removeItem('currentVineyardId');
+  
+      try {
+        console.log('🗑️ Deleting vineyard:', { vineyardId, vineyardName });
+  
+        // Delete from database
+        const { error } = await supabase
+          .from('vineyards')
+          .delete()
+          .eq('id', vineyardId);
+  
+        if (error) {
+          throw new Error(error.message);
         }
+  
+        // Remove from local state
+        setUserVineyards(prev => prev.filter(v => v.id !== vineyardId));
+  
+        // If this was the current vineyard, switch to another one or show create form
+        if (currentVineyard?.id === vineyardId) {
+          const remainingVineyards = userVineyards.filter(v => v.id !== vineyardId);
+  
+          if (remainingVineyards.length > 0) {
+            // Switch to the first remaining vineyard
+            const nextVineyard = remainingVineyards[0];
+            await switchVineyard(nextVineyard);
+          } else {
+            // No vineyards left, show create form
+            setCurrentVineyard(null);
+            setVineyardId('');
+            setShowCreateVineyard(true);
+            localStorage.removeItem('currentVineyardId');
+          }
+        }
+  
+        console.log('✅ Vineyard deleted successfully:', vineyardName);
+  
+      } catch (error) {
+        console.error('❌ Error deleting vineyard:', error);
+        alert('Failed to delete vineyard: ' + (error as Error).message);
       }
+    };
 
-      console.log('✅ Vineyard deleted successfully:', vineyardName);
-
-    } catch (error) {
-      console.error('❌ Error deleting vineyard:', error);
-      alert('Failed to delete vineyard: ' + (error as Error).message);
-    }
-  };
-
-  // Load saved locations from localStorage
+     // Load saved locations from localStorage
   useEffect(() => {
     const stored = localStorage.getItem('saved_vineyard_locations');
     if (stored) {
@@ -316,6 +316,7 @@ export function WeatherDashboard({
       }
     }
   }, []);
+
 
   // Initialize date range - start from April 1st (growing season)
   useEffect(() => {
@@ -427,8 +428,8 @@ export function WeatherDashboard({
     }
   };
 
-  // Delete an activity
-  const deleteActivity = async (activityId: string, activityType: string) => {
+   // Delete an activity
+   const deleteActivity = async (activityId: string, activityType: string) => {
     if (!window.confirm(`Are you sure you want to delete this ${activityType} event?`)) {
       return;
     }
@@ -471,8 +472,8 @@ export function WeatherDashboard({
     'Other'
   ];
 
-  // Generate AI insights based on current vineyard data
-  const generateAIInsights = async () => {
+   // Generate AI insights based on current vineyard data
+   const generateAIInsights = async () => {
     if (!data || data.length === 0) return;
 
     // Check if OpenAI API key is available
@@ -586,8 +587,8 @@ export function WeatherDashboard({
     }
   };
 
-  // Select a location from search results
-  const selectLocation = (location: GeocodeResult) => {
+   // Select a location from search results
+   const selectLocation = (location: GeocodeResult) => {
     setLatitude(location.latitude);
     setLongitude(location.longitude);
     setCustomLocation(location.name);
@@ -703,8 +704,8 @@ export function WeatherDashboard({
     }
   };
 
-  // Get color for insight type
-  const getInsightColor = (type: string) => {
+   // Get color for insight type
+   const getInsightColor = (type: string) => {
     switch (type) {
       case 'recommendation': return { bg: '#f0fdf4', border: '#bbf7d0', text: '#065f46' };
       case 'warning': return { bg: '#fef2f2', border: '#fecaca', text: '#991b1b' };
@@ -848,7 +849,7 @@ export function WeatherDashboard({
                     disabled={isSearching || !locationSearch.trim()}
                     style={{
                       padding: '8px 16px',
-                      backgroundColor: isSearching ? '#9ca3af' : '#4285f4',
+                      backgroundColor: isSearching ? '#9ca3af' : '#4285ff4',
                       color: 'white',
                       border: 'none',
                       borderRadius: '6px',
@@ -856,7 +857,7 @@ export function WeatherDashboard({
                       fontSize: '14px'
                     }}
                   >
-                    {isSearching: 'Searching...' : 'Search'}
+                    {isSearching? 'Searching...' : 'Search'}
                   </button>
                 </div>
 
@@ -1339,10 +1340,6 @@ export function WeatherDashboard({
         )}
       </div>
 
-
-
-
-
       {/* Date Range Controls - 3 Buttons */}
       <div style={{ 
         marginBottom: '20px', 
@@ -1605,7 +1602,7 @@ export function WeatherDashboard({
             weatherData={data}
             locationName={customLocation}
             vineyardId={vineyardId}
-            onEventsChange={loadActivities}
+            onEventsChange={() => {}}
           />
         </div>
       )}
@@ -1629,619 +1626,6 @@ export function WeatherDashboard({
               <span style={{ margin: '0 12px', color: '#cbd5e1' }}>•</span>
               <span>Period: {dateRange.start} to {dateRange.end}</span>
             </>
-          )}
-        </div>
-      )}
-
-
-
-      {/* Events Section - Combined Activity Log and Phenology Events */}
-      {currentVineyard && (
-        <div className="card section-spacing">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h3 style={{ margin: '0', fontSize: '1.25rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              🌱 Event Log
-            </h3>
-            <div style={{ position: "relative" }}>
-              <button
-                onClick={() => setShowEventFilterDropdown(!showEventFilterDropdown)}
-                style={{
-                  padding: "8px 16px",
-                  backgroundColor: "#3b82f6",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontSize: "14px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px"
-                }}
-              >
-                🔍 Filter ({eventFilterTypes.length > 0 ? eventFilterTypes.length : 'All'})
-              </button>
-
-              {showEventFilterDropdown && (
-                <div style={{
-                  position: "absolute",
-                  top: "100%",
-                  right: "0",
-                  backgroundColor: "white",
-                  border: "1px solid #ddd",
-                  borderRadius: "6px",
-                  boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
-                  zIndex: 1000,
-                  minWidth: "200px",
-                  maxHeight: "300px",
-                  overflowY: "auto"
-                }}>
-                  <div style={{ padding: "8px 12px", borderBottom: "1px solid #eee", fontWeight: "bold", fontSize: "12px" }}>
-                    Filter by Event Type:
-                  </div>
-                  <div style={{ padding: "4px" }}>
-                    <button
-                      onClick={() => setEventFilterTypes([])}
-                      style={{
-                        width: "100%",
-                        padding: "6px 12px",
-                        backgroundColor: eventFilterTypes.length === 0 ? "#e0f2fe" : "transparent",
-                        border: "none",
-                        textAlign: "left",
-                        cursor: "pointer",
-                        fontSize: "12px"
-                      }}
-                    >
-                      Show All Events
-                    </button>
-                    {activityTypes.map((type) => {
-                      const eventType = type.toLowerCase().replace(' ', '_');
-                      const eventStyles: { [key: string]: { color: string, label: string, emoji: string } } = {
-                        bud_break: { color: "#22c55e", label: "Bud Break", emoji: "🌱" },
-                        bloom: { color: "#f59e0b", label: "Bloom", emoji: "🌸" },
-                        veraison: { color: "#8b5cf6", label: "Veraison", emoji: "🍇" },
-                        harvest: { color: "#ef4444", label: "Harvest", emoji: "🍷" },
-                        pruning: { color: "#6366f1", label: "Pruning", emoji: "✂️" },
-                        irrigation: { color: "#06b6d4", label: "Irrigation", emoji: "💧" },
-                        spray_application: { color: "#f97316", label: "Spray Application", emoji: "🌿" },
-                        fertilization: { color: "#84cc16", label: "Fertilization", emoji: "🌱" },
-                        canopy_management: { color: "#10b981", label: "Canopy Management", emoji: "🍃" },
-                        soil_work: { color: "#8b5cf6", label: "Soil Work", emoji: "🌍" },
-                        equipment_maintenance: { color: "#6b7280", label: "Equipment Maintenance", emoji: "🔧" },
-                        fruit_set: { color: "#f59e0b", label: "Fruit Set", emoji: "🫐" },
-                        other: { color: "#9ca3af", label: "Other", emoji: "📝" },
-                      };
-                      const style = eventStyles[eventType] || eventStyles.other;
-                      const isSelected = eventFilterTypes.includes(eventType);
-                      return (
-                        <button
-                          key={type}
-                          onClick={() => {
-                            if (isSelected) {
-                              setEventFilterTypes(prev => prev.filter(t => t !== eventType));
-                            } else {
-                              setEventFilterTypes(prev => [...prev, eventType]);
-                            }
-                          }}
-                          style={{
-                            width: "100%",
-                            padding: "6px 12px",
-                            backgroundColor: isSelected ? "#e0f2fe" : "transparent",
-                            border: "none",
-                            textAlign: "left",
-                            cursor: "pointer",
-                            fontSize: "12px",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "6px"
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: "8px",
-                              height: "8px",
-                              backgroundColor: style.color,
-                              borderRadius: "50%"
-                            }}
-                          ></div>
-                          {style.emoji} {style.label}
-                          {isSelected && <span style={{ marginLeft: "auto", color: "#22c55e" }}>✓</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Event Form */}
-          {showActivityForm && (
-            <div style={{
-              padding: '20px',
-              backgroundColor: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: '8px',
-              marginBottom: '20px'
-            }}>
-              <h4 style={{ margin: '0 0 15px 0', color: '#374151' }}>Log New Event</h4>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '15px' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
-                    Event Type *
-                  </label>
-                  <select
-                    value={activityForm.activity_type}
-                    onChange={(e) => setActivityForm(prev => ({ ...prev, activity_type: e.target.value }))}
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      backgroundColor: 'white'
-                    }}
-                    required
-                  >
-                    <option value="">Select event type...</option>
-                    {activityTypes.map(type => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
-                    Start Date *
-                  </label>
-                  <input
-                    type="date"
-                    value={activityForm.start_date}
-                    onChange={(e) => setActivityForm(prev => ({ ...prev, start_date: e.target.value }))}
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px'
-                    }}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
-                    End Date (Optional)
-                  </label>
-                  <input
-                    type="date"
-                    value={activityForm.end_date}
-                    onChange={(e) => setActivityForm(prev => ({ ...prev, end_date: e.target.value }))}
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px'
-                    }}
-                    min={activityForm.start_date}
-                  />
-                </div>
-              </div>
-
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
-                  Notes (Optional)
-                </label>
-                <textarea
-                  value={activityForm.notes}
-                  onChange={(e) => setActivityForm(prev => ({ ...prev, notes: e.target.value }))}
-                  placeholder="Add any additional details about this event..."
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    minHeight: '80px',
-                    resize: 'vertical'
-                  }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button
-                  onClick={saveActivity}
-                  disabled={isSavingActivity || !activityForm.activity_type || !activityForm.start_date}
-                  style={{
-                    padding: '8px 16px',
-                    backgroundColor: isSavingActivity || !activityForm.activity_type || !activityForm.start_date ? '#9ca3af' : '#22c55e',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: isSavingActivity || !activityForm.activity_type || !activityForm.start_date ? 'not-allowed' : 'pointer',
-                    fontSize: '14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}
-                >
-                  {isSavingActivity ? <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> : '💾'}
-                  {isSavingActivity ? 'Saving...' : 'Save Event'}
-                </button>
-
-                <button
-                  onClick={() => setShowActivityForm(false)}
-                  style={{
-                    padding: '8px 16px',
-                    backgroundColor: '#6b7280',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '14px'
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Events List */}
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'between', alignItems: 'center', marginBottom: '15px' }}>
-              <h4 style={{ margin: '0', fontSize: '16px', color: '#374151' }}>
-                Event History {activities.length > 0 && `(${activities.length})`}
-              </h4>
-              {activities.length > 0 && (
-                <button
-                  onClick={loadActivities}
-                  disabled={isLoadingActivities}
-                  style={{
-                    padding: '4px 8px',
-                    backgroundColor: '#f3f4f6',
-                    color: '#374151',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}
-                >
-                  <RefreshCw size={12} style={{ animation: isLoadingActivities ? 'spin 1s linear infinite' : 'none' }} />
-                  Refresh
-                </button>
-              )}
-            </div>
-
-            {isLoadingActivities ? (
-              <div style={{ textAlign: 'center', padding: '20px', color: '#6b7280' }}>
-                <RefreshCw size={20} style={{ animation: 'spin 1s linear infinite', marginBottom: '8px' }} />
-                <div>Loading events...</div>
-              </div>
-            ) : activities.length === 0 ? (
-              <div style={{
-                padding: '30px',
-                textAlign: 'center',
-                backgroundColor: '#f8fafc',
-                borderRadius: '8px',
-                border: '2px dashed #cbd5e1'
-              }}>
-                <div style={{ fontSize: '48px', marginBottom: '10px' }}>📅</div>
-                <h4 style={{ margin: '0 0 8px 0', color: '#374151' }}>No Events Logged</h4>
-                <p style={{ margin: '0', color: '#6b7280', fontSize: '14px' }}>
-                  Start logging your vineyard events to track phenology and activities throughout the season.
-                </p>
-              </div>
-            ) : (
-              <div style={{
-                maxHeight: '400px',
-                overflowY: 'auto',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                backgroundColor: 'white'
-              }}>
-                {activities.filter(activity => {
-                  // Apply event type filter
-                  if (eventFilterTypes.length === 0) return true;
-                  const eventType = activity.event_type?.toLowerCase().replace(' ', '_') || 'other';
-                  return eventFilterTypes.includes(eventType);
-                }).map((activity, index) => {
-                  // Get event style with icon and color
-                  const eventStyles: { [key: string]: { color: string, label: string, emoji: string } } = {
-                    bud_break: { color: "#22c55e", label: "Bud Break", emoji: "🌱" },
-                    bloom: { color: "#f59e0b", label: "Bloom", emoji: "🌸" },
-                    veraison: { color: "#8b5cf6", label: "Veraison", emoji: "🍇" },
-                    harvest: { color: "#ef4444", label: "Harvest", emoji: "🍷" },
-                    pruning: { color: "#6366f1", label: "Pruning", emoji: "✂️" },
-                    irrigation: { color: "#06b6d4", label: "Irrigation", emoji: "💧" },
-                    spray_application: { color: "#f97316", label: "Spray Application", emoji: "🌿" },
-                    fertilization: { color: "#84cc16", label: "Fertilization", emoji: "🌱" },
-                    canopy_management: { color: "#10b981", label: "Canopy Management", emoji: "🍃" },
-                    soil_work: { color: "#8b5cf6", label: "Soil Work", emoji: "🌍" },
-                    equipment_maintenance: { color: "#6b7280", label: "Equipment Maintenance", emoji: "🔧" },
-                    fruit_set: { color: "#f59e0b", label: "Fruit Set", emoji: "🫐" },
-                    other: { color: "#9ca3af", label: "Other", emoji: "📝" },
-                  };
-
-                  const eventType = activity.event_type?.toLowerCase().replace(' ', '_') || 'other';
-                  const style = eventStyles[eventType] || eventStyles.other;
-
-                  // Calculate GDD at event date
-                  const gddAtEvent = data.find(d => d.date === activity.event_date)?.gdd || 0;
-                  const cumulativeGDD = data.filter(d => d.date <= activity.event_date).reduce((sum, d) => sum + d.gdd, 0);
-
-                  return (
-                    <div
-                      key={activity.id || index}
-                      style={{
-                        padding: '15px',
-                        borderBottom: index < activities.length - 1 ? '1px solid #f3f4f6' : 'none',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'flex-start'
-                      }}
-                    >
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                          <div
-                            style={{
-                              width: '12px',
-                              height: '12px',
-                              backgroundColor: style.color,
-                              borderRadius: '50%',
-                            }}
-                          ></div>
-                          <span style={{ fontSize: '16px', marginRight: '4px' }}>{style.emoji}</span>
-                          <span style={{ fontWeight: '600', color: '#374151', fontSize: '14px' }}>
-                            {style.label}
-                          </span>
-                          <span style={{ 
-                            fontSize: '11px', 
-                            color: '#6b7280',
-                            padding: '2px 6px',
-                            backgroundColor: '#f1f5f9',
-                            borderRadius: '10px'
-                          }}>
-                            {new Date(activity.event_date).toLocaleDateString()}
-                          </span>
-                          {cumulativeGDD > 0 && (
-                            <span style={{
-                              fontSize: '11px',
-                              color: '#059669',
-                              padding: '2px 6px',
-                              backgroundColor: '#ecfdf5',
-                              borderRadius: '10px',
-                              fontWeight: '500'
-                            }}>
-                              {Math.round(cumulativeGDD)} GDDs
-                            </span>
-                          )}
-                        </div>
-
-                        {activity.end_date && (
-                          <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
-                            Duration: {activity.event_date} to {activity.end_date}
-                          </div>
-                        )}
-
-                        {activity.harvest_block && (
-                          <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
-                            Block: {activity.harvest_block}
-                          </div>
-                        )}
-
-                        {activity.notes && (
-                          <div style={{ fontSize: '13px', color: '#4b5563', lineHeight: '1.4' }}>
-                            {activity.notes}
-                          </div>
-                        )}
-                      </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginLeft: '15px', gap: '8px' }}>
-                        {activity.created_at && (
-                          <div style={{ fontSize: '11px', color: '#9ca3af' }}>
-                            Logged: {new Date(activity.created_at).toLocaleDateString()}
-                          </div>
-                        )}
-
-                        {/* Delete button */}
-                        <button
-                          onClick={() => deleteActivity(activity.id, style.label)}
-                          style={{
-                            padding: '4px 8px',
-                            backgroundColor: '#ef4444',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '11px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            transition: 'all 0.2s ease'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
-                          title={`Delete this ${style.label} event`}
-                        >
-                          🗑️ Delete
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-
-        </div>
-      )}
-
-      {/* Generate AI Insights Button */}
-      {data.length > 0 && !isGeneratingInsights && (
-        <div style={{ 
-          marginTop: '30px',
-          marginBottom: '20px', 
-          textAlign: 'center'
-        }}>
-          <button
-            onClick={generateAIInsights}
-            disabled={!process.env.NEXT_PUBLIC_OPENAI_API_KEY}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: !process.env.NEXT_PUBLIC_OPENAI_API_KEY ? '#9ca3af' : '#8b5cf6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: !process.env.NEXT_PUBLIC_OPENAI_API_KEY ? 'not-allowed' : 'pointer',
-              fontSize: '16px',
-              fontWeight: '600',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              margin: '0 auto'
-            }}
-          >
-            <Brain size={20} />
-            {!process.env.NEXT_PUBLIC_OPENAI_API_KEY ? 'AI Insights (API Key Required)' : 'Generate AI Vineyard Insights'}
-          </button>
-          {!process.env.NEXT_PUBLIC_OPENAI_API_KEY && (
-            <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
-              Add NEXT_PUBLIC_OPENAI_API_KEY to enable AI features
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* AI Insights Panel - Moved to Bottom */}
-      {showAIPanel && (
-        <div style={{ 
-          marginTop: '20px',
-          marginBottom: '20px', 
-          padding: '20px', 
-          backgroundColor: '#fefce8', 
-          borderRadius: '12px',
-          border: '1px solid #fde68a'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-            <h3 style={{ margin: '0', fontSize: '18px', color: '#92400e', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Brain size={20} />
-              AI Vineyard Insights
-            </h3>
-            {isGeneratingInsights ? (
-              <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite', color: '#92400e' }} />
-            ) : (
-              <button
-                onClick={generateAIInsights}
-                style={{
-                  padding: '6px 12px',
-                  backgroundColor: '#eab308',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                <RefreshCw size={12} />
-                Refresh Insights
-              </button>
-            )}
-          </div>
-
-          {isGeneratingInsights ? (
-            <div style={{ textAlign: 'center', padding: '20px' }}>
-              <div style={{ marginBottom: '10px' }}>🤖 AI is analyzing your vineyard data...</div>
-              <div style={{ fontSize: '14px', color: '#92400e' }}>
-                This may take a few seconds
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
-              {/* AI Recommendations */}
-              {aiInsights.length > 0 && (
-                <div>
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', color: '#92400e' }}>
-                    🎯 Recommendations
-                  </h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {aiInsights.map((insight) => {
-                      const colors = getInsightColor(insight.type);
-                      return (
-                        <div
-                          key={insight.id}
-                          style={{
-                            padding: '12px',
-                            backgroundColor: colors.bg,
-                            border: `1px solid ${colors.border}`,
-                            borderRadius: '8px'
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '6px' }}>
-                            {getInsightIcon(insight.type)}
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontWeight: '600', fontSize: '14px', color: colors.text, marginBottom: '4px' }}>
-                                {insight.title}
-                              </div>
-                              <div style={{ fontSize: '13px', color: colors.text, lineHeight: '1.4' }}>
-                                {insight.message}
-                              </div>
-                              <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
-                                Confidence: {(insight.confidence * 100).toFixed(0)}% • {insight.category}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Weather Analysis */}
-              {weatherAnalysis && (
-                <div>
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', color: '#92400e' }}>
-                    🌤️ Weather Pattern Analysis
-                  </h4>
-                  <div style={{
-                    padding: '12px',
-                    backgroundColor: '#f0f9ff',
-                    border: '1px solid #bae6fd',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    lineHeight: '1.5',
-                    color: '#0c4a6e'
-                  }}>
-                    {weatherAnalysis}
-                  </div>
-                </div>
-              )}
-
-              {/* Phenology Analysis */}
-              {phenologyAnalysis && (
-                <div>
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', color: '#92400e' }}>
-                    🌱 Phenology Insights
-                  </h4>
-                  <div style={{
-                    padding: '12px',
-                    backgroundColor: '#f0fdf4',
-                    border: '1px solid #bbf7d0',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    lineHeight: '1.5',
-                    color: '#065f46'
-                  }}>
-                    {phenologyAnalysis}
-                  </div>
-                </div>
-              )}
-            </div>
           )}
         </div>
       )}
