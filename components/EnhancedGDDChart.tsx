@@ -1,6 +1,6 @@
 // components/EnhancedGDDChart.tsx - Supabase Database Version
-import { useState, useEffect } from "react";
-import { savePhenologyEvent, getPhenologyEvents, supabase } from '../lib/supabase';
+import { useState, useEffect, useCallback } from "react";
+import { savePhenologyEvent, getPhenologyEvents, deletePhenologyEvent } from '../lib/supabase';
 
 interface WeatherDay {
   date: string;
@@ -50,45 +50,58 @@ export function EnhancedGDDChart({
     "data points",
   );
 
-  // Load existing phenology events from SUPABASE DATABASE
-  const loadPhenologyEvents = async () => {
-    if (vineyardId) {
-      try {
-        setLoading(true);
-        console.log(
-          "🔄 Loading phenology events from database for vineyard:",
-          vineyardId,
-        );
+  // Load phenology events from database
+  const loadPhenologyEvents = useCallback(async () => {
+    if (!vineyardId) return;
 
-        const events = await getPhenologyEvents(vineyardId);
-        setPhenologyEvents(events || []);
-        console.log(
-          "✅ Loaded phenology events from database:",
-          events?.length || 0,
-        );
-      } catch (error) {
-        console.error(
-          "❌ Error loading phenology events from database:",
-          error,
-        );
-        // Fallback to empty array if database fails
-        setPhenologyEvents([]);
-      } finally {
-        setLoading(false);
-      }
+    try {
+      setLoading(true);
+      console.log('🔄 Loading phenology events from database for vineyard:', vineyardId);
+
+      const events = await getPhenologyEvents(vineyardId);
+
+      console.log('✅ Loaded phenology events from database:', events?.length);
+
+      setPhenologyEvents(events || []);
+    } catch (error) {
+      console.error('❌ Failed to load phenology events:', error);
+      setPhenologyEvents([]); // Ensure state is updated even on error
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [vineyardId]);
 
+  // Listen for custom events to refresh phenology data
+  useEffect(() => {
+    const handlePhenologyEventsChanged = (event: CustomEvent) => {
+      if (event.detail?.vineyardId === vineyardId) {
+        console.log('🔄 Refreshing chart events due to external change');
+        loadPhenologyEvents();
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('phenologyEventsChanged', handlePhenologyEventsChanged as EventListener);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('phenologyEventsChanged', handlePhenologyEventsChanged as EventListener);
+      }
+    };
+  }, [vineyardId, loadPhenologyEvents]);
+
+  // Load events on component mount
   useEffect(() => {
     loadPhenologyEvents();
-  }, [vineyardId]);
+  }, [loadPhenologyEvents]);
 
   // Expose refresh function to parent and window for external calls
   useEffect(() => {
     if (window) {
       (window as any).refreshChartEvents = loadPhenologyEvents;
     }
-  }, [vineyardId]);
+  }, [loadPhenologyEvents]);
 
   // Clean up window reference on unmount
   useEffect(() => {
@@ -181,6 +194,12 @@ export function EnhancedGDDChart({
         onEventsChange();
       }
 
+      // Dispatch custom event to notify other components
+      if (typeof window !== 'undefined') {
+        const event = new CustomEvent('phenologyEventsChanged', { detail: { vineyardId } });
+        window.dispatchEvent(event);
+      }
+
       // Clear form
       setShowPhenologyForm(false);
       setNotes("");
@@ -191,6 +210,45 @@ export function EnhancedGDDChart({
     } catch (error) {
       console.error("❌ Error saving phenology event to database:", error);
       alert("❌ Error saving phenology event: " + (error as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeletePhenologyEvent = async (eventId: string) => {
+    if (!vineyardId || !eventId) {
+      console.error("Vineyard ID or Event ID is missing.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      console.log("🗑️ Deleting phenology event from database...");
+
+      // Delete event from Supabase database
+      await deletePhenologyEvent(eventId);
+
+      console.log("✅ Phenology event deleted from database:", eventId);
+
+      // Update local state by removing the deleted event
+      const updatedEvents = phenologyEvents.filter((event) => event.id !== eventId);
+      setPhenologyEvents(updatedEvents);
+
+      // Notify parent component that events have changed
+      if (onEventsChange) {
+        onEventsChange();
+      }
+
+      // Dispatch custom event to notify other components
+      if (typeof window !== 'undefined') {
+        const event = new CustomEvent('phenologyEventsChanged', { detail: { vineyardId } });
+        window.dispatchEvent(event);
+      }
+
+      alert("✅ Phenology event deleted successfully!");
+    } catch (error) {
+      console.error("❌ Error deleting phenology event from database:", error);
+      alert("❌ Error deleting phenology event: " + (error as Error).message);
     } finally {
       setLoading(false);
     }
@@ -370,6 +428,21 @@ export function EnhancedGDDChart({
             }}
           >
             Add Event
+          </button>
+          <button
+            onClick={loadPhenologyEvents}
+            disabled={loading}
+            style={{
+              padding: "8px 16px",
+              backgroundColor: loading ? "#ccc" : "#3b82f6",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              cursor: loading ? "not-allowed" : "pointer",
+              fontSize: "14px",
+            }}
+          >
+            Refresh
           </button>
         </div>
       </div>
@@ -878,20 +951,39 @@ export function EnhancedGDDChart({
       )}
 
       {/* Events Section */}
-      {phenologyEvents.length > 0 && (
-        <div
-          style={{
-            marginTop: "20px",
-            padding: "15px",
-            backgroundColor: "#f8fafc",
-            borderRadius: "8px",
-            border: "1px solid #e2e8f0",
-          }}
-        >
-          <h4 style={{ margin: "0 0 10px 0", fontSize: "16px" }}>
-            Displayed Events:
+      <div
+        style={{
+          marginTop: "20px",
+          padding: "15px",
+          backgroundColor: "#f8fafc",
+          borderRadius: "8px",
+          border: "1px solid #e2e8f0",
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+          <h4 style={{ margin: "0", fontSize: "16px" }}>
+            🌱 Event Log:
           </h4>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "15px" }}>
+          <button
+            onClick={loadPhenologyEvents}
+            disabled={loading}
+            style={{
+              padding: "6px 12px",
+              backgroundColor: loading ? "#ccc" : "#3b82f6",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: loading ? "not-allowed" : "pointer",
+              fontSize: "12px",
+            }}
+          >
+            Refresh
+          </button>
+        </div>
+        {phenologyEvents.length === 0 ? (
+          <p>No events logged yet.</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: 'column', gap: "10px" }}>
             {phenologyEvents.filter(event => {
               // Apply event type filter
               if (eventTypeFilter.length === 0) return true;
@@ -905,28 +997,45 @@ export function EnhancedGDDChart({
               return (
                 <div
                   key={index}
-                  style={{ display: "flex", alignItems: "center", gap: "5px" }}
+                  style={{ display: "flex", alignItems: "center", gap: "5px", justifyContent: 'space-between' }}
                 >
-                  <div
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <div
+                      style={{
+                        width: "12px",
+                        height: "12px",
+                        backgroundColor: style.color,
+                        borderRadius: "50%",
+                      }}
+                    ></div>
+                    <span style={{ fontSize: "14px" }}>
+                      {style.emoji} {style.label}: {event.event_date}
+                      {event.end_date && ` - ${event.end_date}`}
+                      {event.harvest_block && ` (${event.harvest_block})`}
+                      {` (${gddAtEvent} GDDs)`}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => handleDeletePhenologyEvent(event.id!)}
+                    disabled={loading}
                     style={{
-                      width: "12px",
-                      height: "12px",
-                      backgroundColor: style.color,
-                      borderRadius: "50%",
+                      padding: "4px 8px",
+                      backgroundColor: loading ? "#ccc" : "#ef4444",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: loading ? "not-allowed" : "pointer",
+                      fontSize: "12px",
                     }}
-                  ></div>
-                  <span style={{ fontSize: "14px" }}>
-                    {style.emoji} {style.label}: {event.event_date}
-                    {event.end_date && ` - ${event.end_date}`}
-                    {event.harvest_block && ` (${event.harvest_block})`}
-                    {` (${gddAtEvent} GDDs)`}
-                  </span>
+                  >
+                    Delete
+                  </button>
                 </div>
               );
             })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Chart Instructions */}
       <div

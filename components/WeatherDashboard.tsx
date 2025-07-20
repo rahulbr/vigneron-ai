@@ -352,6 +352,13 @@ export function WeatherDashboard({
     }
   };
 
+  // Auto-load activities when vineyard changes
+  useEffect(() => {
+    if (vineyardId) {
+      loadActivities();
+    }
+  }, [vineyardId]);
+
   // Save new activity
   const saveActivity = async () => {
     if (!vineyardId || !activityForm.activity_type || !activityForm.start_date) {
@@ -385,6 +392,15 @@ export function WeatherDashboard({
       // Reload activities
       await loadActivities();
 
+      // Force the chart to refresh its events by triggering the onEventsChange callback
+      // This will cause the EnhancedGDDChart component to reload its phenology events
+      if (typeof window !== 'undefined') {
+        // Set a flag that the chart component can listen for
+        window.dispatchEvent(new CustomEvent('phenologyEventsChanged', { 
+          detail: { vineyardId } 
+        }));
+      }
+
       console.log('✅ Activity saved successfully');
     } catch (error) {
       console.error('❌ Failed to save activity:', error);
@@ -406,12 +422,16 @@ export function WeatherDashboard({
       const { deletePhenologyEvent } = await import('../lib/supabase');
       await deletePhenologyEvent(activityId);
 
-      // Reload activities
+      // Reload activities to update the Event Log
       await loadActivities();
 
-      // Refresh chart events - call the chart's refresh function if available
-      if (window && (window as any).refreshChartEvents) {
-        (window as any).refreshChartEvents();
+      // Force the chart to refresh its events by triggering the onEventsChange callback
+      // This will cause the EnhancedGDDChart component to reload its phenology events
+      if (typeof window !== 'undefined') {
+        // Set a flag that the chart component can listen for
+        window.dispatchEvent(new CustomEvent('phenologyEventsChanged', { 
+          detail: { vineyardId } 
+        }));
       }
 
       console.log('✅ Activity deleted successfully');
@@ -1750,31 +1770,29 @@ export function WeatherDashboard({
 
           {/* Events List */}
           <div>
-            <div style={{ display: 'flex', justifyContent: 'between', alignItems: 'center', marginBottom: '15px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
               <h4 style={{ margin: '0', fontSize: '16px', color: '#374151' }}>
                 Event History {activities.length > 0 && `(${activities.length})`}
               </h4>
-              {activities.length > 0 && (
-                <button
-                  onClick={loadActivities}
-                  disabled={isLoadingActivities}
-                  style={{
-                    padding: '4px 8px',
-                    backgroundColor: '#f3f4f6',
-                    color: '#374151',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}
-                >
-                  <RefreshCw size={12} style={{ animation: isLoadingActivities ? 'spin 1s linear infinite' : 'none' }} />
-                  Refresh
-                </button>
-              )}
+              <button
+                onClick={loadActivities}
+                disabled={isLoadingActivities}
+                style={{
+                  padding: '4px 8px',
+                  backgroundColor: '#f3f4f6',
+                  color: '#374151',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                <RefreshCw size={12} style={{ animation: isLoadingActivities ? 'spin 1s linear infinite' : 'none' }} />
+                Refresh
+              </button>
             </div>
 
             {isLoadingActivities ? (
