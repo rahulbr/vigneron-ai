@@ -47,6 +47,7 @@ export function WeatherDashboard({
   const [showCreateVineyard, setShowCreateVineyard] = useState(false);
   const [editingVineyardId, setEditingVineyardId] = useState<string | null>(null);
   const [editingVineyardName, setEditingVineyardName] = useState('');
+  const [editingVineyardLocation, setEditingVineyardLocation] = useState(false);
 
   // AI-related state
   const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
@@ -205,12 +206,32 @@ export function WeatherDashboard({
   const startEditingVineyard = (vineyard: any) => {
     setEditingVineyardId(vineyard.id);
     setEditingVineyardName(vineyard.name);
+    setEditingVineyardLocation(false);
   };
 
-  // Cancel editing a vineyard name
+  // Start editing a vineyard location
+  const startEditingVineyardLocation = (vineyard: any) => {
+    setEditingVineyardId(vineyard.id);
+    setEditingVineyardLocation(true);
+    // Set the form values to the current vineyard's location
+    setLatitude(vineyard.latitude);
+    setLongitude(vineyard.longitude);
+    setCustomLocation(vineyard.name);
+    setLocationSearch('');
+    setShowSearchResults(false);
+  };
+
+  // Cancel editing a vineyard
   const cancelEditingVineyard = () => {
     setEditingVineyardId(null);
     setEditingVineyardName('');
+    setEditingVineyardLocation(false);
+    // Reset location form back to current vineyard
+    if (currentVineyard) {
+      setLatitude(currentVineyard.latitude);
+      setLongitude(currentVineyard.longitude);
+      setCustomLocation(currentVineyard.name);
+    }
   };
 
   // Save the new vineyard name
@@ -255,6 +276,50 @@ export function WeatherDashboard({
     } catch (error) {
       console.error('❌ Error renaming vineyard:', error);
       alert('Failed to rename vineyard: ' + (error as Error).message);
+    }
+  };
+
+  // Save the new vineyard location
+  const saveVineyardLocation = async (vineyardId: string) => {
+    if (!customLocation.trim()) {
+      alert('Vineyard name cannot be empty');
+      return;
+    }
+
+    try {
+      console.log('📍 Updating vineyard location:', { vineyardId, name: customLocation, latitude, longitude });
+
+      const { saveVineyardLocation } = await import('../lib/supabase');
+      const updatedVineyard = await saveVineyardLocation(
+        vineyardId,
+        latitude,
+        longitude,
+        customLocation.trim()
+      );
+
+      // Update the vineyard in our local state
+      setUserVineyards(prev => prev.map(v => v.id === vineyardId ? updatedVineyard : v));
+
+      // If this is the current vineyard, update it too
+      if (currentVineyard?.id === vineyardId) {
+        setCurrentVineyard(updatedVineyard);
+      }
+
+      // Clear editing state
+      setEditingVineyardId(null);
+      setEditingVineyardLocation(false);
+
+      // Refresh weather data with new location
+      clearError();
+      if (isInitialized && dateRange.start && dateRange.end) {
+        refetch();
+      }
+
+      console.log('✅ Vineyard location updated successfully:', updatedVineyard.name);
+
+    } catch (error) {
+      console.error('❌ Error updating vineyard location:', error);
+      alert('Failed to update vineyard location: ' + (error as Error).message);
     }
   };
 
@@ -683,39 +748,7 @@ export function WeatherDashboard({
     }
   };
 
-  // Handle manual coordinate update
-  const handleManualLocationUpdate = async () => {
-    if (!currentVineyard) {
-      alert('Please create a vineyard first or select an existing one.');
-      return;
-    }
-
-    try {
-      console.log('📍 Updating vineyard location:', { vineyard: currentVineyard.name, latitude, longitude, customLocation });
-
-      const { saveVineyardLocation } = await import('../lib/supabase');
-      const updatedVineyard = await saveVineyardLocation(
-        currentVineyard.id,
-        latitude,
-        longitude,
-        customLocation
-      );
-
-      // Update the vineyard in our local state
-      setUserVineyards(prev => prev.map(v => v.id === currentVineyard.id ? updatedVineyard : v));
-      setCurrentVineyard(updatedVineyard);
-
-      console.log('✅ Vineyard location updated:', updatedVineyard);
-
-      clearError();
-      if (isInitialized && dateRange.start && dateRange.end) {
-        refetch();
-      }
-    } catch (error) {
-      console.error('❌ Error updating vineyard location:', error);
-      alert('Failed to update vineyard location: ' + (error as Error).message);
-    }
-  };
+  
 
   // Date range button handlers
   const setCurrentYear = () => {
@@ -950,6 +983,113 @@ export function WeatherDashboard({
                   ✕
                 </button>
               </div>
+
+              {/* Location Search for new vineyard */}
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px', color: '#065f46' }}>
+                  Search for Location (Google Maps):
+                </label>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <input
+                    type="text"
+                    value={locationSearch}
+                    onChange={(e) => setLocationSearch(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleLocationSearch()}
+                    placeholder="e.g., Napa Valley CA, Bordeaux France, Tuscany Italy..."
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      border: '1px solid #a7f3d0',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                  <button
+                    onClick={handleLocationSearch}
+                    disabled={isSearching || !locationSearch.trim()}
+                    style={{
+                      padding: '8px 12px',
+                      backgroundColor: isSearching ? '#9ca3af' : '#4285f4',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: isSearching || !locationSearch.trim() ? 'not-allowed' : 'pointer',
+                      fontSize: '14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    {isSearching ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Search size={16} />}
+                    Search
+                  </button>
+                </div>
+              </div>
+
+              {/* Search Results for new vineyard */}
+              {showSearchResults && searchResults.length > 0 && (
+                <div style={{ 
+                  marginBottom: '15px', 
+                  border: '1px solid #a7f3d0', 
+                  borderRadius: '6px', 
+                  backgroundColor: 'white',
+                  maxHeight: '200px',
+                  overflowY: 'auto'
+                }}>
+                  <div style={{ padding: '8px 12px', borderBottom: '1px solid #bbf7d0', fontWeight: '500', fontSize: '14px', backgroundColor: '#f0fdf4', color: '#065f46' }}>
+                    Select Location:
+                  </div>
+                  {searchResults.map((result, index) => (
+                    <div
+                      key={result.placeId}
+                      onClick={() => selectLocation(result)}
+                      style={{
+                        padding: '12px',
+                        cursor: 'pointer',
+                        borderBottom: index < searchResults.length - 1 ? '1px solid #f3f4f6' : 'none'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f0fdf4'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                    >
+                      <div style={{ fontWeight: '500', marginBottom: '2px' }}>{result.name}</div>
+                      <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '2px' }}>
+                        {result.formattedAddress}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#9ca3af' }}>
+                        {result.latitude.toFixed(4)}, {result.longitude.toFixed(4)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Saved Locations for new vineyard */}
+              {savedLocations.length > 0 && (
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px', color: '#065f46' }}>
+                    Recent Locations:
+                  </label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {savedLocations.slice(0, 5).map((location, index) => (
+                      <button
+                        key={location.placeId}
+                        onClick={() => selectLocation(location)}
+                        style={{
+                          padding: '6px 12px',
+                          backgroundColor: '#e0f2fe',
+                          color: '#0369a1',
+                          border: '1px solid #7dd3fc',
+                          borderRadius: '20px',
+                          cursor: 'pointer',
+                          fontSize: '12px'
+                        }}
+                      >
+                        {location.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               
               <div style={{ marginBottom: '15px' }}>
                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px', color: '#065f46' }}>
@@ -1049,6 +1189,217 @@ export function WeatherDashboard({
             </div>
           )}
 
+          {/* Show edit vineyard location form */}
+          {editingVineyardId && editingVineyardLocation && (
+            <div style={{
+              padding: '20px',
+              backgroundColor: '#eff6ff',
+              border: '1px solid #bfdbfe',
+              borderRadius: '8px',
+              marginBottom: '20px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
+                <div>
+                  <h4 style={{ margin: '0 0 5px 0', color: '#1e40af', fontSize: '16px' }}>
+                    📍 Edit Vineyard Location
+                  </h4>
+                  <p style={{ margin: '0', fontSize: '14px', color: '#1e3a8a' }}>
+                    Update the location details for this vineyard.
+                  </p>
+                </div>
+                <button
+                  onClick={cancelEditingVineyard}
+                  style={{
+                    padding: '4px 8px',
+                    backgroundColor: '#6b7280',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px'
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Location Search for editing */}
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px', color: '#1e40af' }}>
+                  Search for New Location (Google Maps):
+                </label>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <input
+                    type="text"
+                    value={locationSearch}
+                    onChange={(e) => setLocationSearch(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleLocationSearch()}
+                    placeholder="e.g., Napa Valley CA, Bordeaux France, Tuscany Italy..."
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      border: '1px solid #bfdbfe',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                  <button
+                    onClick={handleLocationSearch}
+                    disabled={isSearching || !locationSearch.trim()}
+                    style={{
+                      padding: '8px 12px',
+                      backgroundColor: isSearching ? '#9ca3af' : '#4285f4',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: isSearching || !locationSearch.trim() ? 'not-allowed' : 'pointer',
+                      fontSize: '14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    {isSearching ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Search size={16} />}
+                    Search
+                  </button>
+                </div>
+              </div>
+
+              {/* Search Results for editing */}
+              {showSearchResults && searchResults.length > 0 && (
+                <div style={{ 
+                  marginBottom: '15px', 
+                  border: '1px solid #bfdbfe', 
+                  borderRadius: '6px', 
+                  backgroundColor: 'white',
+                  maxHeight: '200px',
+                  overflowY: 'auto'
+                }}>
+                  <div style={{ padding: '8px 12px', borderBottom: '1px solid #dbeafe', fontWeight: '500', fontSize: '14px', backgroundColor: '#eff6ff', color: '#1e40af' }}>
+                    Select New Location:
+                  </div>
+                  {searchResults.map((result, index) => (
+                    <div
+                      key={result.placeId}
+                      onClick={() => selectLocation(result)}
+                      style={{
+                        padding: '12px',
+                        cursor: 'pointer',
+                        borderBottom: index < searchResults.length - 1 ? '1px solid #f3f4f6' : 'none'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                    >
+                      <div style={{ fontWeight: '500', marginBottom: '2px' }}>{result.name}</div>
+                      <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '2px' }}>
+                        {result.formattedAddress}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#9ca3af' }}>
+                        {result.latitude.toFixed(4)}, {result.longitude.toFixed(4)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px', color: '#1e40af' }}>
+                  Vineyard Name:
+                </label>
+                <input
+                  type="text"
+                  value={customLocation}
+                  onChange={(e) => setCustomLocation(e.target.value)}
+                  placeholder="e.g., Napa Valley Estate, Bordeaux Vineyard..."
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '1px solid #bfdbfe',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px', color: '#1e40af' }}>
+                    Latitude:
+                  </label>
+                  <input
+                    type="number"
+                    value={latitude}
+                    onChange={(e) => setLatitude(parseFloat(e.target.value) || 0)}
+                    step="0.0001"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #bfdbfe',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                    placeholder="37.3272"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px', color: '#1e40af' }}>
+                    Longitude:
+                  </label>
+                  <input
+                    type="number"
+                    value={longitude}
+                    onChange={(e) => setLongitude(parseFloat(e.target.value) || 0)}
+                    step="0.0001"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #bfdbfe',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                    placeholder="-122.2813"
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={() => saveVineyardLocation(editingVineyardId)}
+                  disabled={!customLocation.trim()}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: !customLocation.trim() ? '#9ca3af' : '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: !customLocation.trim() ? 'not-allowed' : 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  📍 Update Location
+                </button>
+                <button
+                  onClick={cancelEditingVineyard}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#f3f4f6',
+                    color: '#374151',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px'
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Vineyard List */}
           {userVineyards.length > 0 ? (
             <div style={{ marginBottom: '15px' }}>
@@ -1111,7 +1462,7 @@ export function WeatherDashboard({
 
                     {/* Action buttons */}
                     <div style={{ display: 'flex', gap: '6px' }}>
-                      {editingVineyardId === vineyard.id ? (
+                      {editingVineyardId === vineyard.id && !editingVineyardLocation ? (
                         <>
                           <button
                             onClick={() => saveVineyardName(vineyard.id)}
@@ -1145,7 +1496,7 @@ export function WeatherDashboard({
                             ✕ Cancel
                           </button>
                         </>
-                      ) : (
+                      ) : editingVineyardId !== vineyard.id ? (
                         <>
                           <button
                             onClick={() => startEditingVineyard(vineyard)}
@@ -1164,6 +1515,22 @@ export function WeatherDashboard({
                             ✏️ Rename
                           </button>
                           <button
+                            onClick={() => startEditingVineyardLocation(vineyard)}
+                            style={{
+                              padding: '6px 10px',
+                              backgroundColor: '#3b82f6',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: '500'
+                            }}
+                            title="Edit vineyard location"
+                          >
+                            📍 Location
+                          </button>
+                          <button
                             onClick={() => deleteVineyard(vineyard)}
                             style={{
                               padding: '6px 10px',
@@ -1180,7 +1547,7 @@ export function WeatherDashboard({
                             🗑️ Delete
                           </button>
                         </>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 ))}
@@ -1287,194 +1654,7 @@ export function WeatherDashboard({
 
 
 
-      {/* Location Controls */}
-      <div className="card section-spacing">
-        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.25rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <MapPin size={20} />
-          Location Settings
-        </h3>
-
-        {/* Location Search */}
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>
-            Search for Location (Google Maps):
-          </label>
-          <div className="flex-responsive" style={{ display: 'flex', gap: '10px' }}>
-            <input
-              type="text"
-              value={locationSearch}
-              onChange={(e) => setLocationSearch(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleLocationSearch()}
-              placeholder="e.g., Napa Valley CA, Bordeaux France, Tuscany Italy..."
-              style={{ 
-                flex: 1, 
-                minWidth: '0'
-              }}
-            />
-            <button
-              onClick={handleLocationSearch}
-              disabled={isSearching || !locationSearch.trim()}
-              style={{
-                backgroundColor: isSearching ? '#9ca3af' : '#4285f4',
-                color: 'white',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {isSearching ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Search size={16} />}
-              <span className="hide-mobile">Search</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Search Results */}
-        {showSearchResults && searchResults.length > 0 && (
-          <div style={{ 
-            marginBottom: '15px', 
-            border: '1px solid #d1d5db', 
-            borderRadius: '6px', 
-            backgroundColor: 'white',
-            maxHeight: '200px',
-            overflowY: 'auto'
-          }}>
-            <div style={{ padding: '8px 12px', borderBottom: '1px solid #e5e7eb', fontWeight: '500', fontSize: '14px', backgroundColor: '#f9fafb' }}>
-              Google Maps Results:
-            </div>
-            {searchResults.map((result, index) => (
-              <div
-                key={result.placeId}
-                onClick={() => selectLocation(result)}
-                style={{
-                  padding: '12px',
-                  cursor: 'pointer',
-                  borderBottom: index < searchResults.length - 1 ? '1px solid #f3f4f6' : 'none'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
-              >
-                <div style={{ fontWeight: '500', marginBottom: '2px' }}>{result.name}</div>
-                <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '2px' }}>
-                  {result.formattedAddress}
-                </div>
-                <div style={{ fontSize: '12px', color: '#9ca3af' }}>
-                  {result.latitude.toFixed(4)}, {result.longitude.toFixed(4)}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Saved Locations */}
-        {savedLocations.length > 0 && (
-          <div style={{ marginBottom: '15px' }}>
-            <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Recent Locations:</label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {savedLocations.slice(0, 5).map((location, index) => (
-                <button
-                  key={location.placeId}
-                  onClick={() => selectLocation(location)}
-                  style={{
-                    padding: '6px 12px',
-                    backgroundColor: '#e0f2fe',
-                    color: '#0369a1',
-                    border: '1px solid #7dd3fc',
-                    borderRadius: '20px',
-                    cursor: 'pointer',
-                    fontSize: '12px'
-                  }}
-                >
-                  {location.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Manual Coordinates */}
-        <div className="responsive-grid" style={{ marginBottom: '1rem' }}>
-          <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>
-              Location Name:
-            </label>
-            <input
-              type="text"
-              value={customLocation}
-              onChange={(e) => setCustomLocation(e.target.value)}
-              style={{ width: '100%' }}
-              placeholder="Vineyard Name or Location"
-            />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>
-              Latitude:
-            </label>
-            <input
-              type="number"
-              value={latitude}
-              onChange={(e) => setLatitude(parseFloat(e.target.value) || 0)}
-              step="0.0001"
-              style={{ width: '100%' }}
-              placeholder="37.3272"
-            />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>
-              Longitude:
-            </label>
-            <input
-              type="number"
-              value={longitude}
-              onChange={(e) => setLongitude(parseFloat(e.target.value) || 0)}
-              step="0.0001"
-              style={{ width: '100%' }}
-              placeholder="-122.2813"
-            />
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          {currentVineyard ? (
-            <button
-              onClick={handleManualLocationUpdate}
-              disabled={loading}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: loading ? '#9ca3af' : '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              {loading ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <MapPin size={16} />}
-              Update "{currentVineyard.name}" Location
-            </button>
-          ) : (
-            <button
-              onClick={createNewVineyard}
-              disabled={loading || !customLocation.trim()}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: loading || !customLocation.trim() ? '#9ca3af' : '#22c55e',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: loading || !customLocation.trim() ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              {loading ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <MapPin size={16} />}
-              ✨ Create New Vineyard
-            </button>
-          )}
-        </div>
-      </div>
+      
 
       {/* Date Range Controls - 3 Buttons */}
       <div style={{ 
