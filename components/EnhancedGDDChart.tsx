@@ -97,6 +97,96 @@ export function EnhancedGDDChart({
     };
   }, [vineyardId, loadPhenologyEvents]);
 
+  // Phenology prediction based on GDD accumulation
+  const getPhenologyPredictions = () => {
+    if (!weatherData.length || !phenologyEvents.length) return [];
+
+    // Typical GDD requirements for phenology stages (rule of thumb)
+    const typicalGDDRequirements = {
+      bud_break: 150,   // Base - already occurred
+      bloom: 900,       // From bud break
+      veraison: 1800,   // From bud break
+      harvest: 2400     // From bud break (varies by variety)
+    };
+
+    // Find recorded events
+    const recordedEvents = {
+      bud_break: phenologyEvents.find(e => e.event_type === 'bud_break'),
+      bloom: phenologyEvents.find(e => e.event_type === 'bloom'),
+      veraison: phenologyEvents.find(e => e.event_type === 'veraison'),
+      harvest: phenologyEvents.find(e => e.event_type === 'harvest')
+    };
+
+    // Get current cumulative GDD
+    const currentGDD = chartData[chartData.length - 1]?.cumulativeGDD || 0;
+    const predictions = [];
+
+    // Predict missing stages based on what we have
+    if (recordedEvents.bud_break && !recordedEvents.bloom && currentGDD < typicalGDDRequirements.bloom) {
+      const targetGDD = typicalGDDRequirements.bloom;
+      const predictedDate = extrapolateDate(currentGDD, targetGDD);
+      if (predictedDate) {
+        predictions.push({
+          event_type: 'bloom',
+          predicted_date: predictedDate,
+          predicted_gdd: targetGDD,
+          confidence: 'medium'
+        });
+      }
+    }
+
+    if ((recordedEvents.bud_break || recordedEvents.bloom) && !recordedEvents.veraison) {
+      const targetGDD = typicalGDDRequirements.veraison;
+      const predictedDate = extrapolateDate(currentGDD, targetGDD);
+      if (predictedDate) {
+        predictions.push({
+          event_type: 'veraison',
+          predicted_date: predictedDate,
+          predicted_gdd: targetGDD,
+          confidence: currentGDD > 1000 ? 'high' : 'medium'
+        });
+      }
+    }
+
+    if ((recordedEvents.bud_break || recordedEvents.bloom) && !recordedEvents.harvest) {
+      const targetGDD = typicalGDDRequirements.harvest;
+      const predictedDate = extrapolateDate(currentGDD, targetGDD);
+      if (predictedDate) {
+        predictions.push({
+          event_type: 'harvest',
+          predicted_date: predictedDate,
+          predicted_gdd: targetGDD,
+          confidence: currentGDD > 1500 ? 'high' : 'low'
+        });
+      }
+    }
+
+    return predictions;
+  };
+
+  // Helper function to extrapolate date based on GDD accumulation rate
+  const extrapolateDate = (currentGDD: number, targetGDD: number) => {
+    if (currentGDD >= targetGDD || weatherData.length < 14) return null;
+
+    // Calculate recent GDD accumulation rate (last 14 days)
+    const recentData = weatherData.slice(-14);
+    const recentGDDSum = recentData.reduce((sum, d) => sum + d.gdd, 0);
+    const dailyGDDRate = recentGDDSum / recentData.length;
+
+    if (dailyGDDRate <= 0) return null;
+
+    // Calculate days needed to reach target
+    const gddNeeded = targetGDD - currentGDD;
+    const daysNeeded = Math.round(gddNeeded / dailyGDDRate);
+
+    // Get last date and add days needed
+    const lastDate = new Date(weatherData[weatherData.length - 1].date);
+    const predictedDate = new Date(lastDate);
+    predictedDate.setDate(lastDate.getDate() + daysNeeded);
+
+    return predictedDate.toISOString().split('T')[0];
+  };
+
   // Get displayed events (events within the chart date range) with GDD values
   const getDisplayedEvents = () => {
     if (!weatherData.length || !phenologyEvents.length) return [];
@@ -306,6 +396,8 @@ export function EnhancedGDDChart({
     soil_work: { color: "#8b5cf6", label: "Soil Work", emoji: "🌍" },
     equipment_maintenance: { color: "#6b7280", label: "Equipment Maintenance", emoji: "🔧" },
     fruit_set: { color: "#f59e0b", label: "Fruit Set", emoji: "🫐" },
+    pest: { color: "#dc2626", label: "Pest Observation", emoji: "🐞" },
+    scouting: { color: "#059669", label: "Scouting", emoji: "🔍" },
     other: { color: "#9ca3af", label: "Other", emoji: "📝" },
   };
 
@@ -1029,7 +1121,7 @@ export function EnhancedGDDChart({
           }}>
             {getDisplayedEvents().map((event, index) => {
               // Get event style with icon and color
-              const eventStyles: { [key: string]: { color: string, label: string, emoji: string } } = {
+              const displayEventStyles: { [key: string]: { color: string, label: string, emoji: string } } = {
                 bud_break: { color: "#22c55e", label: "Bud Break", emoji: "🌱" },
                 bloom: { color: "#f59e0b", label: "Bloom", emoji: "🌸" },
                 veraison: { color: "#8b5cf6", label: "Veraison", emoji: "🍇" },
@@ -1042,11 +1134,13 @@ export function EnhancedGDDChart({
                 soil_work: { color: "#8b5cf6", label: "Soil Work", emoji: "🌍" },
                 equipment_maintenance: { color: "#6b7280", label: "Equipment Maintenance", emoji: "🔧" },
                 fruit_set: { color: "#f59e0b", label: "Fruit Set", emoji: "🫐" },
+                pest: { color: "#dc2626", label: "Pest Observation", emoji: "🐞" },
+                scouting: { color: "#059669", label: "Scouting", emoji: "🔍" },
                 other: { color: "#9ca3af", label: "Other", emoji: "📝" },
               };
 
               const eventType = event.event_type?.toLowerCase().replace(' ', '_') || 'other';
-              const style = eventStyles[eventType] || eventStyles.other;
+              const style = displayEventStyles[eventType] || displayEventStyles.other;
 
               return (
                 <div
@@ -1111,6 +1205,111 @@ export function EnhancedGDDChart({
           For editing or deleting events, use the main Event Log section below
         </div>
       </div>
+
+      {/* Phenology Predictions */}
+      {(() => {
+        const predictions = getPhenologyPredictions();
+        if (predictions.length === 0) return null;
+
+        return (
+          <div style={{ marginTop: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+              <h4 style={{ margin: '0', fontSize: '16px', color: '#374151' }}>
+                🔮 Predicted Phenology Stages
+              </h4>
+              <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                Based on GDD accumulation
+              </div>
+            </div>
+
+            <div style={{
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              backgroundColor: 'white'
+            }}>
+              {predictions.map((prediction, index) => {
+                const style = eventStyles[prediction.event_type] || eventStyles.other;
+                const confidenceColor = {
+                  high: '#059669',
+                  medium: '#d97706',
+                  low: '#dc2626'
+                }[prediction.confidence];
+
+                return (
+                  <div
+                    key={index}
+                    style={{
+                      padding: '12px 15px',
+                      borderBottom: index < predictions.length - 1 ? '1px solid #f3f4f6' : 'none',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div
+                        style={{
+                          width: '8px',
+                          height: '8px',
+                          backgroundColor: style.color,
+                          borderRadius: '50%',
+                          opacity: 0.7
+                        }}
+                      ></div>
+                      <span style={{ fontSize: '14px' }}>{style.emoji}</span>
+                      <span style={{ fontWeight: '500', color: '#374151', fontSize: '14px' }}>
+                        {style.label}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{
+                        fontSize: '12px',
+                        color: '#6b7280',
+                        padding: '2px 6px',
+                        backgroundColor: '#f8fafc',
+                        borderRadius: '10px'
+                      }}>
+                        ~{new Date(prediction.predicted_date).toLocaleDateString()}
+                      </span>
+                      <span style={{
+                        fontSize: '12px',
+                        color: '#374151',
+                        padding: '2px 6px',
+                        backgroundColor: '#f1f5f9',
+                        borderRadius: '10px'
+                      }}>
+                        {prediction.predicted_gdd} GDDs
+                      </span>
+                      <span style={{
+                        fontSize: '11px',
+                        color: confidenceColor,
+                        padding: '2px 6px',
+                        backgroundColor: `${confidenceColor}15`,
+                        borderRadius: '10px',
+                        fontWeight: '500',
+                        textTransform: 'uppercase'
+                      }}>
+                        {prediction.confidence}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{
+              fontSize: '11px',
+              color: '#9ca3af',
+              marginTop: '8px',
+              textAlign: 'center',
+              fontStyle: 'italic'
+            }}>
+              Predictions based on typical GDD requirements and recent accumulation rates
+            </div>
+          </div>
+        );
+      })()}
 
       
 
