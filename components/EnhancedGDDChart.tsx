@@ -194,15 +194,25 @@ export function EnhancedGDDChart({
     const startDate = weatherData[0]?.date;
     const endDate = weatherData[weatherData.length - 1]?.date;
 
+    console.log('📊 Chart date range:', { startDate, endDate });
+    console.log('📊 All events:', phenologyEvents.map(e => ({ date: e.event_date, type: e.event_type })));
+
     return phenologyEvents
       .filter(event => {
-        // Filter by date range
+        // Filter by date range - be more inclusive with date comparison
         const eventDate = event.event_date;
         const isInRange = eventDate >= startDate && eventDate <= endDate;
 
+        console.log('📊 Event date check:', { eventDate, startDate, endDate, isInRange });
+
         // Apply event type filter if active
         if (eventTypeFilter.length > 0) {
-          const eventType = event.event_type || 'other';
+          let eventType = event.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
+          
+          // Handle any legacy mapping issues
+          if (eventType === 'pest_observation') eventType = 'pest';
+          if (eventType === 'scouting_activity') eventType = 'scouting';
+          
           return isInRange && eventTypeFilter.includes(eventType);
         }
 
@@ -675,6 +685,14 @@ export function EnhancedGDDChart({
 
           {/* Phenology Event Vertical Lines and Ranges */}
           {phenologyEvents.filter(event => {
+            // First check if event is within chart date range
+            const startDate = weatherData[0]?.date;
+            const endDate = weatherData[weatherData.length - 1]?.date;
+            const eventDate = event.event_date;
+            const isInDateRange = eventDate >= startDate && eventDate <= endDate;
+            
+            if (!isInDateRange) return false;
+            
             // Apply event type filter
             if (eventTypeFilter.length === 0) return true;
             let eventType = event.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';

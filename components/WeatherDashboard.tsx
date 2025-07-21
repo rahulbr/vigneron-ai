@@ -978,34 +978,61 @@ export function WeatherDashboard({
         )}
       </div>
 
-      {/* Help Section - Moved to top */}
-      <div className="card" style={{ 
-        marginBottom: '2rem', 
-        backgroundColor: '#fefce8',
-        borderColor: '#fde68a'
-      }}>
-        <h4 style={{ margin: '0 0 1rem 0', color: '#92400e', fontSize: '1.125rem' }}>
-          💡 How to Use This Dashboard
-        </h4>
-        <ul style={{ margin: '0', paddingLeft: '1.25rem', color: '#92400e', fontSize: '0.875rem', lineHeight: '1.6' }}>
-          <li style={{ marginBottom: '0.5rem' }}>🔍 Search for any location worldwide using Google Maps</li>
-          <li style={{ marginBottom: '0.5rem' }}>📅 Select current year (YTD), previous year, or custom date range</li>
-          <li style={{ marginBottom: '0.5rem' }}>📊 View growing degree days accumulation on the interactive chart</li>
-          <li style={{ marginBottom: '0.5rem' }}>🌱 Click on the chart to add phenology events (bud break, bloom, etc.)</li>
-          <li style={{ marginBottom: '0.5rem' }}>🤖 Click "Generate AI Vineyard Insights" for expert recommendations</li>
-          <li style={{ marginBottom: '0.5rem' }}>💾 Your phenology events are saved to your personal database!</li>
-          <li>🌧️ Track rainfall and temperature patterns throughout the season</li>
-        </ul>
-
-        <div style={{ 
-          marginTop: '1rem', 
-          padding: '0.75rem', 
-          backgroundColor: '#fef3cd',
-          borderRadius: '6px',
-          fontSize: '0.875rem',
-          color: '#92400e'
+      {/* How to Use This Dashboard */}
+      <div style={{ marginBottom: '25px' }}>
+        <h3 style={{
+          fontSize: '18px',
+          fontWeight: '600',
+          color: '#374151',
+          marginBottom: '15px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
         }}>
-          <strong>🎉 Professional Features:</strong> Multi-vineyard management, persistent data storage, AI-powered insights, and mobile-optimized design for field use.
+          📖 How to Use This Dashboard
+        </h3>
+        <div style={{
+          backgroundColor: '#f8fafc',
+          border: '1px solid #e2e8f0',
+          borderRadius: '8px',
+          padding: '20px',
+          fontSize: '14px',
+          lineHeight: '1.6',
+          color: '#475569'
+        }}>
+          <div style={{ marginBottom: '15px' }}>
+            <strong>🍇 Track Your Vineyard Season:</strong>
+            <ul style={{ marginLeft: '20px', marginTop: '8px' }}>
+              <li><strong>Weather & GDD:</strong> Automatically tracks growing degree days for your vineyard location</li>
+              <li><strong>Add Events:</strong> Click the GDD chart or "Add Event" button to log phenology stages and vineyard work</li>
+              <li><strong>Event Management:</strong> Edit notes, dates, or delete events in the Event Log section below</li>
+              <li><strong>Predictions:</strong> See predicted dates for upcoming phenology stages based on GDD accumulation</li>
+            </ul>
+          </div>
+
+          <div style={{ marginBottom: '15px' }}>
+            <strong>🎯 Event Types You Can Track:</strong>
+            <ul style={{ marginLeft: '20px', marginTop: '8px' }}>
+              <li>🌱 <strong>Phenology:</strong> Bud break, bloom, veraison, harvest</li>
+              <li>🌿 <strong>Vineyard Work:</strong> Pruning, irrigation, spray applications, canopy management</li>
+              <li>🔍 <strong>Monitoring:</strong> Scouting notes, pest observations, soil work</li>
+              <li>🔧 <strong>Operations:</strong> Equipment maintenance, fertilization</li>
+            </ul>
+          </div>
+
+          <div style={{
+            backgroundColor: '#e0f7fa',
+            padding: '12px',
+            borderRadius: '6px',
+            marginTop: '15px'
+          }}>
+            <strong>🚀 Upcoming Features:</strong>
+            <ul style={{ marginLeft: '20px', marginTop: '8px', marginBottom: '0' }}>
+              <li>📱 Mobile interface for use in the field</li>
+              <li>🤖 More relevant AI vineyard insights and recommendations</li>
+              <li>📊 Advanced analytics and seasonal comparisons</li>
+            </ul>
+          </div>
         </div>
       </div>
 
@@ -2384,11 +2411,11 @@ export function WeatherDashboard({
 
                   // Normalize event type - ensure consistent mapping
                   let eventType = activity.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
-                  
+
                   // Handle any legacy mapping issues
                   if (eventType === 'pest_observation') eventType = 'pest';
                   if (eventType === 'scouting_activity') eventType = 'scouting';
-                  
+
                   const style = eventStyles[eventType] || eventStyles.other;
 
                   // Calculate GDD at event date
