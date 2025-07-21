@@ -202,7 +202,7 @@ export function EnhancedGDDChart({
 
         // Apply event type filter if active
         if (eventTypeFilter.length > 0) {
-          const eventType = event.event_type?.toLowerCase().replace(' ', '_') || 'other';
+          const eventType = event.event_type || 'other';
           return isInRange && eventTypeFilter.includes(eventType);
         }
 
@@ -677,7 +677,8 @@ export function EnhancedGDDChart({
           {phenologyEvents.filter(event => {
             // Apply event type filter
             if (eventTypeFilter.length === 0) return true;
-            return eventTypeFilter.includes(event.event_type);
+            const eventType = event.event_type?.toLowerCase().replace(' ', '_') || 'other';
+            return eventTypeFilter.includes(eventType);
           }).map((event, index) => {
             const startDataIndex = chartData.findIndex(
               (d) => d.date === event.event_date,

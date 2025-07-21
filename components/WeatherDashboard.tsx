@@ -354,11 +354,11 @@ export function WeatherDashboard({
     // For current year: April 1 to today (growing season), but never in the future
     const startDate = `${currentYear}-04-01`;
     const aprilFirst = new Date(currentYear, 3, 1); // April 1st
-    
+
     // If we're before April 1st of current year, use previous year's full growing season
     let actualStartDate: string;
     let actualEndDate: string;
-    
+
     if (now < aprilFirst) {
       // Use previous year's growing season (April 1 to October 31)
       actualStartDate = `${currentYear - 1}-04-01`;
@@ -520,10 +520,10 @@ export function WeatherDashboard({
 
       // Delete the old event and create a new one (since we don't have an update function)
       const { deletePhenologyEvent, savePhenologyEvent } = await import('../lib/supabase');
-      
+
       // Delete the old event
       await deletePhenologyEvent(activityId);
-      
+
       // Create the updated event
       await savePhenologyEvent(
         vineyardId,
@@ -604,7 +604,7 @@ export function WeatherDashboard({
       `Type "DELETE" to confirm:`;
 
     const confirmation = window.prompt(confirmMessage);
-    
+
     if (confirmation !== 'DELETE') {
       if (confirmation !== null) {
         alert('Deletion cancelled. You must type "DELETE" exactly to confirm.');
@@ -696,6 +696,8 @@ export function WeatherDashboard({
     'Canopy Management',
     'Soil Work',
     'Equipment Maintenance',
+    'Pest',
+    'Scouting',
     'Other'
   ];
 
@@ -834,7 +836,7 @@ export function WeatherDashboard({
     }
   };
 
-  
+
 
   // Date range button handlers
   const setCurrentYear = () => {
@@ -844,7 +846,7 @@ export function WeatherDashboard({
     const aprilFirst = new Date(currentYear, 3, 1); // April 1st
 
     let newDateRange;
-    
+
     if (now < aprilFirst) {
       // Use previous year's growing season if we're before April 1st
       newDateRange = {
@@ -1176,7 +1178,7 @@ export function WeatherDashboard({
                   </div>
                 </div>
               )}
-              
+
               <div style={{ marginBottom: '15px' }}>
                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px', color: '#065f46' }}>
                   Vineyard Name:
@@ -1740,7 +1742,7 @@ export function WeatherDashboard({
 
 
 
-      
+
 
       {/* Date Range Controls - 3 Buttons */}
       <div style={{ 
@@ -1762,7 +1764,7 @@ export function WeatherDashboard({
             style={{
               padding: '8px 16px',
               backgroundColor: dateRangeMode === 'current' ? '#22c55e' : '#f3f4f6',
-              color: dateRangeMode === 'current' ? 'white' : '#374151',
+              color: dateRangeMode === 'current' ?'white' : '#374151',
               border: '1px solid #d1d5db',
               borderRadius: '6px',
               cursor: 'pointer',
@@ -2094,6 +2096,7 @@ export function WeatherDashboard({
                     </button>
                     {activityTypes.map((type) => {
                       const eventType = type.toLowerCase().replace(' ', '_');
+                      // Event styles for consistent display
                       const eventStyles: { [key: string]: { color: string, label: string, emoji: string } } = {
                         bud_break: { color: "#22c55e", label: "Bud Break", emoji: "🌱" },
                         bloom: { color: "#f59e0b", label: "Bloom", emoji: "🌸" },
@@ -2107,6 +2110,8 @@ export function WeatherDashboard({
                         soil_work: { color: "#8b5cf6", label: "Soil Work", emoji: "🌍" },
                         equipment_maintenance: { color: "#6b7280", label: "Equipment Maintenance", emoji: "🔧" },
                         fruit_set: { color: "#f59e0b", label: "Fruit Set", emoji: "🫐" },
+                        pest: { color: "#dc2626", label: "Pest Observation", emoji: "🐞" },
+                        scouting: { color: "#059669", label: "Scouting", emoji: "🔍" },
                         other: { color: "#9ca3af", label: "Other", emoji: "📝" },
                       };
                       const style = eventStyles[eventType] || eventStyles.other;
@@ -2372,6 +2377,8 @@ export function WeatherDashboard({
                     soil_work: { color: "#8b5cf6", label: "Soil Work", emoji: "🌍" },
                     equipment_maintenance: { color: "#6b7280", label: "Equipment Maintenance", emoji: "🔧" },
                     fruit_set: { color: "#f59e0b", label: "Fruit Set", emoji: "🫐" },
+                    pest: { color: "#dc2626", label: "Pest Observation", emoji: "🐞" },
+                    scouting: { color: "#059669", label: "Scouting", emoji: "🔍" },
                     other: { color: "#9ca3af", label: "Other", emoji: "📝" },
                   };
 
@@ -2509,7 +2516,7 @@ export function WeatherDashboard({
                               disabled={isUpdatingActivity || !editActivityForm.activity_type || !editActivityForm.start_date}
                               style={{
                                 padding: '6px 12px',
-                                backgroundColor: isUpdatingActivity || !editActivityForm.activity_type || !editActivityForm.start_date ? '#9ca3af' : '#22c55e',
+                                backgroundColor: isUpdatingActivity || !editActivityForm.activity_type || !editActivityForm.start_date ? '#9ca3af' :'#22c55e',
                                 color: 'white',
                                 border: 'none',
                                 borderRadius: '6px',
@@ -2666,7 +2673,7 @@ export function WeatherDashboard({
             )}
           </div>
 
-          
+
         </div>
       )}
 
