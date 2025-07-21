@@ -300,27 +300,12 @@ export function EnhancedGDDChart({
       setLoading(true);
       console.log("💾 Saving phenology event to database...");
 
-      // Map new event types to database-compatible types if needed
-      const eventTypeMapping: { [key: string]: string } = {
-        'pest': 'other',  // Map pest to 'other' until database is updated
-        'scouting': 'other',  // Map scouting to 'other' until database is updated
-      };
-      
-      const dbEventType = eventTypeMapping[selectedEventType] || selectedEventType;
-      
-      // Add event type info to notes if we're mapping to 'other'
-      let eventNotes = notes || "";
-      if (eventTypeMapping[selectedEventType]) {
-        const eventLabel = eventStyles[selectedEventType]?.label || selectedEventType;
-        eventNotes = `[${eventLabel}] ${eventNotes}`.trim();
-      }
-
       // Save directly to Supabase database
       const savedEvent = await savePhenologyEvent(
         vineyardId,
-        dbEventType,
+        selectedEventType,
         selectedDate,
-        eventNotes,
+        notes || "",
         endDate || undefined,
         harvestBlock || undefined,
       );
