@@ -451,7 +451,7 @@ export async function ensureVineyardExistsInDatabase(vineyardId: string): Promis
   try {
     console.log('🔍 Checking if vineyard exists in database:', vineyardId);
 
-    // Check if vineyard exists
+    // Check if vineyard exists - use array response instead of single
     const { data: existingVineyard, error: checkError } = await supabase
       .from('vineyards')
       .select('id')

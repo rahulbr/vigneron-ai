@@ -677,7 +677,12 @@ export function EnhancedGDDChart({
           {phenologyEvents.filter(event => {
             // Apply event type filter
             if (eventTypeFilter.length === 0) return true;
-            const eventType = event.event_type?.toLowerCase().replace(' ', '_') || 'other';
+            let eventType = event.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
+            
+            // Handle any legacy mapping issues
+            if (eventType === 'pest_observation') eventType = 'pest';
+            if (eventType === 'scouting_activity') eventType = 'scouting';
+            
             return eventTypeFilter.includes(eventType);
           }).map((event, index) => {
             const startDataIndex = chartData.findIndex(

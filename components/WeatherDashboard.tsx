@@ -2382,7 +2382,13 @@ export function WeatherDashboard({
                     other: { color: "#9ca3af", label: "Other", emoji: "📝" },
                   };
 
-                  const eventType = activity.event_type?.toLowerCase().replace(' ', '_') || 'other';
+                  // Normalize event type - ensure consistent mapping
+                  let eventType = activity.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
+                  
+                  // Handle any legacy mapping issues
+                  if (eventType === 'pest_observation') eventType = 'pest';
+                  if (eventType === 'scouting_activity') eventType = 'scouting';
+                  
                   const style = eventStyles[eventType] || eventStyles.other;
 
                   // Calculate GDD at event date
