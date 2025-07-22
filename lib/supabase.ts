@@ -81,8 +81,12 @@ export async function createVineyard(name: string, location: string, lat: number
       longitude: lon,
       user_id: user.id // Multi-user support
     }])
-    .select()
-    .single();
+    .select();
+
+  if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error('Failed to create vineyard');
+  }
 
   if (error) throw error;
   return data;
@@ -93,10 +97,13 @@ export async function getVineyard(id: string): Promise<Vineyard> {
     .from('vineyards')
     .select('*')
     .eq('id', id)
-    .single();
+    .limit(1);
 
   if (error) throw error;
-  return data;
+  if (!data || data.length === 0) {
+    throw new Error('No vineyard found with that ID');
+  }
+  return data[0];
 }
 
 export async function getVineyardDetails(vineyardId: string): Promise<Vineyard> {
@@ -168,16 +175,18 @@ export async function saveVineyardLocation(
         .from('vineyards')
         .update(updateData)
         .eq('id', properVineyardId)
-        
-        .select()
-        .single();
+        .select();
 
       if (error) {
         console.error('Error updating vineyard location:', error);
         throw new Error(error.message);
       }
 
-      vineyard = data;
+      if (!data || data.length === 0) {
+        throw new Error('Failed to update vineyard location');
+      }
+
+      vineyard = data[0];
     } else {
       // Create new vineyard - only use fields that exist in your schema
       const insertData: any = {
@@ -191,15 +200,18 @@ export async function saveVineyardLocation(
       const { data, error } = await supabase
         .from('vineyards')
         .insert([insertData])
-        .select()
-        .single();
+        .select();
 
       if (error) {
         console.error('Error creating vineyard:', error);
         throw new Error(error.message);
       }
 
-      vineyard = data;
+      if (!data || data.length === 0) {
+        throw new Error('Failed to create vineyard');
+      }
+
+      vineyard = data[0];
     }
 
     console.log('✅ Vineyard location saved:', vineyard);
@@ -399,16 +411,19 @@ export async function savePhenologyEvent(
     const { data, error } = await supabase
       .from('phenology_events')
       .insert([insertData])
-      .select()
-      .single();
+      .select();
 
     if (error) {
       console.error('❌ Database error saving phenology event:', error);
       throw new Error(`Database error: ${error.message}`);
     }
 
-    console.log('✅ Phenology event saved successfully:', data);
-    return data;
+    if (!data || data.length === 0) {
+      throw new Error('Failed to save phenology event');
+    }
+
+    console.log('✅ Phenology event saved successfully:', data[0]);
+    return data[0];
   } catch (error) {
     console.error('❌ Failed to save phenology event:', error);
     throw error;
@@ -476,15 +491,18 @@ export async function ensureVineyardExistsInDatabase(vineyardId: string): Promis
           longitude: -122.2813,
           location: 'La Honda, CA'
         }])
-        .select()
-        .single();
+        .select();
 
       if (createError) {
         console.error('❌ Error creating vineyard:', createError);
         throw createError;
       }
 
-      console.log('✅ Created new vineyard:', newVineyard);
+      if (!newVineyard || newVineyard.length === 0) {
+        throw new Error('Failed to create default vineyard');
+      }
+
+      console.log('✅ Created new vineyard:', newVineyard[0]);
     } else {
       console.log('✅ Vineyard already exists in database');
     }

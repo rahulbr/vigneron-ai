@@ -192,27 +192,31 @@ export function EnhancedGDDChart({
     if (!weatherData.length || !phenologyEvents.length) return [];
 
     const startDate = weatherData[0]?.date;
-    const endDate = weatherData[weatherData.length - 1]?.date;
+    
+    // Calculate chart date range from weather data - ensure it includes today
+    const chartStartDate = chartData.length > 0 ? chartData[0].date : '';
+    const chartEndDate = chartData.length > 0 ? chartData[chartData.length - 1].date : '';
+    const today = new Date().toISOString().split('T')[0];
+    const actualEndDate = chartEndDate > today ? chartEndDate : today;
 
-    console.log('📊 Chart date range:', { startDate, endDate });
-    console.log('📊 All events:', phenologyEvents.map(e => ({ date: e.event_date, type: e.event_type })));
+    console.log('📊 Chart date range:', { startDate: chartStartDate, endDate: chartEndDate, today, actualEndDate });
 
     return phenologyEvents
       .filter(event => {
         // Filter by date range - be more inclusive with date comparison
         const eventDate = event.event_date;
-        const isInRange = eventDate >= startDate && eventDate <= endDate;
-
-        console.log('📊 Event date check:', { eventDate, startDate, endDate, isInRange });
+        const isInRange = eventDate >= chartStartDate && eventDate <= actualEndDate;
+        console.log('📊 Event date check:', { eventDate, startDate: chartStartDate, endDate: actualEndDate, isInRange });
+        return isInRange;
 
         // Apply event type filter if active
         if (eventTypeFilter.length > 0) {
           let eventType = event.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
-          
+
           // Handle any legacy mapping issues
           if (eventType === 'pest_observation') eventType = 'pest';
           if (eventType === 'scouting_activity') eventType = 'scouting';
-          
+
           return isInRange && eventTypeFilter.includes(eventType);
         }
 
@@ -690,17 +694,17 @@ export function EnhancedGDDChart({
             const endDate = weatherData[weatherData.length - 1]?.date;
             const eventDate = event.event_date;
             const isInDateRange = eventDate >= startDate && eventDate <= endDate;
-            
+
             if (!isInDateRange) return false;
-            
+
             // Apply event type filter
             if (eventTypeFilter.length === 0) return true;
             let eventType = event.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
-            
+
             // Handle any legacy mapping issues
             if (eventType === 'pest_observation') eventType = 'pest';
             if (eventType === 'scouting_activity') eventType = 'scouting';
-            
+
             return eventTypeFilter.includes(eventType);
           }).map((event, index) => {
             const startDataIndex = chartData.findIndex(
@@ -939,7 +943,8 @@ export function EnhancedGDDChart({
                     style={{
                       width: "100%",
                       padding: "8px",
-                      border: "1px solid #ddd",
+```text
+                  border: "1px solid #ddd",
                       borderRadius: "4px",
                     }}
                   />
@@ -1335,7 +1340,7 @@ export function EnhancedGDDChart({
         );
       })()}
 
-      
+
 
       {/* Chart Instructions */}
       <div
