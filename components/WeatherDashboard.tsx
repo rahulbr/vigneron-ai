@@ -899,23 +899,47 @@ export function WeatherDashboard({
   const avgTempHigh = data.length > 0 ? data.reduce((sum, day) => sum + day.temp_high, 0) / data.length : 0;
   const avgTempLow = data.length > 0 ? data.reduce((sum, day) => sum + day.temp_low, 0) / data.length : 0;
 
-  // Get icon for insight type
+  // Get icon for insight type (harvest-focused)
   const getInsightIcon = (type: string) => {
     switch (type) {
-      case 'recommendation': return <Lightbulb size={16} style={{ color: '#059669' }} />;
-      case 'warning': return <AlertTriangle size={16} style={{ color: '#dc2626' }} />;
-      case 'action': return <CheckCircle size={16} style={{ color: '#2563eb' }} />;
+      case 'harvest_timing': return <span style={{ fontSize: '16px' }}>🍇</span>;
+      case 'action_required': return <AlertTriangle size={16} style={{ color: '#dc2626' }} />;
+      case 'monitor': return <span style={{ fontSize: '16px' }}>👁️</span>;
+      case 'opportunity': return <span style={{ fontSize: '16px' }}>⭐</span>;
       default: return <Info size={16} style={{ color: '#6b7280' }} />;
     }
   };
 
-  // Get color for insight type
+  // Get color for insight type (harvest-focused)
   const getInsightColor = (type: string) => {
     switch (type) {
-      case 'recommendation': return { bg: '#f0fdf4', border: '#bbf7d0', text: '#065f46' };
-      case 'warning': return { bg: '#fef2f2', border: '#fecaca', text: '#991b1b' };
-      case 'action': return { bg: '#eff6ff', border: '#bfdbfe', text: '#1e40af' };
+      case 'harvest_timing': return { bg: '#fef3c7', border: '#fbbf24', text: '#92400e' };
+      case 'action_required': return { bg: '#fef2f2', border: '#fecaca', text: '#991b1b' };
+      case 'monitor': return { bg: '#eff6ff', border: '#bfdbfe', text: '#1e40af' };
+      case 'opportunity': return { bg: '#f0fdf4', border: '#bbf7d0', text: '#065f46' };
       default: return { bg: '#f8fafc', border: '#e2e8f0', text: '#374151' };
+    }
+  };
+
+  // Get urgency styling
+  const getUrgencyStyle = (urgency: string) => {
+    switch (urgency) {
+      case 'high': return { 
+        badge: { backgroundColor: '#dc2626', color: 'white' },
+        border: '2px solid #dc2626'
+      };
+      case 'medium': return { 
+        badge: { backgroundColor: '#f59e0b', color: 'white' },
+        border: '1px solid #f59e0b'
+      };
+      case 'low': return { 
+        badge: { backgroundColor: '#6b7280', color: 'white' },
+        border: '1px solid #e5e7eb'
+      };
+      default: return { 
+        badge: { backgroundColor: '#6b7280', color: 'white' },
+        border: '1px solid #e5e7eb'
+      };
     }
   };
 
@@ -2736,7 +2760,7 @@ export function WeatherDashboard({
             }}
           >
             <Brain size={20} />
-            {!process.env.NEXT_PUBLIC_OPENAI_API_KEY ? 'AI Insights (API Key Required)' : 'Generate AI Vineyard Insights'}
+            {!process.env.NEXT_PUBLIC_OPENAI_API_KEY ? 'Harvest AI (API Key Required)' : 'Generate Harvest Optimization Insights'}
           </button>
           {!process.env.NEXT_PUBLIC_OPENAI_API_KEY && (
             <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
@@ -2793,86 +2817,133 @@ export function WeatherDashboard({
               </div>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
-              {/* AI Recommendations */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* AI Recommendations - Harvest Focused */}
               {aiInsights.length > 0 && (
                 <div>
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', color: '#92400e' }}>
-                    🎯 Recommendations
+                  <h4 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#92400e', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    🍇 Harvest Optimization Insights
                   </h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {aiInsights.map((insight) => {
-                      const colors = getInsightColor(insight.type);
-                      return (
-                        <div
-                          key={insight.id}
-                          style={{
-                            padding: '12px',
-                            backgroundColor: colors.bg,
-                            border: `1px solid ${colors.border}`,
-                            borderRadius: '8px'
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '6px' }}>
-                            {getInsightIcon(insight.type)}
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontWeight: '600', fontSize: '14px', color: colors.text, marginBottom: '4px' }}>
-                                {insight.title}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {aiInsights
+                      .sort((a, b) => {
+                        // Sort by urgency, then by type priority
+                        const urgencyOrder = { high: 3, medium: 2, low: 1 };
+                        const typeOrder = { harvest_timing: 4, action_required: 3, opportunity: 2, monitor: 1 };
+                        
+                        const urgencyDiff = (urgencyOrder[b.urgency as keyof typeof urgencyOrder] || 1) - 
+                                          (urgencyOrder[a.urgency as keyof typeof urgencyOrder] || 1);
+                        if (urgencyDiff !== 0) return urgencyDiff;
+                        
+                        return (typeOrder[b.type as keyof typeof typeOrder] || 1) - 
+                               (typeOrder[a.type as keyof typeof typeOrder] || 1);
+                      })
+                      .map((insight) => {
+                        const colors = getInsightColor(insight.type);
+                        const urgencyStyle = getUrgencyStyle(insight.urgency);
+                        
+                        return (
+                          <div
+                            key={insight.id}
+                            style={{
+                              padding: '16px',
+                              backgroundColor: colors.bg,
+                              border: urgencyStyle.border,
+                              borderRadius: '8px',
+                              position: 'relative'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                              <div style={{ marginTop: '2px' }}>
+                                {getInsightIcon(insight.type)}
                               </div>
-                              <div style={{ fontSize: '13px', color: colors.text, lineHeight: '1.4' }}>
-                                {insight.message}
-                              </div>
-                              <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
-                                Confidence: {(insight.confidence * 100).toFixed(0)}% • {insight.category}
+                              <div style={{ flex: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                                  <div style={{ fontWeight: '600', fontSize: '15px', color: colors.text }}>
+                                    {insight.title}
+                                  </div>
+                                  <div style={{ 
+                                    ...urgencyStyle.badge,
+                                    padding: '2px 8px',
+                                    borderRadius: '12px',
+                                    fontSize: '11px',
+                                    fontWeight: '600',
+                                    textTransform: 'uppercase'
+                                  }}>
+                                    {insight.urgency}
+                                  </div>
+                                  {insight.daysToAction && (
+                                    <div style={{
+                                      padding: '2px 8px',
+                                      backgroundColor: '#f3f4f6',
+                                      borderRadius: '12px',
+                                      fontSize: '11px',
+                                      color: '#374151',
+                                      fontWeight: '500'
+                                    }}>
+                                      {insight.daysToAction} days
+                                    </div>
+                                  )}
+                                </div>
+                                <div style={{ fontSize: '14px', color: colors.text, lineHeight: '1.4', marginBottom: '6px' }}>
+                                  {insight.message}
+                                </div>
+                                <div style={{ fontSize: '11px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span>📊 {(insight.confidence * 100).toFixed(0)}% confidence</span>
+                                  <span>•</span>
+                                  <span style={{ textTransform: 'capitalize' }}>{insight.category}</span>
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
                   </div>
                 </div>
               )}
 
-              {/* Weather Analysis */}
-              {weatherAnalysis && (
-                <div>
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', color: '#92400e' }}>
-                    🌤️ Weather Pattern Analysis
-                  </h4>
-                  <div style={{
-                    padding: '12px',
-                    backgroundColor: '#f0f9ff',
-                    border: '1px solid #bae6fd',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    lineHeight: '1.5',
-                    color: '#0c4a6e'
-                  }}>
-                    {weatherAnalysis}
+              {/* Additional Analysis Sections */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
+                {/* Weather Analysis */}
+                {weatherAnalysis && (
+                  <div>
+                    <h4 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#92400e', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      🌤️ Weather Impact on Harvest
+                    </h4>
+                    <div style={{
+                      padding: '14px',
+                      backgroundColor: '#f0f9ff',
+                      border: '1px solid #bae6fd',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      lineHeight: '1.5',
+                      color: '#0c4a6e'
+                    }}>
+                      {weatherAnalysis}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Phenology Analysis */}
-              {phenologyAnalysis && (
-                <div>
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', color: '#92400e' }}>
-                    🌱 Phenology Insights
-                  </h4>
-                  <div style={{
-                    padding: '12px',
-                    backgroundColor: '#f0fdf4',
-                    border: '1px solid #bbf7d0',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    lineHeight: '1.5',
-                    color: '#065f46'
-                  }}>
-                    {phenologyAnalysis}
+                {/* Phenology Analysis */}
+                {phenologyAnalysis && (
+                  <div>
+                    <h4 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#92400e', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      📈 Development & Timing
+                    </h4>
+                    <div style={{
+                      padding: '14px',
+                      backgroundColor: '#f0fdf4',
+                      border: '1px solid #bbf7d0',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      lineHeight: '1.5',
+                      color: '#065f46'
+                    }}>
+                      {phenologyAnalysis}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
         </div>

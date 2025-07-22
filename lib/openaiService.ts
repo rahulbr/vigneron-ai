@@ -1,3 +1,4 @@
+
 // lib/openaiService.ts - Enhanced OpenAI/ChatGPT integration service
 
 export interface VineyardContext {
@@ -22,12 +23,14 @@ export interface VineyardContext {
 
 export interface AIInsight {
   id: string;
-  type: 'recommendation' | 'warning' | 'insight' | 'action';
+  type: 'harvest_timing' | 'action_required' | 'monitor' | 'opportunity';
   title: string;
   message: string;
   confidence: number;
   timestamp: Date;
-  category: 'viticulture' | 'weather' | 'phenology' | 'harvest' | 'disease';
+  category: 'harvest' | 'quality' | 'timing' | 'risk' | 'preparation';
+  urgency: 'high' | 'medium' | 'low';
+  daysToAction?: number; // Days until this action should be taken
 }
 
 export class OpenAIService {
@@ -49,9 +52,8 @@ export class OpenAIService {
     return OpenAIService.instance;
   }
 
-
   /**
-   * Generate AI recommendations based on vineyard data
+   * Generate harvest-focused AI recommendations
    */
   async generateVineyardRecommendations(context: VineyardContext): Promise<AIInsight[]> {
     if (!this.apiKey) {
@@ -59,15 +61,10 @@ export class OpenAIService {
     }
 
     try {
-      console.log('🤖 Generating AI recommendations for:', context.locationName);
-      console.log('📊 Context data:', {
-        gdd: context.currentGDD,
-        rainfall: context.totalRainfall,
-        phenologyEvents: context.phenologyEvents?.length || 0
-      });
+      console.log('🤖 Generating harvest-focused AI recommendations for:', context.locationName);
 
-      const prompt = this.buildVineyardPrompt(context);
-      console.log('📝 Generated prompt:', prompt);
+      const prompt = this.buildHarvestFocusedPrompt(context);
+      console.log('📝 Generated harvest-focused prompt');
 
       const response = await fetch(this.baseURL, {
         method: 'POST',
@@ -80,38 +77,50 @@ export class OpenAIService {
           messages: [
             {
               role: 'system',
-              content: `You are an expert viticulturist and enologist with 30+ years of experience in vineyard management worldwide. 
-              You specialize in climate analysis, phenology tracking, and data-driven vineyard recommendations.
+              content: `You are an expert vineyard consultant specializing in harvest optimization and practical field operations. 
 
-              IMPORTANT: Pay special attention to any phenology events provided. These are critical timing markers for vineyard operations.
+KEY PRIORITIES:
+1. HARVEST TIMING - When to harvest for optimal quality
+2. ACTIONABLE STEPS - What specific actions to take and when
+3. QUALITY OPTIMIZATION - How to maximize fruit quality
+4. RISK MITIGATION - What to monitor and prepare for
 
-              Always provide:
-              1. Actionable, specific recommendations
-              2. Scientific reasoning for your advice
-              3. Risk assessments and confidence levels
-              4. Timing considerations for vineyard operations
-              5. Specific references to phenology events when they are provided
+RESPONSE STYLE:
+- Be concise and specific (max 50 words per insight)
+- Focus on harvest implications and timing
+- Consider the vineyard's specific location and climate
+- Integrate phenology events when provided
+- Avoid generic advice - make it location-specific
+- Prioritize immediate actions and monitoring needs
 
-              Format your response as a JSON array of insights with this structure:
-              [
-                {
-                  "type": "recommendation|warning|insight|action",
-                  "title": "Brief descriptive title",
-                  "message": "Detailed explanation with specific actionable advice",
-                  "confidence": 0.8,
-                  "category": "viticulture|weather|phenology|harvest|disease"
-                }
-              ]
+LOCATION AWARENESS:
+- California coastal regions: low rainfall is normal, focus on heat spikes
+- Central Valley: irrigation timing, heat management critical
+- Cool climates: ripening concerns, disease pressure
+- Warm climates: sugar/acid balance, harvest window timing
 
-              Ensure the response is valid JSON and contains 3-5 insights.`
+Format response as JSON array with this structure:
+[
+  {
+    "type": "harvest_timing|action_required|monitor|opportunity",
+    "title": "Brief action-focused title",
+    "message": "Specific actionable advice in 30-50 words",
+    "confidence": 0.8,
+    "category": "harvest|quality|timing|risk|preparation",
+    "urgency": "high|medium|low",
+    "daysToAction": 7
+  }
+]
+
+Provide 3-4 focused insights, not generic recommendations.`
             },
             {
               role: 'user',
               content: prompt
             }
           ],
-          temperature: 0.7,
-          max_tokens: 2000
+          temperature: 0.5, // Lower temperature for more focused responses
+          max_tokens: 1000
         })
       });
 
@@ -119,7 +128,6 @@ export class OpenAIService {
         const errorText = await response.text();
         console.error('❌ OpenAI API error response:', errorText);
         
-        // Handle specific error cases
         if (response.status === 429) {
           let errorMessage = 'OpenAI API rate limit exceeded. ';
           try {
@@ -139,18 +147,11 @@ export class OpenAIService {
       }
 
       const data = await response.json();
-
-      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-        throw new Error('Invalid response from OpenAI API');
-      }
-
       const aiResponse = data.choices[0].message.content;
       console.log('🤖 AI Response:', aiResponse);
 
-      // Parse the JSON response
       const insights = this.parseAIResponse(aiResponse);
-
-      console.log('✅ Generated', insights.length, 'AI insights');
+      console.log('✅ Generated', insights.length, 'harvest-focused insights');
       return insights;
 
     } catch (error) {
@@ -160,29 +161,39 @@ export class OpenAIService {
   }
 
   /**
-   * Get weather pattern analysis
+   * Get weather pattern analysis focused on harvest implications
    */
   async analyzeWeatherPatterns(context: VineyardContext): Promise<string> {
     if (!this.apiKey) {
       throw new Error('OpenAI API key is not configured');
     }
 
-    const prompt = `Analyze the weather patterns for ${context.locationName}:
+    // Determine regional context for more relevant analysis
+    const isCaliforniaCoastal = context.latitude > 34 && context.latitude < 40 && context.longitude < -120;
+    const isCentralValley = context.latitude > 35 && context.latitude < 40 && context.longitude > -121 && context.longitude < -119;
+    const isWarmClimate = context.avgTempHigh > 85;
 
-Location: ${context.locationName} (${context.latitude}, ${context.longitude})
+    let regionalContext = "";
+    if (isCaliforniaCoastal) {
+      regionalContext = "California coastal region - low rainfall normal, focus on fog patterns and heat spikes";
+    } else if (isCentralValley) {
+      regionalContext = "Central Valley - hot, dry climate, irrigation and heat management critical";
+    } else if (isWarmClimate) {
+      regionalContext = "Warm climate region - sugar/acid balance and harvest timing critical";
+    }
+
+    const prompt = `Analyze weather for harvest planning at ${context.locationName}:
+
+LOCATION CONTEXT: ${regionalContext}
 Period: ${context.dateRange.start} to ${context.dateRange.end}
-Total GDD: ${context.currentGDD}°F
-Total Rainfall: ${context.totalRainfall}"
-Avg High: ${context.avgTempHigh}°F
-Avg Low: ${context.avgTempLow}°F
+GDD: ${context.currentGDD}°F | Rainfall: ${context.totalRainfall}" | Avg High: ${context.avgTempHigh}°F
 
-Provide a concise analysis of:
-1. How this weather compares to typical patterns for this region
-2. Implications for vine development and fruit quality
-3. Any notable weather events or patterns
-4. Recommendations for vineyard management
+FOCUS ON:
+1. Harvest timing implications - are we on track for optimal harvest window?
+2. Quality risks - what weather factors could impact fruit quality?
+3. Immediate actions - what should be monitored or adjusted now?
 
-Keep response under 300 words and focus on actionable insights.`;
+Keep under 150 words. Be specific to this location and climate.`;
 
     try {
       const response = await fetch(this.baseURL, {
@@ -196,15 +207,15 @@ Keep response under 300 words and focus on actionable insights.`;
           messages: [
             {
               role: 'system',
-              content: 'You are an expert viticulturist specializing in weather pattern analysis for wine production.'
+              content: 'You are a vineyard weather specialist focused on harvest planning and fruit quality optimization. Be concise and location-specific.'
             },
             {
               role: 'user',
               content: prompt
             }
           ],
-          temperature: 0.6,
-          max_tokens: 400
+          temperature: 0.4,
+          max_tokens: 200
         })
       });
 
@@ -218,36 +229,47 @@ Keep response under 300 words and focus on actionable insights.`;
   }
 
   /**
-   * Get phenology insights
+   * Get phenology insights focused on harvest timing
    */
   async analyzePhenologyEvents(context: VineyardContext): Promise<string> {
     if (!context.phenologyEvents || context.phenologyEvents.length === 0) {
-      return "No phenology events recorded yet. Start tracking bud break, bloom, veraison, and harvest dates to get AI insights about your vine development timing.";
+      return "Start tracking phenology events (bud break, bloom, veraison) to get AI-powered harvest timing predictions and quality optimization recommendations.";
     }
 
-    const eventsText = context.phenologyEvents
-      .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime())
-      .map(event => 
-        `${event.event_type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: ${event.event_date}${event.notes ? ` (${event.notes})` : ''}`
-      ).join('\n');
+    // Analyze the progression of events
+    const events = context.phenologyEvents.sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime());
+    const hasVeraison = events.some(e => e.event_type.includes('veraison'));
+    const hasBloom = events.some(e => e.event_type.includes('bloom'));
+    const hasHarvest = events.some(e => e.event_type.includes('harvest'));
 
-    const prompt = `Analyze the phenology events for ${context.locationName}:
+    let analysisType = "";
+    if (hasHarvest) {
+      analysisType = "POST-HARVEST: Review this season's timing for next year planning";
+    } else if (hasVeraison) {
+      analysisType = "PRE-HARVEST: Critical harvest timing and quality optimization phase";
+    } else if (hasBloom) {
+      analysisType = "MID-SEASON: Track progress toward harvest timing predictions";
+    } else {
+      analysisType = "EARLY SEASON: Monitor development for harvest planning";
+    }
 
-Location: ${context.locationName}
-GDD Accumulation: ${context.currentGDD}°F
-Period: ${context.dateRange.start} to ${context.dateRange.end}
+    const eventsText = events.map(event => {
+      const gddAtEvent = this.estimateGDDAtDate(context, event.event_date);
+      return `${event.event_type.replace(/_/g, ' ')}: ${event.event_date} (${gddAtEvent} GDD)`;
+    }).join(' | ');
 
-Recorded Phenology Events:
-${eventsText}
+    const prompt = `Analyze phenology for HARVEST OPTIMIZATION at ${context.locationName}:
 
-Provide insights on:
-1. Timing of phenological stages relative to GDD accumulation
-2. How the timing compares to typical patterns for this region
-3. Implications for harvest timing and fruit quality
-4. Recommendations for upcoming vineyard operations
-5. Any timing concerns or advantages based on the recorded events
+DEVELOPMENT STATUS: ${analysisType}
+Current GDD: ${context.currentGDD}°F
+Events: ${eventsText}
 
-Keep response under 300 words and focus on actionable insights.`;
+PROVIDE:
+1. Harvest timing prediction based on phenology progression
+2. Quality optimization actions for current stage
+3. Key monitoring points for optimal harvest decision
+
+Keep under 150 words. Focus on actionable harvest guidance.`;
 
     try {
       const response = await fetch(this.baseURL, {
@@ -261,15 +283,15 @@ Keep response under 300 words and focus on actionable insights.`;
           messages: [
             {
               role: 'system',
-              content: 'You are an expert viticulturist specializing in phenology and vine development timing. Focus on practical implications of phenological timing for vineyard management.'
+              content: 'You are a phenology expert specializing in harvest timing optimization. Focus on practical harvest guidance based on vine development stages.'
             },
             {
               role: 'user',
               content: prompt
             }
           ],
-          temperature: 0.6,
-          max_tokens: 400
+          temperature: 0.4,
+          max_tokens: 200
         })
       });
 
@@ -283,99 +305,117 @@ Keep response under 300 words and focus on actionable insights.`;
   }
 
   /**
-   * Build comprehensive vineyard analysis prompt
+   * Build harvest-focused vineyard analysis prompt
    */
-  private buildVineyardPrompt(context: VineyardContext): string {
-    // Enhanced phenology events formatting
-    const eventsText = context.phenologyEvents && context.phenologyEvents.length > 0
-      ? context.phenologyEvents
-          .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime())
-          .map(event => {
-            const formattedType = event.event_type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-            const formattedDate = new Date(event.event_date).toLocaleDateString();
-            return `  • ${formattedType}: ${formattedDate}${event.notes ? ` (${event.notes})` : ''}`;
-          }).join('\n')
-      : '  • No phenology events recorded yet';
+  private buildHarvestFocusedPrompt(context: VineyardContext): string {
+    // Determine climate zone for context
+    const isCaliforniaCoastal = context.latitude > 34 && context.latitude < 40 && context.longitude < -120;
+    const isCentralValley = context.latitude > 35 && context.latitude < 40 && context.longitude > -121 && context.longitude < -119;
+    const isDesert = context.totalRainfall < 5 && context.avgTempHigh > 90;
+    const isCoolClimate = context.avgTempHigh < 75;
 
-    const hasEvents = context.phenologyEvents && context.phenologyEvents.length > 0;
+    let climateContext = "temperate wine region";
+    let rainfallContext = "normal rainfall patterns";
+    
+    if (isCaliforniaCoastal) {
+      climateContext = "California coastal wine region";
+      rainfallContext = "naturally low rainfall (drought-adapted)";
+    } else if (isCentralValley) {
+      climateContext = "California Central Valley";
+      rainfallContext = "irrigation-dependent region";
+    } else if (isDesert) {
+      climateContext = "arid desert wine region";
+      rainfallContext = "minimal rainfall expected";
+    } else if (isCoolClimate) {
+      climateContext = "cool climate wine region";
+      rainfallContext = "adequate moisture, disease pressure possible";
+    }
 
-    return `Analyze this vineyard data and provide actionable recommendations:
+    // Analyze phenology progression
+    const events = context.phenologyEvents?.sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime()) || [];
+    const hasVeraison = events.some(e => e.event_type.includes('veraison'));
+    const hasBloom = events.some(e => e.event_type.includes('bloom'));
+    const hasHarvest = events.some(e => e.event_type.includes('harvest'));
 
-VINEYARD OVERVIEW:
-• Name: ${context.locationName}
-• Location: ${context.latitude}°N, ${context.longitude}°W
-• Analysis Period: ${context.dateRange.start} to ${context.dateRange.end} (${context.dataPoints} days)
+    let seasonStage = "early season development";
+    let harvestFocus = "monitor early season development";
+    
+    if (hasHarvest) {
+      seasonStage = "post-harvest";
+      harvestFocus = "review season performance, plan for next year";
+    } else if (hasVeraison) {
+      seasonStage = "pre-harvest critical period";
+      harvestFocus = "optimize harvest timing and fruit quality";
+    } else if (hasBloom) {
+      seasonStage = "mid-season development";
+      harvestFocus = "track development toward harvest predictions";
+    }
 
-WEATHER SUMMARY:
-• Growing Degree Days: ${context.currentGDD}°F
-• Total Rainfall: ${context.totalRainfall}"
-• Average High Temperature: ${context.avgTempHigh}°F
-• Average Low Temperature: ${context.avgTempLow}°F
+    const phenologyText = events.length > 0 
+      ? events.map(e => `${e.event_type.replace(/_/g, ' ')}: ${e.event_date}`).join(', ')
+      : 'No phenology events recorded';
+
+    return `HARVEST OPTIMIZATION ANALYSIS for ${context.locationName}
+
+VINEYARD PROFILE:
+Location: ${climateContext} (${context.latitude}°N, ${context.longitude}°W)
+Season Stage: ${seasonStage}
+GDD Accumulation: ${context.currentGDD}°F (${context.dataPoints} days)
+Rainfall: ${context.totalRainfall}" (${rainfallContext})
+Temperature Pattern: ${context.avgTempHigh}°F high / ${context.avgTempLow}°F low
 
 PHENOLOGY TRACKING:
-${eventsText}
+${phenologyText}
 
-${hasEvents ? 
-`CRITICAL: The vineyard has recorded ${context.phenologyEvents.length} phenology events. Please analyze these carefully and provide specific recommendations based on the timing and progression of these events.` : 
-'NOTE: No phenology events have been recorded yet. Please provide recommendations for starting phenology tracking.'}
+HARVEST FOCUS: ${harvestFocus}
 
-Please provide 3-5 specific, actionable recommendations as a JSON array. Consider:
-1. Current weather patterns and GDD accumulation rate
-2. ${hasEvents ? 'Recorded phenology events and their timing implications' : 'Need to establish phenology tracking'}
-3. Water management based on rainfall patterns
-4. Disease pressure risks from weather conditions
-5. Optimal timing for upcoming vineyard operations
-6. Harvest timing predictions if applicable
+PROVIDE 3-4 SPECIFIC HARVEST-FOCUSED INSIGHTS:
+1. Harvest timing guidance based on current GDD and phenology
+2. Quality optimization actions for current season stage  
+3. Risk monitoring priorities for optimal harvest
+4. Preparation steps for harvest operations
 
-Each recommendation should be specific, actionable, and include your confidence level (0.0-1.0).
+Each insight must be:
+- Specific to this vineyard's location and climate
+- Actionable within the next 1-4 weeks
+- Focused on harvest quality and timing
+- Based on the actual phenology events recorded
 
-Respond ONLY with valid JSON in this exact format:
-[
-  {
-    "type": "recommendation",
-    "title": "Brief title",
-    "message": "Detailed actionable advice",
-    "confidence": 0.8,
-    "category": "phenology"
-  }
-]`;
+Respond with JSON array only. No explanatory text.`;
   }
 
   /**
-   * Parse AI response into structured insights
+   * Parse AI response into structured insights with harvest focus
    */
   private parseAIResponse(response: string): AIInsight[] {
     try {
-      // Clean up the response (remove any markdown formatting)
       let cleanResponse = response.trim();
 
-      // Remove code block markers
       if (cleanResponse.includes('```json')) {
         cleanResponse = cleanResponse.split('```json')[1].split('```')[0].trim();
       } else if (cleanResponse.includes('```')) {
         cleanResponse = cleanResponse.split('```')[1].trim();
       }
 
-      // Remove any leading/trailing whitespace or newlines
       cleanResponse = cleanResponse.replace(/^\s*\n|\n\s*$/g, '');
-
       console.log('🧹 Cleaned AI response for parsing:', cleanResponse);
 
       const parsed = JSON.parse(cleanResponse);
       const insights: AIInsight[] = [];
-
       const insightArray = Array.isArray(parsed) ? parsed : [parsed];
 
       insightArray.forEach((item: any, index: number) => {
         if (item.title && item.message) {
           insights.push({
             id: `ai-insight-${Date.now()}-${index}`,
-            type: item.type || 'insight',
+            type: item.type || 'monitor',
             title: item.title,
             message: item.message,
             confidence: typeof item.confidence === 'number' ? item.confidence : 0.8,
             timestamp: new Date(),
-            category: item.category || 'viticulture'
+            category: item.category || 'harvest',
+            urgency: item.urgency || 'medium',
+            daysToAction: item.daysToAction || undefined
           });
         }
       });
@@ -384,21 +424,39 @@ Respond ONLY with valid JSON in this exact format:
 
     } catch (error) {
       console.error('❌ Error parsing AI response:', error);
-      console.log('🔍 Raw response that failed to parse:', response);
-
-      // Enhanced fallback: try to extract useful information
+      
+      // Enhanced fallback with harvest focus
       const fallbackInsight: AIInsight = {
         id: `ai-insight-fallback-${Date.now()}`,
-        type: 'insight',
-        title: 'AI Analysis (Parsing Error)',
-        message: response.length > 500 ? response.substring(0, 500) + '...' : response,
-        confidence: 0.7,
+        type: 'monitor',
+        title: 'AI Analysis Available',
+        message: response.length > 200 ? response.substring(0, 200) + '...' : response,
+        confidence: 0.6,
         timestamp: new Date(),
-        category: 'viticulture'
+        category: 'harvest',
+        urgency: 'medium'
       };
 
       return [fallbackInsight];
     }
+  }
+
+  /**
+   * Estimate GDD accumulation at a specific date
+   */
+  private estimateGDDAtDate(context: VineyardContext, date: string): number {
+    const startDate = new Date(context.dateRange.start);
+    const targetDate = new Date(date);
+    const endDate = new Date(context.dateRange.end);
+    
+    if (targetDate <= endDate && targetDate >= startDate) {
+      // Estimate based on linear progression (simple approximation)
+      const totalDays = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
+      const daysSinceStart = (targetDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
+      return Math.round((context.currentGDD * daysSinceStart) / totalDays);
+    }
+    
+    return context.currentGDD; // If date is outside range, return current total
   }
 
   /**
@@ -433,32 +491,10 @@ Respond ONLY with valid JSON in this exact format:
 
       const success = response.ok;
       console.log(success ? '✅ OpenAI connection successful' : '❌ OpenAI connection failed');
-
       return success;
     } catch (error) {
       console.error('❌ OpenAI connection test failed:', error);
       return false;
-    }
-  }
-
-  /**
-   * Debug method to validate context data
-   */
-  debugContext(context: VineyardContext): void {
-    console.log('🔍 Debugging VineyardContext:');
-    console.log('  Location:', context.locationName);
-    console.log('  Coordinates:', context.latitude, context.longitude);
-    console.log('  GDD:', context.currentGDD);
-    console.log('  Rainfall:', context.totalRainfall);
-    console.log('  Phenology Events:', context.phenologyEvents?.length || 0);
-
-    if (context.phenologyEvents && context.phenologyEvents.length > 0) {
-      console.log('  Events detail:');
-      context.phenologyEvents.forEach((event, i) => {
-        console.log(`    ${i + 1}. ${event.event_type} on ${event.event_date}`);
-      });
-    } else {
-      console.log('  ⚠️ No phenology events found in context');
     }
   }
 }
