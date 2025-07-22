@@ -208,7 +208,8 @@ export function EnhancedGDDChart({
         const eventDate = event.event_date;
         const isInRange = eventDate >= chartStartDate && eventDate <= actualEndDate;
         console.log('📊 Event date check:', { eventDate, startDate: chartStartDate, endDate: actualEndDate, isInRange });
-        return isInRange;
+        
+        if (!isInRange) return false;
 
         // Apply event type filter if active
         if (eventTypeFilter.length > 0) {
@@ -218,10 +219,10 @@ export function EnhancedGDDChart({
           if (eventType === 'pest_observation') eventType = 'pest';
           if (eventType === 'scouting_activity') eventType = 'scouting';
 
-          return isInRange && eventTypeFilter.includes(eventType);
+          return eventTypeFilter.includes(eventType);
         }
 
-        return isInRange;
+        return true;
       })
       .map(event => {
         // Calculate cumulative GDD at event date
@@ -690,11 +691,14 @@ export function EnhancedGDDChart({
 
           {/* Phenology Event Vertical Lines and Ranges */}
           {phenologyEvents.filter(event => {
-            // First check if event is within chart date range
-            const startDate = weatherData[0]?.date;
-            const endDate = weatherData[weatherData.length - 1]?.date;
+            // Use the same date range logic as getDisplayedEvents
+            const chartStartDate = chartData.length > 0 ? chartData[0].date : '';
+            const chartEndDate = chartData.length > 0 ? chartData[chartData.length - 1].date : '';
+            const today = new Date().toISOString().split('T')[0];
+            const actualEndDate = chartEndDate > today ? chartEndDate : today;
+            
             const eventDate = event.event_date;
-            const isInDateRange = eventDate >= startDate && eventDate <= endDate;
+            const isInDateRange = eventDate >= chartStartDate && eventDate <= actualEndDate;
 
             if (!isInDateRange) return false;
 
