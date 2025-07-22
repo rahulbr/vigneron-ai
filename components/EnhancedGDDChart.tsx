@@ -890,8 +890,6 @@ export function EnhancedGDDChart({
           {(() => {
             const actualDataPoints = chartData.filter(point => point.hasData);
             const futureDataPoints = chartData.filter(point => !point.hasData);
-            const predictions = getPhenologyPredictions();
-            const harvestPrediction = predictions.find(p => p.event_type === 'harvest');
             
             // Create path for actual data
             const actualPathData = actualDataPoints
@@ -903,39 +901,18 @@ export function EnhancedGDDChart({
               })
               .join(" ");
             
-            // Create path for future projection with predicted harvest
+            // Create path for future projection (flat line)
             let futurePathData = "";
-            let harvestProjectionData = "";
-            
             if (futureDataPoints.length > 0 && actualDataPoints.length > 0) {
               const lastActualIndex = chartData.findIndex(point => !point.hasData) - 1;
-              const currentGDD = actualDataPoints[actualDataPoints.length - 1].cumulativeGDD;
+              const firstFutureIndex = chartData.findIndex(point => !point.hasData);
               
-              if (lastActualIndex >= 0 && harvestPrediction) {
-                // Calculate projection to harvest date
-                const harvestIndex = chartData.findIndex(point => point.date === harvestPrediction.predicted_date);
+              if (lastActualIndex >= 0 && firstFutureIndex >= 0) {
+                const startX = padding + (lastActualIndex / (chartData.length - 1)) * (width - 2 * padding);
+                const endX = padding + ((chartData.length - 1) / (chartData.length - 1)) * (width - 2 * padding);
+                const y = height - padding - ((actualDataPoints[actualDataPoints.length - 1].cumulativeGDD - minGDD) / (maxGDD - minGDD)) * (height - 2 * padding);
                 
-                if (harvestIndex >= 0) {
-                  const startX = padding + (lastActualIndex / (chartData.length - 1)) * (width - 2 * padding);
-                  const harvestX = padding + (harvestIndex / (chartData.length - 1)) * (width - 2 * padding);
-                  const endX = padding + ((chartData.length - 1) / (chartData.length - 1)) * (width - 2 * padding);
-                  
-                  const currentY = height - padding - ((currentGDD - minGDD) / (maxGDD - minGDD)) * (height - 2 * padding);
-                  const harvestY = height - padding - ((harvestPrediction.predicted_gdd - minGDD) / (maxGDD - minGDD)) * (height - 2 * padding);
-                  
-                  // Projection to harvest (gradual increase)
-                  harvestProjectionData = `M ${startX} ${currentY} L ${harvestX} ${harvestY}`;
-                  
-                  // Flat line after harvest
-                  futurePathData = `M ${harvestX} ${harvestY} L ${endX} ${harvestY}`;
-                } else {
-                  // Fallback to flat line if harvest date not found
-                  const startX = padding + (lastActualIndex / (chartData.length - 1)) * (width - 2 * padding);
-                  const endX = padding + ((chartData.length - 1) / (chartData.length - 1)) * (width - 2 * padding);
-                  const y = height - padding - ((currentGDD - minGDD) / (maxGDD - minGDD)) * (height - 2 * padding);
-                  
-                  futurePathData = `M ${startX} ${y} L ${endX} ${y}`;
-                }
+                futurePathData = `M ${startX} ${y} L ${endX} ${y}`;
               }
             }
             
@@ -944,19 +921,7 @@ export function EnhancedGDDChart({
                 {/* Actual data line */}
                 <path d={actualPathData} fill="none" stroke="#2563eb" strokeWidth="3" />
                 
-                {/* Harvest projection line (dashed, gradual increase) */}
-                {harvestProjectionData && (
-                  <path 
-                    d={harvestProjectionData} 
-                    fill="none" 
-                    stroke="#f59e0b" 
-                    strokeWidth="2" 
-                    strokeDasharray="8,4"
-                    opacity="0.8"
-                  />
-                )}
-                
-                {/* Future projection line after harvest (dashed, flat) */}
+                {/* Future projection line (dashed) */}
                 {futurePathData && (
                   <path 
                     d={futurePathData} 
@@ -964,7 +929,7 @@ export function EnhancedGDDChart({
                     stroke="#94a3b8" 
                     strokeWidth="2" 
                     strokeDasharray="5,5"
-                    opacity="0.6"
+                    opacity="0.7"
                   />
                 )}
               </>
@@ -1022,77 +987,6 @@ export function EnhancedGDDChart({
                   </text>
                 </g>
               );
-            }
-            return null;
-          })()}
-
-          {/* Predicted Harvest Date indicator */}
-          {(() => {
-            const predictions = getPhenologyPredictions();
-            const harvestPrediction = predictions.find(p => p.event_type === 'harvest');
-            
-            if (harvestPrediction) {
-              const harvestIndex = chartData.findIndex(point => point.date === harvestPrediction.predicted_date);
-              
-              if (harvestIndex >= 0) {
-                const x = padding + (harvestIndex / (chartData.length - 1)) * (width - 2 * padding);
-                const y = height - padding - ((harvestPrediction.predicted_gdd - minGDD) / (maxGDD - minGDD)) * (height - 2 * padding);
-                
-                return (
-                  <g>
-                    {/* Harvest prediction line */}
-                    <line
-                      x1={x}
-                      y1={padding}
-                      x2={x}
-                      y2={height - padding}
-                      stroke="#f59e0b"
-                      strokeWidth="2"
-                      strokeDasharray="6,3"
-                      opacity="0.8"
-                    />
-                    {/* Harvest marker circle */}
-                    <circle
-                      cx={x}
-                      cy={y}
-                      r="8"
-                      fill="#f59e0b"
-                      stroke="white"
-                      strokeWidth="2"
-                      opacity="0.9"
-                    />
-                    {/* Harvest emoji */}
-                    <text
-                      x={x}
-                      y={y + 4}
-                      textAnchor="middle"
-                      fontSize="12"
-                    >
-                      🍷
-                    </text>
-                    {/* Predicted harvest label */}
-                    <text
-                      x={x}
-                      y={padding - 25}
-                      textAnchor="middle"
-                      fontSize="11"
-                      fill="#f59e0b"
-                      fontWeight="bold"
-                    >
-                      Predicted Harvest
-                    </text>
-                    <text
-                      x={x}
-                      y={padding - 12}
-                      textAnchor="middle"
-                      fontSize="10"
-                      fill="#92400e"
-                    >
-                      {new Date(harvestPrediction.predicted_date).toLocaleDateString()}
-                    </text>
-                  </g>
-                );
-              }
             }
             return null;
           })()}
