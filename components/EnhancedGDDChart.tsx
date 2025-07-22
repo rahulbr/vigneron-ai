@@ -991,6 +991,75 @@ export function EnhancedGDDChart({
             return null;
           })()}
 
+          {/* Harvest Prediction Markers */}
+          {(() => {
+            const predictions = getPhenologyPredictions();
+            const harvestPrediction = predictions.find(p => p.event_type === 'harvest');
+            
+            if (!harvestPrediction) return null;
+            
+            const predictionIndex = chartData.findIndex(point => point.date === harvestPrediction.predicted_date);
+            if (predictionIndex === -1) return null;
+            
+            const x = padding + (predictionIndex / (chartData.length - 1)) * (width - 2 * padding);
+            const y = height - padding - ((harvestPrediction.predicted_gdd - minGDD) / (maxGDD - minGDD)) * (height - 2 * padding);
+            
+            return (
+              <g>
+                {/* Prediction line */}
+                <line
+                  x1={x}
+                  y1={padding}
+                  x2={x}
+                  y2={height - padding}
+                  stroke="#f59e0b"
+                  strokeWidth="3"
+                  strokeDasharray="8,4"
+                  opacity="0.8"
+                />
+                {/* Harvest marker */}
+                <circle
+                  cx={x}
+                  cy={y}
+                  r="10"
+                  fill="#f59e0b"
+                  stroke="white"
+                  strokeWidth="3"
+                />
+                <text
+                  x={x}
+                  y={y + 5}
+                  textAnchor="middle"
+                  fontSize="14"
+                  fill="white"
+                  fontWeight="bold"
+                >
+                  🍇
+                </text>
+                {/* Prediction label */}
+                <text
+                  x={x}
+                  y={padding - 25}
+                  textAnchor="middle"
+                  fontSize="12"
+                  fill="#f59e0b"
+                  fontWeight="bold"
+                >
+                  Predicted Harvest
+                </text>
+                <text
+                  x={x}
+                  y={padding - 10}
+                  textAnchor="middle"
+                  fontSize="11"
+                  fill="#92400e"
+                >
+                  {new Date(harvestPrediction.predicted_date).toLocaleDateString()}
+                </text>
+              </g>
+            );
+          })()}
+
           {/* Chart Title */}
           <text
             x={width / 2}

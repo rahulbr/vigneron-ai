@@ -703,7 +703,10 @@ export function WeatherDashboard({
 
   // Generate AI insights based on current vineyard data
   const generateAIInsights = async () => {
-    if (!data || data.length === 0) return;
+    if (!data || data.length === 0) {
+      alert('⚠️ No weather data available. Please ensure weather data is loaded before generating AI insights.');
+      return;
+    }
 
     // Check if OpenAI API key is available
     const hasApiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY && process.env.NEXT_PUBLIC_OPENAI_API_KEY.length > 0;
@@ -785,8 +788,10 @@ export function WeatherDashboard({
         alert('❌ OpenAI API Quota Exceeded\n\nYour OpenAI account has exceeded its usage quota. Please:\n1. Check your OpenAI billing dashboard\n2. Add credits to your account\n3. Try again after adding credits\n\nVisit: https://platform.openai.com/account/billing');
       } else if (errorMessage.includes('rate limit')) {
         alert('❌ OpenAI API Rate Limit\n\nToo many requests to OpenAI API. Please wait a moment and try again.');
+      } else if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+        alert('❌ Network Error\n\nPlease check your internet connection and try again.');
       } else {
-        alert('❌ Failed to generate AI insights\n\n' + errorMessage);
+        alert('❌ Failed to generate AI insights\n\nPlease try again in a moment. If the problem persists, contact support.');
       }
     } finally {
       setIsGeneratingInsights(false);
@@ -2822,7 +2827,7 @@ export function WeatherDashboard({
               {aiInsights.length > 0 && (
                 <div>
                   <h4 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#92400e', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    🍇 Harvest Optimization Insights
+                    🍇 Recommendations
                   </h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {aiInsights
