@@ -88,8 +88,7 @@ export async function createVineyard(name: string, location: string, lat: number
     throw new Error('Failed to create vineyard');
   }
 
-  if (error) throw error;
-  return data;
+  return data[0];
 }
 
 export async function getVineyard(id: string): Promise<Vineyard> {
