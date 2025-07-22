@@ -2822,7 +2822,7 @@ export function WeatherDashboard({
               {aiInsights.length > 0 && (
                 <div>
                   <h4 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#92400e', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    🍇 Harvest Optimization Insights
+                    🍇 Recommendations
                   </h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {aiInsights
