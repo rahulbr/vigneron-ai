@@ -2760,7 +2760,7 @@ export function WeatherDashboard({
             }}
           >
             <Brain size={20} />
-            {!process.env.NEXT_PUBLIC_OPENAI_API_KEY ? 'Harvest AI (API Key Required)' : 'Generate Harvest Optimization Insights'}
+            {!process.env.NEXT_PUBLIC_OPENAI_API_KEY ? 'AI Insights (API Key Required)' : 'AI Insights (BETA)'}
           </button>
           {!process.env.NEXT_PUBLIC_OPENAI_API_KEY && (
             <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
