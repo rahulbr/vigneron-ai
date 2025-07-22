@@ -433,7 +433,7 @@ export async function getPhenologyEvents(vineyardId: string): Promise<PhenologyE
   try {
     // Validate vineyard ID before querying
     const validVineyardId = validateAndFixVineyardId(vineyardId);
-    
+
     console.log('🔍 Getting phenology events for vineyard ID validation:', { 
       originalId: vineyardId, 
       validId: validVineyardId 
@@ -479,7 +479,7 @@ export async function ensureVineyardExistsInDatabase(vineyardId: string): Promis
 
     if (!existingVineyard || existingVineyard.length === 0) {
       console.log('🆕 Vineyard not found, creating it...');
-      
+
       // Create a basic vineyard record
       const { data: newVineyard, error: createError } = await supabase
         .from('vineyards')
@@ -541,11 +541,11 @@ export function generateVineyardId(userId?: string, latitude?: number, longitude
 export function validateAndFixVineyardId(vineyardId: string): string {
   // Check if it's already a valid UUID
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  
+
   if (uuidRegex.test(vineyardId)) {
     return vineyardId;
   }
-  
+
   // Generate a new UUID if the provided ID is not valid
   console.log('⚠️ Invalid vineyard ID detected, generating new UUID:', vineyardId);
   return crypto.randomUUID();
@@ -556,7 +556,7 @@ export function validateAndFixVineyardId(vineyardId: string): string {
 // ========================================
 export const savePhenologyEventSimple = async (vineyardId: string, event: Omit<PhenologyEvent, 'id' | 'vineyard_id' | 'created_at'>) => {
   const validVineyardId = validateAndFixVineyardId(vineyardId);
-  
+
   return supabase
     .from('phenology_events')
     .insert({
