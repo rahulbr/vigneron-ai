@@ -193,7 +193,7 @@ export function EnhancedGDDChart({
     if (!weatherData.length || !phenologyEvents.length) return [];
 
     const startDate = weatherData[0]?.date;
-    
+
     // Calculate chart date range from weather data - ensure it includes today
     const chartStartDate = chartData.length > 0 ? chartData[0].date : '';
     const chartEndDate = chartData.length > 0 ? chartData[chartData.length - 1].date : '';
@@ -208,8 +208,7 @@ export function EnhancedGDDChart({
         const eventDate = event.event_date;
         const isInRange = eventDate >= chartStartDate && eventDate <= actualEndDate;
         console.log('📊 Event date check:', { eventDate, startDate: chartStartDate, endDate: actualEndDate, isInRange });
-        
-        if (!isInRange) return false;
+        return isInRange;
 
         // Apply event type filter if active
         if (eventTypeFilter.length > 0) {
@@ -219,10 +218,10 @@ export function EnhancedGDDChart({
           if (eventType === 'pest_observation') eventType = 'pest';
           if (eventType === 'scouting_activity') eventType = 'scouting';
 
-          return eventTypeFilter.includes(eventType);
+          return isInRange && eventTypeFilter.includes(eventType);
         }
 
-        return true;
+        return isInRange;
       })
       .map(event => {
         // Calculate cumulative GDD at event date
@@ -717,12 +716,7 @@ export function EnhancedGDDChart({
             const startX =
               padding +
               (startDataIndex / (chartData.length - 1)) * (width - 2 * padding);
-            
-            let eventType = event.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
-            if (eventType === 'pest_observation') eventType = 'pest';
-            if (eventType === 'scouting_activity') eventType = 'scouting';
-            
-            const style = eventStyles[eventType] || eventStyles.other;
+            const style = eventStyles[event.event_type] || eventStyles.other;
 
             // If it's a date range event with end_date
             if (event.end_date && event.event_type !== "harvest") {
@@ -1156,13 +1150,26 @@ export function EnhancedGDDChart({
           }}>
             {getDisplayedEvents().map((event, index) => {
               // Get event style with icon and color
-              let eventType = event.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
-              
-              // Handle any legacy mapping issues
-              if (eventType === 'pest_observation') eventType = 'pest';
-              if (eventType === 'scouting_activity') eventType = 'scouting';
-              
-              const style = eventStyles[eventType] || eventStyles.other;
+              const displayEventStyles: { [key: string]: { color: string, label: string, emoji: string } } = {
+                bud_break: { color: "#22c55e", label: "Bud Break", emoji: "🌱" },
+                bloom: { color: "#f59e0b", label: "Bloom", emoji: "🌸" },
+                veraison: { color: "#8b5cf6", label: "Veraison", emoji: "🍇" },
+                harvest: { color: "#ef4444", label: "Harvest", emoji: "🍷" },
+                pruning: { color: "#6366f1", label: "Pruning", emoji: "✂️" },
+                irrigation: { color: "#06b6d4", label: "Irrigation", emoji: "💧" },
+                spray_application: { color: "#f97316", label: "Spray Application", emoji: "🌿" },
+                fertilization: { color: "#84cc16", label: "Fertilization", emoji: "🌱" },
+                canopy_management: { color: "#10b981", label: "Canopy Management", emoji: "🍃" },
+                soil_work: { color: "#8b5cf6", label: "Soil Work", emoji: "🌍" },
+                equipment_maintenance: { color: "#6b7280", label: "Equipment Maintenance", emoji: "🔧" },
+                fruit_set: { color: "#f59e0b", label: "Fruit Set", emoji: "🫐" },
+                pest: { color: "#dc2626", label: "Pest Observation", emoji: "🐞" },
+                scouting: { color: "#059669", label: "Scouting", emoji: "🔍" },
+                other: { color: "#9ca3af", label: "Other", emoji: "📝" },
+              };
+
+              const eventType = event.event_type?.toLowerCase().replace(' ', '_') || 'other';
+              const style = displayEventStyles[eventType] || displayEventStyles.other;
 
               return (
                 <div
