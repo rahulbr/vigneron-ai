@@ -258,16 +258,45 @@ export function EnhancedGDDChart({
     };
   }, []);
 
-  // Process data for chart
+  // Process data for chart - extend to show full growing season if we're in current year
   let cumulativeGDD = 0;
-  const chartData = weatherData.map((day) => {
+  let chartData = weatherData.map((day) => {
     cumulativeGDD += day.gdd;
     return {
       date: day.date,
       cumulativeGDD: Math.round(cumulativeGDD * 10) / 10,
       dailyGDD: day.gdd,
+      hasData: true
     };
   });
+
+  // If we're viewing current year (2025), extend chart to show full growing season
+  const currentYear = new Date().getFullYear();
+  const lastWeatherDate = weatherData.length > 0 ? weatherData[weatherData.length - 1].date : '';
+  const isCurrentYearData = lastWeatherDate.startsWith('2025');
+  
+  if (isCurrentYearData && weatherData.length > 0) {
+    const lastDataDate = new Date(lastWeatherDate);
+    const endOfSeason = new Date('2025-10-31');
+    const today = new Date();
+    
+    // Only extend if we haven't reached the end of the growing season
+    if (lastDataDate < endOfSeason) {
+      // Add empty future dates through end of growing season
+      const currentDate = new Date(lastDataDate);
+      currentDate.setDate(currentDate.getDate() + 1);
+      
+      while (currentDate <= endOfSeason && currentDate <= new Date(today.getFullYear(), 11, 31)) {
+        chartData.push({
+          date: currentDate.toISOString().split('T')[0],
+          cumulativeGDD: Math.round(cumulativeGDD * 10) / 10, // Keep last known GDD
+          dailyGDD: 0,
+          hasData: false
+        });
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+    }
+  }
 
   const maxGDD = Math.max(...chartData.map((d) => d.cumulativeGDD));
   const minGDD = Math.min(...chartData.map((d) => d.cumulativeGDD));
@@ -449,10 +478,31 @@ export function EnhancedGDDChart({
             🍇 Growing Degree Days - {locationName}
           </h2>
           <p style={{ color: "#666", margin: "0" }}>
-            Total GDD:{" "}
+            Current GDD:{" "}
             <strong>
-              {chartData[chartData.length - 1]?.cumulativeGDD || 0} GDDs
+              {(() => {
+                const actualDataPoints = chartData.filter(point => point.hasData);
+                return actualDataPoints.length > 0 ? actualDataPoints[actualDataPoints.length - 1].cumulativeGDD : 0;
+              })()} GDDs
             </strong>
+            {(() => {
+              const hasActualData = chartData.some(point => point.hasData);
+              const hasFutureData = chartData.some(point => !point.hasData);
+              
+              if (hasActualData && hasFutureData) {
+                const actualDataPoints = chartData.filter(point => point.hasData);
+                const lastDataDate = actualDataPoints[actualDataPoints.length - 1]?.date;
+                if (lastDataDate) {
+                  const formattedDate = new Date(lastDataDate).toLocaleDateString();
+                  return (
+                    <span style={{ marginLeft: "20px", fontSize: "12px", color: "#6b7280" }}>
+                      (through {formattedDate})
+                    </span>
+                  );
+                }
+              }
+              return null;
+            })()}
             {phenologyEvents.length > 0 && (
               <span style={{ marginLeft: "20px" }}>
                 Events: <strong>{phenologyEvents.length}</strong>
@@ -836,32 +886,110 @@ export function EnhancedGDDChart({
             );
           })}
 
-          {/* GDD Accumulation Line */}
-          <path d={pathData} fill="none" stroke="#2563eb" strokeWidth="3" />
-
-          {/* Recent data points (real weather) */}
-          {chartData.slice(-6).map((point, index) => {
-            const dataIndex = chartData.indexOf(point);
-            const x =
-              padding +
-              (dataIndex / (chartData.length - 1)) * (width - 2 * padding);
-            const y =
-              height -
-              padding -
-              ((point.cumulativeGDD - minGDD) / (maxGDD - minGDD)) *
-                (height - 2 * padding);
+          {/* GDD Accumulation Line - split between actual data and future projection */}
+          {(() => {
+            const actualDataPoints = chartData.filter(point => point.hasData);
+            const futureDataPoints = chartData.filter(point => !point.hasData);
+            
+            // Create path for actual data
+            const actualPathData = actualDataPoints
+              .map((point, index) => {
+                const dataIndex = chartData.indexOf(point);
+                const x = padding + (dataIndex / (chartData.length - 1)) * (width - 2 * padding);
+                const y = height - padding - ((point.cumulativeGDD - minGDD) / (maxGDD - minGDD)) * (height - 2 * padding);
+                return `${index === 0 ? "M" : "L"} ${x} ${y}`;
+              })
+              .join(" ");
+            
+            // Create path for future projection (flat line)
+            let futurePathData = "";
+            if (futureDataPoints.length > 0 && actualDataPoints.length > 0) {
+              const lastActualIndex = chartData.findIndex(point => !point.hasData) - 1;
+              const firstFutureIndex = chartData.findIndex(point => !point.hasData);
+              
+              if (lastActualIndex >= 0 && firstFutureIndex >= 0) {
+                const startX = padding + (lastActualIndex / (chartData.length - 1)) * (width - 2 * padding);
+                const endX = padding + ((chartData.length - 1) / (chartData.length - 1)) * (width - 2 * padding);
+                const y = height - padding - ((actualDataPoints[actualDataPoints.length - 1].cumulativeGDD - minGDD) / (maxGDD - minGDD)) * (height - 2 * padding);
+                
+                futurePathData = `M ${startX} ${y} L ${endX} ${y}`;
+              }
+            }
+            
             return (
-              <circle
-                key={index}
-                cx={x}
-                cy={y}
-                r="4"
-                fill="#10b981"
-                stroke="white"
-                strokeWidth="2"
-              />
+              <>
+                {/* Actual data line */}
+                <path d={actualPathData} fill="none" stroke="#2563eb" strokeWidth="3" />
+                
+                {/* Future projection line (dashed) */}
+                {futurePathData && (
+                  <path 
+                    d={futurePathData} 
+                    fill="none" 
+                    stroke="#94a3b8" 
+                    strokeWidth="2" 
+                    strokeDasharray="5,5"
+                    opacity="0.7"
+                  />
+                )}
+              </>
             );
-          })}
+          })()}
+
+          {/* Data points - only for actual weather data */}
+          {chartData
+            .filter(point => point.hasData)
+            .slice(-6)
+            .map((point, index) => {
+              const dataIndex = chartData.indexOf(point);
+              const x = padding + (dataIndex / (chartData.length - 1)) * (width - 2 * padding);
+              const y = height - padding - ((point.cumulativeGDD - minGDD) / (maxGDD - minGDD)) * (height - 2 * padding);
+              return (
+                <circle
+                  key={index}
+                  cx={x}
+                  cy={y}
+                  r="4"
+                  fill="#10b981"
+                  stroke="white"
+                  strokeWidth="2"
+                />
+              );
+            })}
+
+          {/* "Today" indicator if we're showing future dates */}
+          {(() => {
+            const today = new Date().toISOString().split('T')[0];
+            const todayIndex = chartData.findIndex(point => point.date === today);
+            
+            if (todayIndex >= 0) {
+              const x = padding + (todayIndex / (chartData.length - 1)) * (width - 2 * padding);
+              return (
+                <g>
+                  <line
+                    x1={x}
+                    y1={padding}
+                    x2={x}
+                    y2={height - padding}
+                    stroke="#ef4444"
+                    strokeWidth="2"
+                    strokeDasharray="3,3"
+                  />
+                  <text
+                    x={x}
+                    y={padding - 5}
+                    textAnchor="middle"
+                    fontSize="12"
+                    fill="#ef4444"
+                    fontWeight="bold"
+                  >
+                    Today
+                  </text>
+                </g>
+              );
+            }
+            return null;
+          })()}
 
           {/* Chart Title */}
           <text
@@ -1366,6 +1494,8 @@ export function EnhancedGDDChart({
         add events. Development stages (bud break, bloom, veraison)
         can be date ranges. Harvest picks are individual dates with block
         labels.
+        <br />
+        <strong>📈 Chart Shows:</strong> Solid line = actual weather data, dashed line = future timeline through growing season end.
         <br />
         <strong>🎉 NEW:</strong> Events are now saved to your personal database
         and will appear in the Events section below!
