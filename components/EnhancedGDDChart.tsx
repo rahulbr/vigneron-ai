@@ -192,7 +192,7 @@ export function EnhancedGDDChart({
     if (!weatherData.length || !phenologyEvents.length) return [];
 
     const startDate = weatherData[0]?.date;
-    
+
     // Calculate chart date range from weather data - ensure it includes today
     const chartStartDate = chartData.length > 0 ? chartData[0].date : '';
     const chartEndDate = chartData.length > 0 ? chartData[chartData.length - 1].date : '';
@@ -943,8 +943,8 @@ export function EnhancedGDDChart({
                     style={{
                       width: "100%",
                       padding: "8px",
-```text
-                  border: "1px solid #ddd",
+                      border: "1px```text
+ solid #ddd",
                       borderRadius: "4px",
                     }}
                   />
