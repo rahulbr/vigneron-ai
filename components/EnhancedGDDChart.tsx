@@ -194,10 +194,12 @@ export function EnhancedGDDChart({
 
     const startDate = weatherData[0]?.date;
 
-    // Calculate chart date range from weather data - ensure it includes today
+    // Calculate chart date range - always include up to today
     const chartStartDate = chartData.length > 0 ? chartData[0].date : '';
     const chartEndDate = chartData.length > 0 ? chartData[chartData.length - 1].date : '';
     const today = new Date().toISOString().split('T')[0];
+    
+    // Always extend the end date to at least today to show recent events
     const actualEndDate = chartEndDate > today ? chartEndDate : today;
 
     console.log('📊 Chart date range:', { startDate: chartStartDate, endDate: chartEndDate, today, actualEndDate });
@@ -227,9 +229,20 @@ export function EnhancedGDDChart({
       .map(event => {
         // Calculate cumulative GDD at event date
         const eventDate = event.event_date;
-        const cumulativeGDD = weatherData
-          .filter(d => d.date <= eventDate)
-          .reduce((sum, d) => sum + d.gdd, 0);
+        
+        // If event is beyond our weather data, use the last known GDD value
+        const lastWeatherDate = weatherData[weatherData.length - 1]?.date;
+        let cumulativeGDD;
+        
+        if (eventDate <= lastWeatherDate) {
+          // Event is within weather data range
+          cumulativeGDD = weatherData
+            .filter(d => d.date <= eventDate)
+            .reduce((sum, d) => sum + d.gdd, 0);
+        } else {
+          // Event is beyond weather data, use total accumulated GDD
+          cumulativeGDD = weatherData.reduce((sum, d) => sum + d.gdd, 0);
+        }
 
         return {
           ...event,
@@ -691,10 +704,12 @@ export function EnhancedGDDChart({
 
           {/* Phenology Event Vertical Lines and Ranges */}
           {phenologyEvents.filter(event => {
-            // Use the same date range logic as getDisplayedEvents
+            // Always include events from chart start to today (or beyond if we have future weather data)
             const chartStartDate = chartData.length > 0 ? chartData[0].date : '';
             const chartEndDate = chartData.length > 0 ? chartData[chartData.length - 1].date : '';
             const today = new Date().toISOString().split('T')[0];
+            
+            // Always extend the end date to at least today to show recent events
             const actualEndDate = chartEndDate > today ? chartEndDate : today;
             
             const eventDate = event.event_date;
@@ -712,10 +727,23 @@ export function EnhancedGDDChart({
 
             return eventTypeFilter.includes(eventType);
           }).map((event, index) => {
-            const startDataIndex = chartData.findIndex(
+            let startDataIndex = chartData.findIndex(
               (d) => d.date === event.event_date,
             );
-            if (startDataIndex === -1) return null;
+            
+            // If event is beyond our weather data, position it at the end of the chart
+            if (startDataIndex === -1) {
+              const eventDate = new Date(event.event_date);
+              const lastDataDate = new Date(chartData[chartData.length - 1].date);
+              
+              // If event is after our weather data, position it at the end
+              if (eventDate > lastDataDate) {
+                startDataIndex = chartData.length - 1;
+              } else {
+                // Event is before our data or invalid, skip it
+                return null;
+              }
+            }
 
             const startX =
               padding +
