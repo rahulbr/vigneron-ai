@@ -2128,7 +2128,7 @@ export function WeatherDashboard({
                   overflowY: "auto"
                 }}>
                   <div style={{ padding: "8px 12px", borderBottom: "1px solid #eee", fontWeight: "bold", fontSize: "12px" }}>
-                    Filter by Event Type:
+                    Filter events by type:
                   </div>
                   <div style={{ padding: "4px" }}>
                     <button
@@ -2830,18 +2830,18 @@ export function WeatherDashboard({
                         // Sort by urgency, then by type priority
                         const urgencyOrder = { high: 3, medium: 2, low: 1 };
                         const typeOrder = { harvest_timing: 4, action_required: 3, opportunity: 2, monitor: 1 };
-                        
+
                         const urgencyDiff = (urgencyOrder[b.urgency as keyof typeof urgencyOrder] || 1) - 
                                           (urgencyOrder[a.urgency as keyof typeof urgencyOrder] || 1);
                         if (urgencyDiff !== 0) return urgencyDiff;
-                        
+
                         return (typeOrder[b.type as keyof typeof typeOrder] || 1) - 
                                (typeOrder[a.type as keyof typeof typeOrder] || 1);
                       })
                       .map((insight) => {
                         const colors = getInsightColor(insight.type);
                         const urgencyStyle = getUrgencyStyle(insight.urgency);
-                        
+
                         return (
                           <div
                             key={insight.id}

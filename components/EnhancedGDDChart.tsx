@@ -475,7 +475,7 @@ export function EnhancedGDDChart({
               margin: "0 0 5px 0",
             }}
           >
-            🍇 Growing Degree Days - {locationName}
+            📈 Growth Curve - {locationName}
           </h2>
           <p style={{ color: "#666", margin: "0" }}>
             Current GDD:{" "}
@@ -1000,7 +1000,7 @@ export function EnhancedGDDChart({
             fontWeight="bold"
             fill="#333"
           >
-            Cumulative Growing Degree Days (Click to add events)
+            Growth Curve - Cumulative GDDs (Click to add events)
           </text>
         </svg>
       </div>
@@ -1484,21 +1484,19 @@ export function EnhancedGDDChart({
       <div
         style={{
           marginTop: "15px",
-          padding: "10px",
-          backgroundColor: "#e0f2fe",
-          borderRadius: "5px",
-          fontSize: "12px",
+          padding: "12px",
+          backgroundColor: "#f0f9ff",
+          borderRadius: "8px",
+          fontSize: "13px",
+          lineHeight: "1.4"
         }}
       >
-        <strong>Instructions:</strong> Click on the chart or use the button to
-        add events. Development stages (bud break, bloom, veraison)
-        can be date ranges. Harvest picks are individual dates with block
-        labels.
+        <strong>📈 Growth Curve Guide:</strong> Click anywhere on the curve to log vineyard events. 
+        Phenology stages (bud break, bloom, veraison) can span date ranges, while harvest picks are individual dates with block labels.
         <br />
-        <strong>📈 Chart Shows:</strong> Solid line = actual weather data, dashed line = future timeline through growing season end.
+        <strong>🎯 Visual Elements:</strong> Solid blue line shows actual weather data, dashed gray line projects through growing season end.
         <br />
-        <strong>🎉 NEW:</strong> Events are now saved to your personal database
-        and will appear in the Events section below!
+        <strong>💾 Data Storage:</strong> All events are saved to your personal vineyard database and sync across the application.
       </div>
     </div>
   );
