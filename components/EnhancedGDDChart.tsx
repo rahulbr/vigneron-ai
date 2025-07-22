@@ -194,15 +194,14 @@ export function EnhancedGDDChart({
 
     const startDate = weatherData[0]?.date;
 
-    // Calculate chart date range - always include up to today
+    // Calculate chart date range - use actual weather data range, don't extend to today
     const chartStartDate = chartData.length > 0 ? chartData[0].date : '';
     const chartEndDate = chartData.length > 0 ? chartData[chartData.length - 1].date : '';
-    const today = new Date().toISOString().split('T')[0];
     
-    // Always extend the end date to at least today to show recent events
-    const actualEndDate = chartEndDate > today ? chartEndDate : today;
+    // Use the actual chart end date, not extended to today
+    const actualEndDate = chartEndDate;
 
-    console.log('📊 Chart date range:', { startDate: chartStartDate, endDate: chartEndDate, today, actualEndDate });
+    console.log('📊 Chart date range:', { startDate: chartStartDate, endDate: chartEndDate, actualEndDate });
 
     return phenologyEvents
       .filter(event => {
@@ -230,19 +229,10 @@ export function EnhancedGDDChart({
         // Calculate cumulative GDD at event date
         const eventDate = event.event_date;
         
-        // If event is beyond our weather data, use the last known GDD value
-        const lastWeatherDate = weatherData[weatherData.length - 1]?.date;
-        let cumulativeGDD;
-        
-        if (eventDate <= lastWeatherDate) {
-          // Event is within weather data range
-          cumulativeGDD = weatherData
-            .filter(d => d.date <= eventDate)
-            .reduce((sum, d) => sum + d.gdd, 0);
-        } else {
-          // Event is beyond weather data, use total accumulated GDD
-          cumulativeGDD = weatherData.reduce((sum, d) => sum + d.gdd, 0);
-        }
+        // Calculate cumulative GDD at event date (only if event is within weather data range)
+        const cumulativeGDD = weatherData
+          .filter(d => d.date <= eventDate)
+          .reduce((sum, d) => sum + d.gdd, 0);
 
         return {
           ...event,
@@ -704,13 +694,12 @@ export function EnhancedGDDChart({
 
           {/* Phenology Event Vertical Lines and Ranges */}
           {phenologyEvents.filter(event => {
-            // Always include events from chart start to today (or beyond if we have future weather data)
+            // Only include events within the actual weather data range
             const chartStartDate = chartData.length > 0 ? chartData[0].date : '';
             const chartEndDate = chartData.length > 0 ? chartData[chartData.length - 1].date : '';
-            const today = new Date().toISOString().split('T')[0];
             
-            // Always extend the end date to at least today to show recent events
-            const actualEndDate = chartEndDate > today ? chartEndDate : today;
+            // Use the actual chart end date from weather data
+            const actualEndDate = chartEndDate;
             
             const eventDate = event.event_date;
             const isInDateRange = eventDate >= chartStartDate && eventDate <= actualEndDate;
@@ -727,22 +716,13 @@ export function EnhancedGDDChart({
 
             return eventTypeFilter.includes(eventType);
           }).map((event, index) => {
-            let startDataIndex = chartData.findIndex(
+            const startDataIndex = chartData.findIndex(
               (d) => d.date === event.event_date,
             );
             
-            // If event is beyond our weather data, position it at the end of the chart
+            // If event is not found in chart data, skip it (don't show events outside the date range)
             if (startDataIndex === -1) {
-              const eventDate = new Date(event.event_date);
-              const lastDataDate = new Date(chartData[chartData.length - 1].date);
-              
-              // If event is after our weather data, position it at the end
-              if (eventDate > lastDataDate) {
-                startDataIndex = chartData.length - 1;
-              } else {
-                // Event is before our data or invalid, skip it
-                return null;
-              }
+              return null;
             }
 
             const startX =
