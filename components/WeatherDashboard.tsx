@@ -2483,6 +2483,98 @@ export function WeatherDashboard({
                   </div>
                 )}
 
+                {/* Google Maps Location Search */}
+                <div style={{ marginBottom: '10px' }}>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
+                    🗺️ Search Location (Google Maps):
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="text"
+                      value={locationSearch}
+                      onChange={(e) => setLocationSearch(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleLocationSearch()}
+                      placeholder="e.g., Block 5 North, Chardonnay Section..."
+                      style={{
+                        flex: 1,
+                        padding: '6px 10px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleLocationSearch}
+                      disabled={isSearching || !locationSearch.trim()}
+                      style={{
+                        padding: '6px 10px',
+                        backgroundColor: isSearching ? '#9ca3af' : '#4285f4',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: isSearching || !locationSearch.trim() ? 'not-allowed' : 'pointer',
+                        fontSize: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      {isSearching ? <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <Search size={12} />}
+                      Search
+                    </button>
+                  </div>
+                </div>
+
+                {/* Search Results for Event Location */}
+                {showSearchResults && searchResults.length > 0 && (
+                  <div style={{ 
+                    marginBottom: '10px', 
+                    border: '1px solid #d1d5db', 
+                    borderRadius: '6px', 
+                    backgroundColor: 'white',
+                    maxHeight: '150px',
+                    overflowY: 'auto'
+                  }}>
+                    <div style={{ padding: '6px 10px', borderBottom: '1px solid #e5e7eb', fontWeight: '500', fontSize: '12px', backgroundColor: '#f9fafb', color: '#374151' }}>
+                      Select Location:
+                    </div>
+                    {searchResults.map((result, index) => (
+                      <div
+                        key={result.placeId}
+                        onClick={() => {
+                          setActivityForm(prev => ({
+                            ...prev,
+                            location_lat: result.latitude,
+                            location_lng: result.longitude,
+                            location_name: result.name,
+                            location_accuracy: null
+                          }));
+                          setLocationSearch('');
+                          setShowSearchResults(false);
+                          setLocationError('');
+                        }}
+                        style={{
+                          padding: '8px 10px',
+                          cursor: 'pointer',
+                          borderBottom: index < searchResults.length - 1 ? '1px solid #f3f4f6' : 'none',
+                          fontSize: '12px'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                      >
+                        <div style={{ fontWeight: '500', marginBottom: '2px' }}>{result.name}</div>
+                        <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>
+                          {result.formattedAddress}
+                        </div>
+                        <div style={{ fontSize: '10px', color: '#9ca3af' }}>
+                          {result.latitude.toFixed(4)}, {result.longitude.toFixed(4)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {/* Location Error Display */}
                 {locationError && (
                   <div style={{
@@ -2554,7 +2646,7 @@ export function WeatherDashboard({
                 </div>
 
                 <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '8px', lineHeight: '1.4' }}>
-                  💡 <strong>Tip:</strong> Use "Check In Here" to mark your exact location in the field, or use vineyard location for general activities.
+                  💡 <strong>Tip:</strong> Search for specific vineyard areas (e.g., "Block 5", "North Field"), use "Check In Here" for GPS location, or use vineyard location for general activities.
                 </div>
               </div>
 
