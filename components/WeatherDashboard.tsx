@@ -63,10 +63,16 @@ export function WeatherDashboard({
     activity_type: '',
     start_date: new Date().toISOString().split('T')[0],
     end_date: '',
-    notes: ''
+    notes: '',
+    location_lat: null as number | null,
+    location_lng: null as number | null,
+    location_name: '',
+    location_accuracy: null as number | null
   });
   const [isLoadingActivities, setIsLoadingActivities] = useState(false);
   const [isSavingActivity, setIsSavingActivity] = useState(false);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [locationError, setLocationError] = useState('');
 
   // Edit activity state
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
@@ -74,9 +80,94 @@ export function WeatherDashboard({
     activity_type: '',
     start_date: '',
     end_date: '',
-    notes: ''
+    notes: '',
+    location_lat: null as number | null,
+    location_lng: null as number | null,
+    location_name: '',
+    location_accuracy: null as number | null
   });
   const [isUpdatingActivity, setIsUpdatingActivity] = useState(false);
+
+  // Location services functions
+  const getCurrentLocation = async () => {
+    setIsGettingLocation(true);
+    setLocationError('');
+
+    try {
+      if (!navigator.geolocation) {
+        throw new Error('Geolocation is not supported by this browser');
+      }
+
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          resolve,
+          reject,
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 30000
+          }
+        );
+      });
+
+      const { latitude, longitude, accuracy } = position.coords;
+      
+      // Update the form with current location
+      setActivityForm(prev => ({
+        ...prev,
+        location_lat: latitude,
+        location_lng: longitude,
+        location_accuracy: accuracy,
+        location_name: `📍 Current Location (±${Math.round(accuracy)}m)`
+      }));
+
+      console.log('📍 Got current location:', { latitude, longitude, accuracy });
+
+    } catch (error: any) {
+      console.error('❌ Location error:', error);
+      let errorMessage = 'Failed to get location';
+      
+      if (error.code === 1) {
+        errorMessage = 'Location access denied. Please enable location permissions.';
+      } else if (error.code === 2) {
+        errorMessage = 'Location unavailable. Please try again.';
+      } else if (error.code === 3) {
+        errorMessage = 'Location request timed out. Please try again.';
+      } else {
+        errorMessage = error.message || 'Unknown location error';
+      }
+      
+      setLocationError(errorMessage);
+    } finally {
+      setIsGettingLocation(false);
+    }
+  };
+
+  const useVineyardLocation = () => {
+    if (currentVineyard) {
+      setActivityForm(prev => ({
+        ...prev,
+        location_lat: currentVineyard.latitude,
+        location_lng: currentVineyard.longitude,
+        location_accuracy: null,
+        location_name: `🍇 ${currentVineyard.name}`
+      }));
+      setLocationError('');
+      console.log('🍇 Using vineyard location:', currentVineyard.name);
+    }
+  };
+
+  const clearLocation = () => {
+    setActivityForm(prev => ({
+      ...prev,
+      location_lat: null,
+      location_lng: null,
+      location_accuracy: null,
+      location_name: ''
+    }));
+    setLocationError('');
+    console.log('🗑️ Cleared location');
+  };
 
   // Event filtering for Events section
   const [eventFilterTypes, setEventFilterTypes] = useState<string[]>([]);
@@ -447,12 +538,21 @@ export function WeatherDashboard({
 
       const { savePhenologyEvent } = await import('../lib/supabase');
 
+      const locationData = (activityForm.location_lat && activityForm.location_lng) ? {
+        latitude: activityForm.location_lat,
+        longitude: activityForm.location_lng,
+        locationName: activityForm.location_name,
+        accuracy: activityForm.location_accuracy || undefined
+      } : undefined;
+
       await savePhenologyEvent(
         vineyardId,
         activityForm.activity_type.toLowerCase().replace(' ', '_'),
         activityForm.start_date,
         activityForm.notes,
-        activityForm.end_date || undefined
+        activityForm.end_date || undefined,
+        undefined, // harvestBlock
+        locationData
       );
 
       // Reset form
@@ -460,7 +560,11 @@ export function WeatherDashboard({
         activity_type: '',
         start_date: new Date().toISOString().split('T')[0],
         end_date: '',
-        notes: ''
+        notes: '',
+        location_lat: null,
+        location_lng: null,
+        location_name: '',
+        location_accuracy: null
       });
       setShowActivityForm(false);
 
@@ -492,7 +596,11 @@ export function WeatherDashboard({
       activity_type: activity.event_type || '',
       start_date: activity.event_date || '',
       end_date: activity.end_date || '',
-      notes: activity.notes || ''
+      notes: activity.notes || '',
+      location_lat: activity.location_lat || null,
+      location_lng: activity.location_lng || null,
+      location_name: activity.location_name || '',
+      location_accuracy: activity.location_accuracy || null
     });
   };
 
@@ -503,7 +611,11 @@ export function WeatherDashboard({
       activity_type: '',
       start_date: '',
       end_date: '',
-      notes: ''
+      notes: '',
+      location_lat: null,
+      location_lng: null,
+      location_name: '',
+      location_accuracy: null
     });
   };
 
@@ -525,12 +637,21 @@ export function WeatherDashboard({
       await deletePhenologyEvent(activityId);
 
       // Create the updated event
+      const locationData = (editActivityForm.location_lat && editActivityForm.location_lng) ? {
+        latitude: editActivityForm.location_lat,
+        longitude: editActivityForm.location_lng,
+        locationName: editActivityForm.location_name,
+        accuracy: editActivityForm.location_accuracy || undefined
+      } : undefined;
+
       await savePhenologyEvent(
         vineyardId,
         editActivityForm.activity_type.toLowerCase().replace(' ', '_'),
         editActivityForm.start_date,
         editActivityForm.notes,
-        editActivityForm.end_date || undefined
+        editActivityForm.end_date || undefined,
+        undefined, // harvestBlock
+        locationData
       );
 
       // Clear editing state
@@ -2301,6 +2422,142 @@ export function WeatherDashboard({
                 </div>
               </div>
 
+              {/* Location Check-in Section */}
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '10px', fontWeight: '500', fontSize: '14px' }}>
+                  📍 Location (Optional)
+                </label>
+
+                {/* Location Status Display */}
+                {activityForm.location_lat && activityForm.location_lng ? (
+                  <div style={{
+                    padding: '12px',
+                    backgroundColor: '#f0fdf4',
+                    border: '1px solid #bbf7d0',
+                    borderRadius: '8px',
+                    marginBottom: '10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}>
+                    <div>
+                      <div style={{ fontWeight: '500', color: '#065f46', fontSize: '14px', marginBottom: '2px' }}>
+                        {activityForm.location_name || 'Location Captured'}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#059669' }}>
+                        {activityForm.location_lat.toFixed(6)}, {activityForm.location_lng.toFixed(6)}
+                        {activityForm.location_accuracy && (
+                          <span style={{ marginLeft: '8px' }}>
+                            (±{Math.round(activityForm.location_accuracy)}m)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={clearLocation}
+                      style={{
+                        padding: '4px 8px',
+                        backgroundColor: '#ef4444',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '12px'
+                      }}
+                    >
+                      ✕ Clear
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{
+                    padding: '12px',
+                    backgroundColor: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    marginBottom: '10px',
+                    textAlign: 'center'
+                  }}>
+                    <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>
+                      No location set for this event
+                    </div>
+                  </div>
+                )}
+
+                {/* Location Error Display */}
+                {locationError && (
+                  <div style={{
+                    padding: '8px 12px',
+                    backgroundColor: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    color: '#991b1b',
+                    marginBottom: '10px'
+                  }}>
+                    {locationError}
+                  </div>
+                )}
+
+                {/* Location Action Buttons */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={getCurrentLocation}
+                    disabled={isGettingLocation}
+                    style={{
+                      padding: '8px 12px',
+                      backgroundColor: isGettingLocation ? '#9ca3af' : '#22c55e',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: isGettingLocation ? 'not-allowed' : 'pointer',
+                      fontSize: '13px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontWeight: '500'
+                    }}
+                  >
+                    {isGettingLocation ? (
+                      <>
+                        <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                        Getting Location...
+                      </>
+                    ) : (
+                      <>
+                        📍 Check In Here
+                      </>
+                    )}
+                  </button>
+
+                  {currentVineyard && (
+                    <button
+                      type="button"
+                      onClick={useVineyardLocation}
+                      style={{
+                        padding: '8px 12px',
+                        backgroundColor: '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        fontWeight: '500'
+                      }}
+                    >
+                      🍇 Use Vineyard Location
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '8px', lineHeight: '1.4' }}>
+                  💡 <strong>Tip:</strong> Use "Check In Here" to mark your exact location in the field, or use vineyard location for general activities.
+                </div>
+              </div>
+
               <div style={{ marginBottom: '15px' }}>
                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
                   Notes (Optional)
@@ -2660,6 +2917,22 @@ export function WeatherDashboard({
                             {activity.harvest_block && (
                               <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
                                 Block: {activity.harvest_block}
+                              </div>
+                            )}
+
+                            {(activity.location_lat && activity.location_lng) && (
+                              <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                📍 
+                                {activity.location_name ? (
+                                  <span>{activity.location_name}</span>
+                                ) : (
+                                  <span>{activity.location_lat.toFixed(4)}, {activity.location_lng.toFixed(4)}</span>
+                                )}
+                                {activity.location_accuracy && (
+                                  <span style={{ fontSize: '11px', color: '#9ca3af' }}>
+                                    (±{Math.round(activity.location_accuracy)}m)
+                                  </span>
+                                )}
                               </div>
                             )}
 

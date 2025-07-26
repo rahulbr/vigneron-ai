@@ -381,7 +381,13 @@ export async function savePhenologyEvent(
   eventDate: string, 
   notes: string = '', 
   endDate?: string, 
-  harvestBlock?: string
+  harvestBlock?: string,
+  locationData?: {
+    latitude?: number;
+    longitude?: number;
+    locationName?: string;
+    accuracy?: number;
+  }
 ): Promise<PhenologyEvent> {
   try {
     console.log('💾 Saving phenology event:', { vineyardId, eventType, eventDate, notes });
@@ -403,6 +409,22 @@ export async function savePhenologyEvent(
 
     if (harvestBlock) {
       insertData.harvest_block = harvestBlock;
+    }
+
+    // Add location data if provided
+    if (locationData) {
+      if (locationData.latitude !== undefined) {
+        insertData.location_lat = locationData.latitude;
+      }
+      if (locationData.longitude !== undefined) {
+        insertData.location_lng = locationData.longitude;
+      }
+      if (locationData.locationName) {
+        insertData.location_name = locationData.locationName;
+      }
+      if (locationData.accuracy !== undefined) {
+        insertData.location_accuracy = locationData.accuracy;
+      }
     }
 
     console.log('💾 Inserting phenology event data:', insertData);
