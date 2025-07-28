@@ -2250,39 +2250,52 @@ export function WeatherDashboard({
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               {/* Quick Location Actions */}
-              {eventsWithLocation.length > 1 && (
-                <a
-                  href={(() => {
-                    const waypoints = eventsWithLocation.map(event => 
-                      `${event.location_lat},${event.location_lng}`
-                    ).join('|');
-                    
-                    const origin = `${eventsWithLocation[0].location_lat},${eventsWithLocation[0].location_lng}`;
-                    const destination = `${eventsWithLocation[eventsWithLocation.length - 1].location_lat},${eventsWithLocation[eventsWithLocation.length - 1].location_lng}`;
-                    
-                    return eventsWithLocation.length > 2 
-                      ? `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}`
-                      : `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
-                  })()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    padding: '6px 12px',
-                    backgroundColor: '#10b981',
-                    color: 'white',
-                    textDecoration: 'none',
-                    borderRadius: '6px',
-                    fontSize: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    fontWeight: '500'
-                  }}
-                  title={`Route through all ${eventsWithLocation.length} event locations`}
-                >
-                  🗺️ Route All ({eventsWithLocation.length})
-                </a>
-              )}
+              {(() => {
+                // Filter events by type first, then check for location
+                const filteredEventsWithLocation = activities.filter(activity => {
+                  // Apply event type filter
+                  if (eventFilterTypes.length > 0) {
+                    const eventType = activity.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
+                    if (!eventFilterTypes.includes(eventType)) return false;
+                  }
+                  // Then check for location
+                  return activity.location_lat && activity.location_lng;
+                });
+
+                return filteredEventsWithLocation.length > 1 && (
+                  <a
+                    href={(() => {
+                      const waypoints = filteredEventsWithLocation.map(event => 
+                        `${event.location_lat},${event.location_lng}`
+                      ).join('|');
+                      
+                      const origin = `${filteredEventsWithLocation[0].location_lat},${filteredEventsWithLocation[0].location_lng}`;
+                      const destination = `${filteredEventsWithLocation[filteredEventsWithLocation.length - 1].location_lat},${filteredEventsWithLocation[filteredEventsWithLocation.length - 1].location_lng}`;
+                      
+                      return filteredEventsWithLocation.length > 2 
+                        ? `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}`
+                        : `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
+                    })()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      padding: '6px 12px',
+                      backgroundColor: '#10b981',
+                      color: 'white',
+                      textDecoration: 'none',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontWeight: '500'
+                    }}
+                    title={`Route through ${filteredEventsWithLocation.length} filtered event locations`}
+                  >
+                    🗺️ Route All ({filteredEventsWithLocation.length})
+                  </a>
+                );
+              })()}
               
               {/* Filter Dropdown */}
               <div style={{ position: "relative" }}>
@@ -3407,8 +3420,7 @@ export function WeatherDashboard({
                 })}
               </div>
             )}
-            </div>
-          )}
+          </div>
 
         </div>
       )}
