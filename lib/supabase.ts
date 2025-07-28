@@ -410,6 +410,39 @@ export async function savePhenologyEvent(
     target?: string;
     conditions?: string;
     equipment?: string;
+  },
+  irrigationData?: {
+    amount?: string;
+    unit?: string;
+    method?: string;
+    duration?: string;
+  },
+  fertilizationData?: {
+    type?: string;
+    npk?: string;
+    rate?: string;
+    unit?: string;
+    method?: string;
+  },
+  harvestData?: {
+    yield?: string;
+    unit?: string;
+    brix?: string;
+    ph?: string;
+    ta?: string;
+    block?: string;
+  },
+  canopyData?: {
+    activity?: string;
+    intensity?: string;
+    side?: string;
+    stage?: string;
+  },
+  scoutData?: {
+    focus?: string;
+    severity?: string;
+    distribution?: string;
+    action?: string;
   }
 ): Promise<PhenologyEvent> {
   try {
@@ -469,6 +502,95 @@ export async function savePhenologyEvent(
       }
       if (sprayData.equipment) {
         insertData.spray_equipment = sprayData.equipment;
+      }
+    }
+
+    // Add irrigation data if provided
+    if (irrigationData) {
+      if (irrigationData.amount) {
+        insertData.irrigation_amount = irrigationData.amount;
+      }
+      if (irrigationData.unit) {
+        insertData.irrigation_unit = irrigationData.unit;
+      }
+      if (irrigationData.method) {
+        insertData.irrigation_method = irrigationData.method;
+      }
+      if (irrigationData.duration) {
+        insertData.irrigation_duration = irrigationData.duration;
+      }
+    }
+
+    // Add fertilization data if provided
+    if (fertilizationData) {
+      if (fertilizationData.type) {
+        insertData.fertilizer_type = fertilizationData.type;
+      }
+      if (fertilizationData.npk) {
+        insertData.fertilizer_npk = fertilizationData.npk;
+      }
+      if (fertilizationData.rate) {
+        insertData.fertilizer_rate = fertilizationData.rate;
+      }
+      if (fertilizationData.unit) {
+        insertData.fertilizer_unit = fertilizationData.unit;
+      }
+      if (fertilizationData.method) {
+        insertData.fertilizer_method = fertilizationData.method;
+      }
+    }
+
+    // Add harvest data if provided
+    if (harvestData) {
+      if (harvestData.yield) {
+        insertData.harvest_yield = harvestData.yield;
+      }
+      if (harvestData.unit) {
+        insertData.harvest_unit = harvestData.unit;
+      }
+      if (harvestData.brix) {
+        insertData.harvest_brix = harvestData.brix;
+      }
+      if (harvestData.ph) {
+        insertData.harvest_ph = harvestData.ph;
+      }
+      if (harvestData.ta) {
+        insertData.harvest_ta = harvestData.ta;
+      }
+      if (harvestData.block) {
+        insertData.harvest_block = harvestData.block;
+      }
+    }
+
+    // Add canopy management data if provided
+    if (canopyData) {
+      if (canopyData.activity) {
+        insertData.canopy_activity = canopyData.activity;
+      }
+      if (canopyData.intensity) {
+        insertData.canopy_intensity = canopyData.intensity;
+      }
+      if (canopyData.side) {
+        insertData.canopy_side = canopyData.side;
+      }
+      if (canopyData.stage) {
+        insertData.canopy_stage = canopyData.stage;
+      }
+    }
+
+    // Add scouting data if provided
+    if (scoutData) {
+      if (scoutData.focus) {
+        insertData.scout_focus = scoutData.focus;
+      }
+      if (scoutData.severity) {
+        insertData.scout_severity = scoutData.severity;
+      }
+      if (scoutData.distribution) {
+        insertData.scout_distribution = scoutData.distribution;
+      }
+      if (scoutData.action) {
+        insertData.scout_action = scoutData.action;
       }
     }
 
