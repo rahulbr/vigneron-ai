@@ -91,7 +91,7 @@ export async function createVineyard(name: string, location: string, lat: number
   return data[0];
 }
 
-export async function getVineyard(id: string): Promise<Vineyard> {
+export async function getVineyard(id: string): Promise<Vineyard | null> {
   const { data, error } = await supabase
     .from('vineyards')
     .select('*')
@@ -100,12 +100,12 @@ export async function getVineyard(id: string): Promise<Vineyard> {
 
   if (error) throw error;
   if (!data || data.length === 0) {
-    throw new Error('No vineyard found with that ID');
+    return null; // Return null instead of throwing error
   }
   return data[0];
 }
 
-export async function getVineyardDetails(vineyardId: string): Promise<Vineyard> {
+export async function getVineyardDetails(vineyardId: string): Promise<Vineyard | null> {
   try {
     const { data, error } = await supabase
       .from('vineyards')
@@ -119,7 +119,8 @@ export async function getVineyardDetails(vineyardId: string): Promise<Vineyard> 
     }
 
     if (!data || data.length === 0) {
-      throw new Error('No vineyard found with that ID');
+      console.log('🍇 No vineyard found with ID:', vineyardId);
+      return null; // Return null instead of throwing error
     }
 
     const vineyard = data[0];
@@ -223,21 +224,35 @@ export async function saveVineyardLocation(
 
 // Get user's vineyards (NEW)
 export async function getUserVineyards(): Promise<Vineyard[]> {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
+  try {
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError) {
+      console.error('Authentication error:', authError)
+      return []
+    }
+    
+    if (!user) {
+      console.log('No authenticated user found')
+      return []
+    }
 
-  const { data, error } = await supabase
-    .from('vineyards')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
+    const { data, error } = await supabase
+      .from('vineyards')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
 
-  if (error) {
-    console.error('Error fetching user vineyards:', error)
+    if (error) {
+      console.error('Error fetching user vineyards:', error)
+      return []
+    }
+
+    return data || []
+  } catch (error) {
+    console.error('Unexpected error in getUserVineyards:', error)
     return []
   }
-
-  return data || []
 }
 
 // ========================================
@@ -487,20 +502,23 @@ export async function ensureVineyardExistsInDatabase(vineyardId: string): Promis
   try {
     console.log('🔍 Checking if vineyard exists in database:', vineyardId);
 
-    // Check if vineyard exists - use array response instead of single
+    // Check if vineyard exists - use proper select query
     const { data: existingVineyard, error: checkError } = await supabase
       .from('vineyards')
       .select('id')
       .eq('id', vineyardId)
-      .limit(1);
+      .maybeSingle(); // Use maybeSingle() to handle 0 or 1 row gracefully
 
     if (checkError) {
       console.error('❌ Error checking vineyard existence:', checkError);
       throw checkError;
     }
 
-    if (!existingVineyard || existingVineyard.length === 0) {
+    if (!existingVineyard) {
       console.log('🆕 Vineyard not found, creating it...');
+
+      // Get current user for user_id
+      const { data: { user } } = await supabase.auth.getUser();
 
       // Create a basic vineyard record
       const { data: newVineyard, error: createError } = await supabase
@@ -510,20 +528,22 @@ export async function ensureVineyardExistsInDatabase(vineyardId: string): Promis
           name: 'Default Vineyard',
           latitude: 37.3272, // Default to La Honda
           longitude: -122.2813,
-          location: 'La Honda, CA'
+          location: 'La Honda, CA',
+          user_id: user?.id || null
         }])
-        .select();
+        .select()
+        .single();
 
       if (createError) {
         console.error('❌ Error creating vineyard:', createError);
         throw createError;
       }
 
-      if (!newVineyard || newVineyard.length === 0) {
+      if (!newVineyard) {
         throw new Error('Failed to create default vineyard');
       }
 
-      console.log('✅ Created new vineyard:', newVineyard[0]);
+      console.log('✅ Created new vineyard:', newVineyard);
     } else {
       console.log('✅ Vineyard already exists in database');
     }
