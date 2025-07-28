@@ -2228,165 +2228,244 @@ export function WeatherDashboard({
 
 
 
-      {/* Events Section - Combined Activity Log and Phenology Events */}
+      {/* Streamlined Event Log Section */}
       {currentVineyard && (
         <div className="card section-spacing">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h3 style={{ margin: '0', fontSize: '1.25rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              🌱 Event Log
-            </h3>
-            <div style={{ position: "relative" }}>
-              <button
-                onClick={() => setShowEventFilterDropdown(!showEventFilterDropdown)}
-                style={{
-                  padding: "8px 16px",
-                  backgroundColor: "#3b82f6",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontSize: "14px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px"
-                }}
-              >
-                🔍 Filter ({eventFilterTypes.length > 0 ? eventFilterTypes.length : 'All'})
-              </button>
-
-              {showEventFilterDropdown && (
-                <div style={{
-                  position: "absolute",
-                  top: "100%",
-                  right: "0",
-                  backgroundColor: "white",
-                  border: "1px solid #ddd",
-                  borderRadius: "6px",
-                  boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
-                  zIndex: 1000,
-                  minWidth: "200px",
-                  maxHeight: "300px",
-                  overflowY: "auto"
-                }}>
-                  <div style={{ padding: "8px 12px", borderBottom: "1px solid #eee", fontWeight: "bold", fontSize: "12px" }}>
-                    Filter events by type:
-                  </div>
-                  <div style={{ padding: "4px" }}>
-                    <button
-                      onClick={() => setEventFilterTypes([])}
-                      style={{
-                        width: "100%",
-                        padding: "6px 12px",
-                        backgroundColor: eventFilterTypes.length === 0 ? "#e0f2fe" : "transparent",
-                        border: "none",
-                        textAlign: "left",
-                        cursor: "pointer",
-                        fontSize: "12px"
-                      }}
-                    >
-                      Show All Events
-                    </button>
-                    {activityTypes.map((type) => {
-                      const eventType = type.toLowerCase().replace(' ', '_');
-                      // Event styles for consistent display
-                      const eventStyles: { [key: string]: { color: string, label: string, emoji: string } } = {
-                        bud_break: { color: "#22c55e", label: "Bud Break", emoji: "🌱" },
-                        bloom: { color: "#f59e0b", label: "Bloom", emoji: "🌸" },
-                        veraison: { color: "#8b5cf6", label: "Veraison", emoji: "🍇" },
-                        harvest: { color: "#ef4444", label: "Harvest", emoji: "🍷" },
-                        pruning: { color: "#6366f1", label: "Pruning", emoji: "✂️" },
-                        irrigation: { color: "#06b6d4", label: "Irrigation", emoji: "💧" },
-                        spray_application: { color: "#f97316", label: "Spray Application", emoji: "🌿" },
-                        fertilization: { color: "#84cc16", label: "Fertilization", emoji: "🌱" },
-                        canopy_management: { color: "#10b981", label: "Canopy Management", emoji: "🍃" },
-                        soil_work: { color: "#8b5cf6", label: "Soil Work", emoji: "🌍" },
-                        equipment_maintenance: { color: "#6b7280", label: "Equipment Maintenance", emoji: "🔧" },
-                        fruit_set: { color: "#f59e0b", label: "Fruit Set", emoji: "🫐" },
-                        pest: { color: "#dc2626", label: "Pest Observation", emoji: "🐞" },
-                        scouting: { color: "#059669", label: "Scouting", emoji: "🔍" },
-                        other: { color: "#9ca3af", label: "Other", emoji: "📝" },
-                      };
-                      const style = eventStyles[eventType] || eventStyles.other;
-                      const isSelected = eventFilterTypes.includes(eventType);
-                      return (
-                        <button
-                          key={type}
-                          onClick={() => {
-                            if (isSelected) {
-                              setEventFilterTypes(prev => prev.filter(t => t !== eventType));
-                            } else {
-                              setEventFilterTypes(prev => [...prev, eventType]);
-                            }
-                          }}
-                          style={{
-                            width: "100%",
-                            padding: "6px 12px",
-                            backgroundColor: isSelected ? "#e0f2fe" : "transparent",
-                            border: "none",
-                            textAlign: "left",
-                            cursor: "pointer",
-                            fontSize: "12px",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "6px"
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: "8px",
-                              height: "8px",
-                              backgroundColor: style.color,
-                              borderRadius: "50%"
-                            }}
-                          ></div>
-                          {style.emoji} {style.label}
-                          {isSelected && <span style={{ marginLeft: "auto", color: "#22c55e" }}>✓</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
+            <div>
+              <h3 style={{ margin: '0 0 4px 0', fontSize: '1.25rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                🌱 Event Log
+              </h3>
+              {activities.length > 0 && (
+                <div style={{ fontSize: '13px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span>{activities.length} total events</span>
+                  <span>•</span>
+                  <span style={{ color: '#059669' }}>{eventsWithLocation.length} with location</span>
+                  <span>•</span>
+                  <span style={{ color: eventsWithoutLocation.length > 0 ? '#dc2626' : '#6b7280' }}>
+                    {eventsWithoutLocation.length} missing location
+                  </span>
                 </div>
               )}
             </div>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              {/* Quick Location Actions */}
+              {eventsWithLocation.length > 1 && (
+                <a
+                  href={(() => {
+                    const waypoints = eventsWithLocation.map(event => 
+                      `${event.location_lat},${event.location_lng}`
+                    ).join('|');
+                    
+                    const origin = `${eventsWithLocation[0].location_lat},${eventsWithLocation[0].location_lng}`;
+                    const destination = `${eventsWithLocation[eventsWithLocation.length - 1].location_lat},${eventsWithLocation[eventsWithLocation.length - 1].location_lng}`;
+                    
+                    return eventsWithLocation.length > 2 
+                      ? `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}`
+                      : `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
+                  })()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    padding: '6px 12px',
+                    backgroundColor: '#10b981',
+                    color: 'white',
+                    textDecoration: 'none',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontWeight: '500'
+                  }}
+                  title={`Route through all ${eventsWithLocation.length} event locations`}
+                >
+                  🗺️ Route All ({eventsWithLocation.length})
+                </a>
+              )}
+              
+              {/* Filter Dropdown */}
+              <div style={{ position: "relative" }}>
+                <button
+                  onClick={() => setShowEventFilterDropdown(!showEventFilterDropdown)}
+                  style={{
+                    padding: "6px 12px",
+                    backgroundColor: "#f3f4f6",
+                    color: "#374151",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px"
+                  }}
+                >
+                  🔍 {eventFilterTypes.length > 0 ? `${eventFilterTypes.length} filtered` : 'All'}
+                </button>
+
+                {showEventFilterDropdown && (
+                  <div style={{
+                    position: "absolute",
+                    top: "100%",
+                    right: "0",
+                    backgroundColor: "white",
+                    border: "1px solid #ddd",
+                    borderRadius: "6px",
+                    boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
+                    zIndex: 1000,
+                    minWidth: "200px",
+                    maxHeight: "300px",
+                    overflowY: "auto"
+                  }}>
+                    <div style={{ padding: "8px 12px", borderBottom: "1px solid #eee", fontWeight: "bold", fontSize: "12px" }}>
+                      Filter events by type:
+                    </div>
+                    <div style={{ padding: "4px" }}>
+                      <button
+                        onClick={() => setEventFilterTypes([])}
+                        style={{
+                          width: "100%",
+                          padding: "6px 12px",
+                          backgroundColor: eventFilterTypes.length === 0 ? "#e0f2fe" : "transparent",
+                          border: "none",
+                          textAlign: "left",
+                          cursor: "pointer",
+                          fontSize: "12px"
+                        }}
+                      >
+                        Show All Events
+                      </button>
+                      {activityTypes.map((type) => {
+                        const eventType = type.toLowerCase().replace(' ', '_');
+                        const eventStyles: { [key: string]: { color: string, label: string, emoji: string } } = {
+                          bud_break: { color: "#22c55e", label: "Bud Break", emoji: "🌱" },
+                          bloom: { color: "#f59e0b", label: "Bloom", emoji: "🌸" },
+                          veraison: { color: "#8b5cf6", label: "Veraison", emoji: "🍇" },
+                          harvest: { color: "#ef4444", label: "Harvest", emoji: "🍷" },
+                          pruning: { color: "#6366f1", label: "Pruning", emoji: "✂️" },
+                          irrigation: { color: "#06b6d4", label: "Irrigation", emoji: "💧" },
+                          spray_application: { color: "#f97316", label: "Spray Application", emoji: "🌿" },
+                          fertilization: { color: "#84cc16", label: "Fertilization", emoji: "🌱" },
+                          canopy_management: { color: "#10b981", label: "Canopy Management", emoji: "🍃" },
+                          soil_work: { color: "#8b5cf6", label: "Soil Work", emoji: "🌍" },
+                          equipment_maintenance: { color: "#6b7280", label: "Equipment Maintenance", emoji: "🔧" },
+                          fruit_set: { color: "#f59e0b", label: "Fruit Set", emoji: "🫐" },
+                          pest: { color: "#dc2626", label: "Pest Observation", emoji: "🐞" },
+                          scouting: { color: "#059669", label: "Scouting", emoji: "🔍" },
+                          other: { color: "#9ca3af", label: "Other", emoji: "📝" },
+                        };
+                        const style = eventStyles[eventType] || eventStyles.other;
+                        const isSelected = eventFilterTypes.includes(eventType);
+                        return (
+                          <button
+                            key={type}
+                            onClick={() => {
+                              if (isSelected) {
+                                setEventFilterTypes(prev => prev.filter(t => t !== eventType));
+                              } else {
+                                setEventFilterTypes(prev => [...prev, eventType]);
+                              }
+                            }}
+                            style={{
+                              width: "100%",
+                              padding: "6px 12px",
+                              backgroundColor: isSelected ? "#e0f2fe" : "transparent",
+                              border: "none",
+                              textAlign: "left",
+                              cursor: "pointer",
+                              fontSize: "12px",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px"
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: "8px",
+                                height: "8px",
+                                backgroundColor: style.color,
+                                borderRadius: "50%"
+                              }}
+                            ></div>
+                            {style.emoji} {style.label}
+                            {isSelected && <span style={{ marginLeft: "auto", color: "#22c55e" }}>✓</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
-          {/* Event Form */}
+          {/* Simplified Add Event Button */}
+          {!showActivityForm && (
+            <div style={{ marginBottom: '20px' }}>
+              <button
+                onClick={() => setShowActivityForm(true)}
+                style={{
+                  padding: '12px 20px',
+                  backgroundColor: '#22c55e',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#16a34a';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#22c55e';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                ➕ Add Event
+              </button>
+            </div>
+          )}
+
+          {/* Simplified Event Form */}
           {showActivityForm && (
             <div style={{
               padding: '20px',
               backgroundColor: '#f8fafc',
-              border: '2px solid #3b82f6',
+              border: '2px solid #22c55e',
               borderRadius: '12px',
-              marginBottom: '20px',
-              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.1)'
+              marginBottom: '20px'
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <div>
-                  <h4 style={{ margin: '0 0 5px 0', color: '#1e40af', fontSize: '18px', fontWeight: '700' }}>
-                    📝 Add New Event
-                  </h4>
-                  <p style={{ margin: '0', fontSize: '14px', color: '#3730a3' }}>
-                    Log vineyard activities with optional location check-in
-                  </p>
-                </div>
-                {currentVineyard && (
-                  <div style={{
-                    padding: '8px 16px',
-                    backgroundColor: '#e0f2fe',
-                    border: '1px solid #7dd3fc',
-                    borderRadius: '20px',
-                    fontSize: '13px',
-                    color: '#0369a1',
-                    fontWeight: '600'
-                  }}>
-                    🍇 {currentVineyard.name}
-                  </div>
-                )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h4 style={{ margin: '0', color: '#059669', fontSize: '18px', fontWeight: '700' }}>
+                  ➕ Add New Event
+                </h4>
+                <button
+                  onClick={() => setShowActivityForm(false)}
+                  style={{
+                    padding: '4px 8px',
+                    backgroundColor: '#6b7280',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px'
+                  }}
+                >
+                  ✕
+                </button>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '15px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
                     Event Type *
                   </label>
                   <select
@@ -2409,8 +2488,8 @@ export function WeatherDashboard({
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
-                    Start Date *
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
+                    Date *
                   </label>
                   <input
                     type="date"
@@ -2427,7 +2506,7 @@ export function WeatherDashboard({
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
                     End Date (Optional)
                   </label>
                   <input
@@ -2445,59 +2524,53 @@ export function WeatherDashboard({
                 </div>
               </div>
 
-              {/* Location Check-in Section - Enhanced */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
+                  Notes (Optional)
+                </label>
+                <textarea
+                  value={activityForm.notes}
+                  onChange={(e) => setActivityForm(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Add any details about this event..."
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    minHeight: '60px',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+
+              {/* Simplified Location Section */}
               <div style={{ 
-                marginBottom: '20px',
-                padding: '16px',
+                marginBottom: '16px',
+                padding: '12px',
                 backgroundColor: '#fefce8',
-                border: '2px solid #facc15',
-                borderRadius: '10px'
+                border: '1px solid #fde68a',
+                borderRadius: '8px'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                  <span style={{ fontSize: '20px' }}>📍</span>
-                  <label style={{ fontWeight: '700', fontSize: '16px', color: '#a16207' }}>
-                    Add Location (Like Dropping a Pin!)
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '16px' }}>📍</span>
+                  <label style={{ fontWeight: '600', fontSize: '14px', color: '#a16207' }}>
+                    Location (Optional)
                   </label>
-                  <span style={{
-                    padding: '2px 8px',
-                    backgroundColor: '#fbbf24',
-                    color: '#92400e',
-                    borderRadius: '12px',
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    textTransform: 'uppercase'
-                  }}>
-                    Optional
-                  </span>
-                </div>
-                <div style={{ fontSize: '13px', color: '#a16207', marginBottom: '15px', fontStyle: 'italic' }}>
-                  📱 Perfect for mobile use - record exactly where vineyard work happened
                 </div>
 
-                {/* Location Status Display */}
                 {activityForm.location_lat && activityForm.location_lng ? (
                   <div style={{
-                    padding: '12px',
+                    padding: '8px',
                     backgroundColor: '#f0fdf4',
                     border: '1px solid #bbf7d0',
-                    borderRadius: '8px',
-                    marginBottom: '10px',
+                    borderRadius: '6px',
+                    marginBottom: '8px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between'
                   }}>
-                    <div>
-                      <div style={{ fontWeight: '500', color: '#065f46', fontSize: '14px', marginBottom: '2px' }}>
-                        {activityForm.location_name || 'Location Captured'}
-                      </div>
-                      <div style={{ fontSize: '12px', color: '#059669' }}>
-                        {activityForm.location_lat.toFixed(6)}, {activityForm.location_lng.toFixed(6)}
-                        {activityForm.location_accuracy && (
-                          <span style={{ marginLeft: '8px' }}>
-                            (±{Math.round(activityForm.location_accuracy)}m)
-                          </span>
-                        )}
-                      </div>
+                    <div style={{ fontSize: '13px', color: '#065f46' }}>
+                      📍 {activityForm.location_name || 'Location set'}
                     </div>
                     <button
                       onClick={clearLocation}
@@ -2508,178 +2581,45 @@ export function WeatherDashboard({
                         border: 'none',
                         borderRadius: '4px',
                         cursor: 'pointer',
-                        fontSize: '12px'
+                        fontSize: '11px'
                       }}
                     >
-                      ✕ Clear
+                      Clear
                     </button>
                   </div>
                 ) : (
-                  <div style={{
-                    padding: '12px',
-                    backgroundColor: '#f8fafc',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '8px',
-                    marginBottom: '10px',
-                    textAlign: 'center'
-                  }}>
-                    <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>
-                      No location set for this event
-                    </div>
+                  <div style={{ fontSize: '12px', color: '#92400e', marginBottom: '8px' }}>
+                    No location set
                   </div>
                 )}
 
-                {/* Google Maps Location Search */}
-                <div style={{ marginBottom: '10px' }}>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                    🗺️ Search Location (Google Maps):
-                  </label>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <input
-                      type="text"
-                      value={locationSearch}
-                      onChange={(e) => setLocationSearch(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleLocationSearch()}
-                      placeholder="e.g., Block 5 North, Chardonnay Section..."
-                      style={{
-                        flex: 1,
-                        padding: '6px 10px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '13px'
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleLocationSearch}
-                      disabled={isSearching || !locationSearch.trim()}
-                      style={{
-                        padding: '6px 10px',
-                        backgroundColor: isSearching ? '#9ca3af' : '#4285f4',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: isSearching || !locationSearch.trim() ? 'not-allowed' : 'pointer',
-                        fontSize: '12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                      }}
-                    >
-                      {isSearching ? <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <Search size={12} />}
-                      Search
-                    </button>
-                  </div>
-                </div>
-
-                {/* Search Results for Event Location */}
-                {showSearchResults && searchResults.length > 0 && (
-                  <div style={{ 
-                    marginBottom: '10px', 
-                    border: '1px solid #d1d5db', 
-                    borderRadius: '6px', 
-                    backgroundColor: 'white',
-                    maxHeight: '150px',
-                    overflowY: 'auto'
-                  }}>
-                    <div style={{ padding: '6px 10px', borderBottom: '1px solid #e5e7eb', fontWeight: '500', fontSize: '12px', backgroundColor: '#f9fafb', color: '#374151' }}>
-                      Select Location:
-                    </div>
-                    {searchResults.map((result, index) => (
-                      <div
-                        key={result.placeId}
-                        onClick={() => {
-                          setActivityForm(prev => ({
-                            ...prev,
-                            location_lat: result.latitude,
-                            location_lng: result.longitude,
-                            location_name: result.name,
-                            location_accuracy: null
-                          }));
-                          setLocationSearch('');
-                          setShowSearchResults(false);
-                          setLocationError('');
-                        }}
-                        style={{
-                          padding: '8px 10px',
-                          cursor: 'pointer',
-                          borderBottom: index < searchResults.length - 1 ? '1px solid #f3f4f6' : 'none',
-                          fontSize: '12px'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
-                      >
-                        <div style={{ fontWeight: '500', marginBottom: '2px' }}>{result.name}</div>
-                        <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>
-                          {result.formattedAddress}
-                        </div>
-                        <div style={{ fontSize: '10px', color: '#9ca3af' }}>
-                          {result.latitude.toFixed(4)}, {result.longitude.toFixed(4)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Location Error Display */}
-                {locationError && (
-                  <div style={{
-                    padding: '8px 12px',
-                    backgroundColor: '#fef2f2',
-                    border: '1px solid #fecaca',
-                    borderRadius: '6px',
-                    fontSize: '12px',
-                    color: '#991b1b',
-                    marginBottom: '10px'
-                  }}>
-                    {locationError}
-                  </div>
-                )}
-
-                {/* Location Action Buttons - Enhanced for Mobile */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '8px' }}>
                   <button
                     type="button"
                     onClick={getCurrentLocation}
                     disabled={isGettingLocation}
                     style={{
-                      padding: '12px 16px',
+                      padding: '8px 12px',
                       backgroundColor: isGettingLocation ? '#9ca3af' : '#10b981',
                       color: 'white',
                       border: 'none',
-                      borderRadius: '8px',
+                      borderRadius: '6px',
                       cursor: isGettingLocation ? 'not-allowed' : 'pointer',
-                      fontSize: '14px',
+                      fontSize: '12px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: '6px',
-                      fontWeight: '600',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isGettingLocation) {
-                        e.currentTarget.style.backgroundColor = '#059669';
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isGettingLocation) {
-                        e.currentTarget.style.backgroundColor = '#10b981';
-                        e.currentTarget.style.transform = 'translateY(0)';
-                      }
+                      gap: '4px',
+                      fontWeight: '500'
                     }}
                   >
                     {isGettingLocation ? (
                       <>
-                        <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} />
-                        Getting GPS...
+                        <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} />
+                        Getting...
                       </>
                     ) : (
-                      <>
-                        📍 Check In Here
-                      </>
+                      '📍 Check In Here'
                     )}
                   </button>
 
@@ -2688,57 +2628,24 @@ export function WeatherDashboard({
                       type="button"
                       onClick={useVineyardLocation}
                       style={{
-                        padding: '12px 16px',
+                        padding: '8px 12px',
                         backgroundColor: '#3b82f6',
                         color: 'white',
                         border: 'none',
-                        borderRadius: '8px',
+                        borderRadius: '6px',
                         cursor: 'pointer',
-                        fontSize: '14px',
+                        fontSize: '12px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: '6px',
-                        fontWeight: '600',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                        transition: 'all 0.2s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#2563eb';
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#3b82f6';
-                        e.currentTarget.style.transform = 'translateY(0)';
+                        gap: '4px',
+                        fontWeight: '500'
                       }}
                     >
-                      🍇 Use Vineyard Location
+                      🍇 Vineyard Location
                     </button>
                   )}
                 </div>
-
-                <div style={{ fontSize: '12px', color: '#a16207', marginTop: '12px', lineHeight: '1.4', fontWeight: '500' }}>
-                  💡 <strong>Pro Tip:</strong> Search for specific vineyard areas (e.g., "Block 5", "North Field"), use "Check In Here" for GPS location, or use vineyard location for general activities.
-                </div>
-              </div>
-
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
-                  Notes (Optional)
-                </label>
-                <textarea
-                  value={activityForm.notes}
-                  onChange={(e) => setActivityForm(prev => ({ ...prev, notes: e.target.value }))}
-                  placeholder="Add any additional details about this event..."
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    minHeight: '80px',
-                    resize: 'vertical'
-                  }}
-                />
               </div>
 
               <div style={{ display: 'flex', gap: '10px' }}>
@@ -2746,7 +2653,7 @@ export function WeatherDashboard({
                   onClick={saveActivity}
                   disabled={isSavingActivity || !activityForm.activity_type || !activityForm.start_date}
                   style={{
-                    padding: '8px 16px',
+                    padding: '10px 16px',
                     backgroundColor: isSavingActivity || !activityForm.activity_type || !activityForm.start_date ? '#9ca3af' : '#22c55e',
                     color: 'white',
                     border: 'none',
@@ -2755,7 +2662,8 @@ export function WeatherDashboard({
                     fontSize: '14px',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '4px'
+                    gap: '6px',
+                    fontWeight: '600'
                   }}
                 >
                   {isSavingActivity ? <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> : '💾'}
@@ -2765,7 +2673,7 @@ export function WeatherDashboard({
                 <button
                   onClick={() => setShowActivityForm(false)}
                   style={{
-                    padding: '8px 16px',
+                    padding: '10px 16px',
                     backgroundColor: '#6b7280',
                     color: 'white',
                     border: 'none',
@@ -2780,999 +2688,32 @@ export function WeatherDashboard({
             </div>
           )}
 
-          {/* Add Event Button - Prominent */}
-          {!showActivityForm && (
-            <div style={{ 
-              textAlign: 'center', 
-              marginBottom: '25px',
-              padding: '20px',
-              backgroundColor: '#f0f9ff',
-              border: '2px dashed #0ea5e9',
-              borderRadius: '12px'
-            }}>
-              <div style={{ fontSize: '48px', marginBottom: '10px' }}>📱</div>
-              <h3 style={{ margin: '0 0 8px 0', color: '#0369a1', fontSize: '18px' }}>
-                Ready to Log an Event?
-              </h3>
-              <p style={{ margin: '0 0 15px 0', color: '#0284c7', fontSize: '14px' }}>
-                Add vineyard activities with location check-in (like dropping a pin in Google Maps)
-              </p>
+          {/* Unified Event List */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+              <h4 style={{ margin: '0', fontSize: '16px', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                📅 Event History
+              </h4>
               <button
-                onClick={() => setShowActivityForm(true)}
+                onClick={loadActivities}
+                disabled={isLoadingActivities}
                 style={{
-                  padding: '12px 24px',
-                  backgroundColor: '#0ea5e9',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
+                  padding: '6px 12px',
+                  backgroundColor: '#f3f4f6',
+                  color: '#374151',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
                   cursor: 'pointer',
-                  fontSize: '16px',
-                  fontWeight: '600',
+                  fontSize: '12px',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px',
-                  margin: '0 auto',
-                  boxShadow: '0 4px 12px rgba(14, 165, 233, 0.3)',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#0284c7';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(14, 165, 233, 0.4)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#0ea5e9';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(14, 165, 233, 0.3)';
+                  gap: '4px'
                 }}
               >
-                📝 Add Event
+                <RefreshCw size={12} style={{ animation: isLoadingActivities ? 'spin 1s linear infinite' : 'none' }} />
+                Refresh
               </button>
             </div>
-          )}
-
-          {/* Location Summary & Map Toggle */}
-          {activities.length > 0 && (
-            <div style={{
-              marginBottom: '20px',
-              padding: '16px',
-              backgroundColor: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: '10px'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <h4 style={{ margin: '0', fontSize: '16px', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  📍 Event Locations
-                </h4>
-                <button
-                  onClick={() => setShowLocationMap(!showLocationMap)}
-                  style={{
-                    padding: '8px 16px',
-                    backgroundColor: showLocationMap ? '#ef4444' : '#3b82f6',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    fontWeight: '500'
-                  }}
-                >
-                  {showLocationMap ? (
-                    <>📋 Show Event List</>
-                  ) : (
-                    <>🗺️ Show Location Map</>
-                  )}
-                </button>
-              </div>
-
-              {/* Location Statistics */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
-                <div style={{
-                  padding: '10px',
-                  backgroundColor: '#f0fdf4',
-                  border: '1px solid #bbf7d0',
-                  borderRadius: '6px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '18px', fontWeight: '700', color: '#059669' }}>
-                    {eventsWithLocation.length}
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#065f46' }}>
-                    📍 With Location
-                  </div>
-                </div>
-
-                <div style={{
-                  padding: '10px',
-                  backgroundColor: eventsWithoutLocation.length > 0 ? '#fef2f2' : '#f8fafc',
-                  border: `1px solid ${eventsWithoutLocation.length > 0 ? '#fecaca' : '#e2e8f0'}`,
-                  borderRadius: '6px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ 
-                    fontSize: '18px', 
-                    fontWeight: '700', 
-                    color: eventsWithoutLocation.length > 0 ? '#dc2626' : '#6b7280' 
-                  }}>
-                    {eventsWithoutLocation.length}
-                  </div>
-                  <div style={{ 
-                    fontSize: '12px', 
-                    color: eventsWithoutLocation.length > 0 ? '#991b1b' : '#6b7280' 
-                  }}>
-                    ⚠️ Missing Location
-                  </div>
-                </div>
-
-                <div style={{
-                  padding: '10px',
-                  backgroundColor: '#eff6ff',
-                  border: '1px solid #bfdbfe',
-                  borderRadius: '6px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '18px', fontWeight: '700', color: '#2563eb' }}>
-                    {locationCoveragePercent}%
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#1e40af' }}>
-                    📊 Coverage
-                  </div>
-                </div>
-              </div>
-
-              {eventsWithoutLocation.length > 0 && (
-                <div style={{
-                  marginTop: '12px',
-                  padding: '10px',
-                  backgroundColor: '#fef2f2',
-                  border: '1px solid #fecaca',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  color: '#991b1b',
-                  fontWeight: '500'
-                }}>
-                  💡 Tip: Add locations to {eventsWithoutLocation.length} event{eventsWithoutLocation.length !== 1 ? 's' : ''} for better tracking and analysis.
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Interactive Location Map */}
-          {showLocationMap && activities.length > 0 && (
-            <div style={{
-              marginBottom: '20px',
-              border: '2px solid #3b82f6',
-              borderRadius: '12px',
-              overflow: 'hidden',
-              backgroundColor: 'white'
-            }}>
-              {/* Map Header */}
-              <div style={{
-                padding: '16px',
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <div>
-                  <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '700' }}>
-                    🗺️ Event Location Map
-                  </h3>
-                  <p style={{ margin: '0', fontSize: '14px', opacity: '0.9' }}>
-                    {eventsWithLocation.length} events plotted • {eventsWithoutLocation.length} missing locations
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowLocationMap(false)}
-                  style={{
-                    padding: '6px 10px',
-                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                    color: 'white',
-                    border: '1px solid rgba(255, 255, 255, 0.3)',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '12px'
-                  }}
-                >
-                  ✕ Close Map
-                </button>
-              </div>
-
-              {/* Map Content */}
-              <div style={{ padding: '20px' }}>
-                {eventsWithLocation.length > 0 ? (
-                  <>
-                    {/* Google Maps Integration */}
-                    <div style={{
-                      marginBottom: '20px',
-                      padding: '20px',
-                      backgroundColor: '#f0f9ff',
-                      border: '2px dashed #0ea5e9',
-                      borderRadius: '10px',
-                      textAlign: 'center'
-                    }}>
-                      <div style={{ fontSize: '48px', marginBottom: '12px' }}>🗺️</div>
-                      <h4 style={{ margin: '0 0 8px 0', color: '#0369a1', fontSize: '18px' }}>
-                        Interactive Map View
-                      </h4>
-                      <p style={{ margin: '0 0 16px 0', color: '#0284c7', fontSize: '14px' }}>
-                        Click "View All on Google Maps" to see events plotted on an interactive map
-                      </p>
-                      
-                      {/* Multiple options for viewing event locations */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        
-                        {/* Route View - Primary Option */}
-                        {(() => {
-                          if (eventsWithLocation.length < 2) {
-                            // Single location - direct view
-                            const event = eventsWithLocation[0];
-                            return (
-                              <a
-                                href={`https://www.google.com/maps?q=${event.location_lat},${event.location_lng}&z=18`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                  padding: '12px 24px',
-                                  backgroundColor: '#0ea5e9',
-                                  color: 'white',
-                                  textDecoration: 'none',
-                                  borderRadius: '8px',
-                                  fontSize: '16px',
-                                  fontWeight: '600',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  gap: '8px',
-                                  boxShadow: '0 4px 12px rgba(14, 165, 233, 0.3)',
-                                  transition: 'all 0.2s ease'
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.backgroundColor = '#0284c7';
-                                  e.currentTarget.style.transform = 'translateY(-2px)';
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.backgroundColor = '#0ea5e9';
-                                  e.currentTarget.style.transform = 'translateY(0)';
-                                }}
-                              >
-                                🗺️ View Event Location
-                              </a>
-                            );
-                          }
-
-                          // Multiple locations - create a route through all points
-                          const waypoints = eventsWithLocation.map(event => 
-                            `${event.location_lat},${event.location_lng}`
-                          ).join('|');
-                          
-                          const origin = `${eventsWithLocation[0].location_lat},${eventsWithLocation[0].location_lng}`;
-                          const destination = `${eventsWithLocation[eventsWithLocation.length - 1].location_lat},${eventsWithLocation[eventsWithLocation.length - 1].location_lng}`;
-                          
-                          // Create directions URL with waypoints
-                          const directionsUrl = eventsWithLocation.length > 2 
-                            ? `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}`
-                            : `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
-
-                          return (
-                            <a
-                              href={directionsUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{
-                                padding: '12px 24px',
-                                backgroundColor: '#0ea5e9',
-                                color: 'white',
-                                textDecoration: 'none',
-                                borderRadius: '8px',
-                                fontSize: '16px',
-                                fontWeight: '600',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '8px',
-                                boxShadow: '0 4px 12px rgba(14, 165, 233, 0.3)',
-                                transition: 'all 0.2s ease'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = '#0284c7';
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = '#0ea5e9';
-                                e.currentTarget.style.transform = 'translateY(0)';
-                              }}
-                            >
-                              🗺️ Route Through All Locations ({eventsWithLocation.length} stops)
-                            </a>
-                          );
-                        })()}
-
-                        {/* Copy Coordinates for Farm Management Software */}
-                        <div style={{
-                          padding: '12px',
-                          backgroundColor: '#f0f9ff',
-                          border: '1px solid #bae6fd',
-                          borderRadius: '8px'
-                        }}>
-                          <h5 style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#0369a1', fontWeight: '600' }}>
-                            📋 Copy Coordinates for Farm Software
-                          </h5>
-                          <div style={{
-                            backgroundColor: 'white',
-                            border: '1px solid #cbd5e1',
-                            borderRadius: '6px',
-                            padding: '8px',
-                            fontSize: '12px',
-                            fontFamily: 'monospace',
-                            maxHeight: '120px',
-                            overflowY: 'auto',
-                            color: '#374151'
-                          }}>
-                            {eventsWithLocation.map((event, index) => {
-                              const eventStyles: { [key: string]: { label: string } } = {
-                                bud_break: { label: "Bud Break" },
-                                bloom: { label: "Bloom" },
-                                veraison: { label: "Veraison" },
-                                harvest: { label: "Harvest" },
-                                pruning: { label: "Pruning" },
-                                irrigation: { label: "Irrigation" },
-                                spray_application: { label: "Spray Application" },
-                                fertilization: { label: "Fertilization" },
-                                canopy_management: { label: "Canopy Management" },
-                                soil_work: { label: "Soil Work" },
-                                equipment_maintenance: { label: "Equipment Maintenance" },
-                                fruit_set: { label: "Fruit Set" },
-                                pest: { label: "Pest Observation" },
-                                scouting: { label: "Scouting" },
-                                other: { label: "Other" },
-                              };
-                              
-                              const eventType = event.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
-                              const style = eventStyles[eventType] || eventStyles.other;
-                              
-                              return (
-                                <div key={index} style={{ marginBottom: '4px' }}>
-                                  {index + 1}. {style.label} ({event.event_date}): {event.location_lat.toFixed(6)}, {event.location_lng.toFixed(6)}
-                                  {event.location_name && <span> - {event.location_name}</span>}
-                                </div>
-                              );
-                            })}
-                          </div>
-                          <button
-                            onClick={() => {
-                              const coordinates = eventsWithLocation.map((event, index) => {
-                                const eventStyles: { [key: string]: { label: string } } = {
-                                  bud_break: { label: "Bud Break" },
-                                  bloom: { label: "Bloom" },
-                                  veraison: { label: "Veraison" },
-                                  harvest: { label: "Harvest" },
-                                  pruning: { label: "Pruning" },
-                                  irrigation: { label: "Irrigation" },
-                                  spray_application: { label: "Spray Application" },
-                                  fertilization: { label: "Fertilization" },
-                                  canopy_management: { label: "Canopy Management" },
-                                  soil_work: { label: "Soil Work" },
-                                  equipment_maintenance: { label: "Equipment Maintenance" },
-                                  fruit_set: { label: "Fruit Set" },
-                                  pest: { label: "Pest Observation" },
-                                  scouting: { label: "Scouting" },
-                                  other: { label: "Other" },
-                                };
-                                
-                                const eventType = event.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
-                                const style = eventStyles[eventType] || eventStyles.other;
-                                
-                                return `${index + 1}. ${style.label} (${event.event_date}): ${event.location_lat.toFixed(6)}, ${event.location_lng.toFixed(6)}${event.location_name ? ' - ' + event.location_name : ''}`;
-                              }).join('\n');
-                              
-                              navigator.clipboard.writeText(coordinates).then(() => {
-                                alert('📋 Coordinates copied to clipboard!\n\nYou can now paste these into John Deere Operations Center, Climate FieldView, or other farm management software.');
-                              }).catch(() => {
-                                // Fallback for older browsers
-                                const textArea = document.createElement('textarea');
-                                textArea.value = coordinates;
-                                document.body.appendChild(textArea);
-                                textArea.select();
-                                document.execCommand('copy');
-                                document.body.removeChild(textArea);
-                                alert('📋 Coordinates copied to clipboard!');
-                              });
-                            }}
-                            style={{
-                              marginTop: '8px',
-                              padding: '6px 12px',
-                              backgroundColor: '#10b981',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '12px',
-                              fontWeight: '500',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}
-                          >
-                            📋 Copy All Coordinates
-                          </button>
-                        </div>
-
-                        {/* Interactive Map Options */}
-                        <div style={{
-                          padding: '12px',
-                          backgroundColor: '#fefce8',
-                          border: '1px solid #fde68a',
-                          borderRadius: '8px'
-                        }}>
-                          <h5 style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#92400e', fontWeight: '600' }}>
-                            🗺️ Interactive Map Options
-                          </h5>
-                          
-                          {/* Primary option - Google Maps web link (always works) */}
-                          <div style={{ marginBottom: '12px' }}>
-                            <a
-                              href={`https://www.google.com/maps/@${latitude},${longitude},15z`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '10px 16px',
-                                backgroundColor: '#10b981',
-                                color: 'white',
-                                textDecoration: 'none',
-                                borderRadius: '6px',
-                                fontSize: '14px',
-                                fontWeight: '600',
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                              }}
-                            >
-                              🌍 Open in Google Maps
-                            </a>
-                            <div style={{ fontSize: '11px', color: '#92400e', marginTop: '4px' }}>
-                              Opens vineyard area in Google Maps (always works)
-                            </div>
-                          </div>
-
-                          {/* Embedded map option with API key check */}
-                          {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? (
-                            <div>
-                              <div style={{ fontSize: '12px', color: '#92400e', marginBottom: '6px', fontWeight: '500' }}>
-                                📍 Interactive Map with Event Locations:
-                              </div>
-                              <div style={{
-                                width: '100%',
-                                height: '350px',
-                                border: '1px solid #d1d5db',
-                                borderRadius: '6px',
-                                overflow: 'hidden',
-                                position: 'relative'
-                              }}>
-                                {(() => {
-                                  if (eventsWithLocation.length === 0) {
-                                    return (
-                                      <div style={{
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        height: '100%',
-                                        backgroundColor: '#f8fafc',
-                                        border: '2px dashed #cbd5e1',
-                                        textAlign: 'center',
-                                        padding: '20px'
-                                      }}>
-                                        <div style={{ fontSize: '48px', marginBottom: '15px' }}>📍</div>
-                                        <div style={{ fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                                          No Event Locations to Display
-                                        </div>
-                                        <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                                          Add locations to your events to see them on the map
-                                        </div>
-                                      </div>
-                                    );
-                                  }
-
-                                  if (eventsWithLocation.length === 1) {
-                                    // Single location - use place mode
-                                    const event = eventsWithLocation[0];
-                                    return (
-                                      <iframe
-                                        src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=${event.location_lat},${event.location_lng}&zoom=16`}
-                                        width="100%"
-                                        height="100%"
-                                        style={{ border: 0 }}
-                                        allowFullScreen
-                                        loading="lazy"
-                                        referrerPolicy="no-referrer-when-downgrade"
-                                        onError={(e) => {
-                                          const iframe = e.target as HTMLIFrameElement;
-                                          const container = iframe.parentElement;
-                                          if (container) {
-                                            container.innerHTML = `
-                                              <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; background-color: #fef2f2; border: 2px dashed #fecaca; text-align: center; padding: 20px;">
-                                                <div style="font-size: 24px; margin-bottom: 8px;">🗺️</div>
-                                                <div style="font-weight: 600; color: #dc2626; margin-bottom: 4px;">Map API Not Available</div>
-                                                <div style="font-size: 12px; color: #991b1b; margin-bottom: 12px;">Enable Maps Embed API in Google Cloud Console</div>
-                                                <a href="https://www.google.com/maps/@${event.location_lat},${event.location_lng},16z" target="_blank" style="padding: 6px 12px; background-color: #10b981; color: white; text-decoration: none; border-radius: 4px; font-size: 12px;">Open in Google Maps</a>
-                                              </div>
-                                            `;
-                                          }
-                                        }}
-                                      ></iframe>
-                                    );
-                                  }
-
-                                  // Multiple locations - create a search query with the first location and show nearby events
-                                  const centerEvent = eventsWithLocation[0];
-                                  const searchQuery = encodeURIComponent(`${centerEvent.location_lat},${centerEvent.location_lng}`);
-                                  
-                                  return (
-                                    <div style={{ height: '100%', position: 'relative' }}>
-                                      <iframe
-                                        src={`https://www.google.com/maps/embed/v1/search?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=${searchQuery}&zoom=14`}
-                                        width="100%"
-                                        height="100%"
-                                        style={{ border: 0 }}
-                                        allowFullScreen
-                                        loading="lazy"
-                                        referrerPolicy="no-referrer-when-downgrade"
-                                        onError={(e) => {
-                                          const iframe = e.target as HTMLIFrameElement;
-                                          const container = iframe.parentElement;
-                                          if (container) {
-                                            container.innerHTML = `
-                                              <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; background-color: #fef2f2; border: 2px dashed #fecaca; text-align: center; padding: 20px;">
-                                                <div style="font-size: 24px; margin-bottom: 8px;">🗺️</div>
-                                                <div style="font-weight: 600; color: #dc2626; margin-bottom: 4px;">Map API Not Available</div>
-                                                <div style="font-size: 12px; color: #991b1b; margin-bottom: 12px;">Enable Maps Embed API in Google Cloud Console</div>
-                                                <a href="https://www.google.com/maps/@${centerEvent.location_lat},${centerEvent.location_lng},14z" target="_blank" style="padding: 6px 12px; background-color: #10b981; color: white; text-decoration: none; border-radius: 4px; font-size: 12px;">Open in Google Maps</a>
-                                              </div>
-                                            `;
-                                          }
-                                        }}
-                                      ></iframe>
-                                      
-                                      {/* Overlay showing number of locations */}
-                                      <div style={{
-                                        position: 'absolute',
-                                        top: '10px',
-                                        right: '10px',
-                                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                                        color: 'white',
-                                        padding: '8px 12px',
-                                        borderRadius: '20px',
-                                        fontSize: '12px',
-                                        fontWeight: '600',
-                                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
-                                      }}>
-                                        📍 {eventsWithLocation.length} Event Locations
-                                      </div>
-                                    </div>
-                                  );
-                                })()}
-                              </div>
-                              <div style={{ fontSize: '11px', color: '#92400e', marginTop: '4px', lineHeight: '1.4' }}>
-                                {eventsWithLocation.length === 1 
-                                  ? 'Showing event location with marker'
-                                  : eventsWithLocation.length > 1 
-                                    ? `Map centered on vineyard area with ${eventsWithLocation.length} event locations. Use "Route Through All Locations" above to see all points connected.`
-                                    : 'Add locations to events to see them on the map'
-                                }
-                              </div>
-                            </div>
-                          ) : (
-                            <div style={{
-                              padding: '16px',
-                              backgroundColor: '#f0f9ff',
-                              border: '2px dashed #bae6fd',
-                              borderRadius: '6px',
-                              textAlign: 'center'
-                            }}>
-                              <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔑</div>
-                              <div style={{ fontWeight: '600', color: '#0369a1', marginBottom: '4px' }}>
-                                Google Maps API Key Required
-                              </div>
-                              <div style={{ fontSize: '12px', color: '#0284c7', marginBottom: '8px' }}>
-                                Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to enable embedded maps
-                              </div>
-                              <div style={{ fontSize: '11px', color: '#6b7280' }}>
-                                For now, use the "Open in Google Maps" link above
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Event List with Location Details */}
-                    <div>
-                      <h4 style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#374151' }}>
-                        📍 Events with Locations ({eventsWithLocation.length})
-                      </h4>
-                      <div style={{
-                        maxHeight: '400px',
-                        overflowY: 'auto',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                        backgroundColor: 'white'
-                      }}>
-                        {eventsWithLocation.map((event, index) => {
-                          const eventStyles: { [key: string]: { color: string, label: string, emoji: string } } = {
-                            bud_break: { color: "#22c55e", label: "Bud Break", emoji: "🌱" },
-                            bloom: { color: "#f59e0b", label: "Bloom", emoji: "🌸" },
-                            veraison: { color: "#8b5cf6", label: "Veraison", emoji: "🍇" },
-                            harvest: { color: "#ef4444", label: "Harvest", emoji: "🍷" },
-                            pruning: { color: "#6366f1", label: "Pruning", emoji: "✂️" },
-                            irrigation: { color: "#06b6d4", label: "Irrigation", emoji: "💧" },
-                            spray_application: { color: "#f97316", label: "Spray Application", emoji: "🌿" },
-                            fertilization: { color: "#84cc16", label: "Fertilization", emoji: "🌱" },
-                            canopy_management: { color: "#10b981", label: "Canopy Management", emoji: "🍃" },
-                            soil_work: { color: "#8b5cf6", label: "Soil Work", emoji: "🌍" },
-                            equipment_maintenance: { color: "#6b7280", label: "Equipment Maintenance", emoji: "🔧" },
-                            fruit_set: { color: "#f59e0b", label: "Fruit Set", emoji: "🫐" },
-                            pest: { color: "#dc2626", label: "Pest Observation", emoji: "🐞" },
-                            scouting: { color: "#059669", label: "Scouting", emoji: "🔍" },
-                            other: { color: "#9ca3af", label: "Other", emoji: "📝" },
-                          };
-
-                          const eventType = event.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
-                          const style = eventStyles[eventType] || eventStyles.other;
-
-                          return (
-                            <div
-                              key={event.id || index}
-                              style={{
-                                padding: '16px',
-                                borderBottom: index < eventsWithLocation.length - 1 ? '1px solid #f3f4f6' : 'none',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center'
-                              }}
-                            >
-                              <div style={{ flex: 1 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                                  <div
-                                    style={{
-                                      width: '12px',
-                                      height: '12px',
-                                      backgroundColor: style.color,
-                                      borderRadius: '50%',
-                                    }}
-                                  ></div>
-                                  <span style={{ fontSize: '16px' }}>{style.emoji}</span>
-                                  <span style={{ fontWeight: '600', color: '#374151', fontSize: '15px' }}>
-                                    {style.label}
-                                  </span>
-                                  <span style={{
-                                    fontSize: '12px',
-                                    color: '#6b7280',
-                                    padding: '2px 8px',
-                                    backgroundColor: '#f1f5f9',
-                                    borderRadius: '12px'
-                                  }}>
-                                    {new Date(event.event_date).toLocaleDateString()}
-                                  </span>
-                                </div>
-
-                                {/* Location Details */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
-                                  <div style={{ fontSize: '13px', color: '#059669', fontWeight: '500' }}>
-                                    📍 {event.location_name || 'Custom Location'}
-                                  </div>
-                                  <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                                    {event.location_lat.toFixed(4)}, {event.location_lng.toFixed(4)}
-                                  </div>
-                                  {event.location_accuracy && (
-                                    <div style={{ fontSize: '11px', color: '#9ca3af' }}>
-                                      ±{Math.round(event.location_accuracy)}m accuracy
-                                    </div>
-                                  )}
-                                </div>
-
-                                {event.notes && (
-                                  <div style={{ fontSize: '13px', color: '#4b5563', lineHeight: '1.4' }}>
-                                    {event.notes}
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Quick Actions */}
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
-                                {/* View on Google Maps */}
-                                <a
-                                  href={`https://www.google.com/maps?q=${event.location_lat},${event.location_lng}&z=18`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  style={{
-                                    padding: '4px 8px',
-                                    backgroundColor: '#10b981',
-                                    color: 'white',
-                                    textDecoration: 'none',
-                                    borderRadius: '4px',
-                                    fontSize: '11px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    fontWeight: '500'
-                                  }}
-                                  title="View this location on Google Maps"
-                                >
-                                  🗺️ View
-                                </a>
-
-                                {/* Get Directions */}
-                                <a
-                                  href={`https://www.google.com/maps/dir/?api=1&destination=${event.location_lat},${event.location_lng}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  style={{
-                                    padding: '4px 8px',
-                                    backgroundColor: '#3b82f6',
-                                    color: 'white',
-                                    textDecoration: 'none',
-                                    borderRadius: '4px',
-                                    fontSize: '11px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    fontWeight: '500'
-                                  }}
-                                  title="Get directions to this location"
-                                >
-                                  🧭 Directions
-                                </a>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div style={{
-                    padding: '40px',
-                    textAlign: 'center',
-                    backgroundColor: '#f8fafc',
-                    borderRadius: '8px',
-                    border: '2px dashed #cbd5e1'
-                  }}>
-                    <div style={{ fontSize: '48px', marginBottom: '15px' }}>📍</div>
-                    <h4 style={{ margin: '0 0 8px 0', color: '#374151' }}>No Events with Locations</h4>
-                    <p style={{ margin: '0', color: '#6b7280', fontSize: '14px' }}>
-                      Add locations to your events to see them plotted on the map.
-                    </p>
-                  </div>
-                )}
-
-                {/* Comprehensive Coordinate Summary for Farmers */}
-              {eventsWithLocation.length > 0 && (
-                <div style={{ marginTop: '24px' }}>
-                  <h4 style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#374151' }}>
-                    📊 Location Summary for Farm Management
-                  </h4>
-                  <div style={{
-                    padding: '16px',
-                    backgroundColor: '#f0f9ff',
-                    border: '1px solid #bae6fd',
-                    borderRadius: '8px',
-                    marginBottom: '16px'
-                  }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '12px' }}>
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '24px', fontWeight: '700', color: '#0369a1' }}>
-                          {eventsWithLocation.length}
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#0284c7' }}>
-                          Events with GPS coordinates
-                        </div>
-                      </div>
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '24px', fontWeight: '700', color: '#dc2626' }}>
-                          {eventsWithoutLocation.length}
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#991b1b' }}>
-                          Events need location data
-                        </div>
-                      </div>
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '24px', fontWeight: '700', color: '#059669' }}>
-                          {locationCoveragePercent}%
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#065f46' }}>
-                          Location coverage
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div style={{
-                      padding: '12px',
-                      backgroundColor: 'white',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '6px',
-                      fontSize: '13px',
-                      color: '#374151'
-                    }}>
-                      <strong>🚜 Perfect for Farm Management Software:</strong>
-                      <ul style={{ margin: '8px 0 0 20px', padding: '0' }}>
-                        <li>John Deere Operations Center</li>
-                        <li>Climate FieldView</li>
-                        <li>Trimble Ag Software</li>
-                        <li>Raven Slingshot</li>
-                        <li>Any precision agriculture platform</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Events Missing Locations */}
-              {eventsWithoutLocation.length > 0 && (
-                <div style={{ marginTop: '24px' }}>
-                  <h4 style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#374151' }}>
-                    ⚠️ Events Missing Locations ({eventsWithoutLocation.length})
-                  </h4>
-                    <div style={{
-                      maxHeight: '300px',
-                      overflowY: 'auto',
-                      border: '1px solid #fecaca',
-                      borderRadius: '8px',
-                      backgroundColor: '#fef2f2'
-                    }}>
-                      {eventsWithoutLocation.map((event, index) => {
-                        const eventStyles: { [key: string]: { color: string, label: string, emoji: string } } = {
-                          bud_break: { color: "#22c55e", label: "Bud Break", emoji: "🌱" },
-                          bloom: { color: "#f59e0b", label: "Bloom", emoji: "🌸" },
-                          veraison: { color: "#8b5cf6", label: "Veraison", emoji: "🍇" },
-                          harvest: { color: "#ef4444", label: "Harvest", emoji: "🍷" },
-                          pruning: { color: "#6366f1", label: "Pruning", emoji: "✂️" },
-                          irrigation: { color: "#06b6d4", label: "Irrigation", emoji: "💧" },
-                          spray_application: { color: "#f97316", label: "Spray Application", emoji: "🌿" },
-                          fertilization: { color: "#84cc16", label: "Fertilization", emoji: "🌱" },
-                          canopy_management: { color: "#10b981", label: "Canopy Management", emoji: "🍃" },
-                          soil_work: { color: "#8b5cf6", label: "Soil Work", emoji: "🌍" },
-                          equipment_maintenance: { color: "#6b7280", label: "Equipment Maintenance", emoji: "🔧" },
-                          fruit_set: { color: "#f59e0b", label: "Fruit Set", emoji: "🫐" },
-                          pest: { color: "#dc2626", label: "Pest Observation", emoji: "🐞" },
-                          scouting: { color: "#059669", label: "Scouting", emoji: "🔍" },
-                          other: { color: "#9ca3af", label: "Other", emoji: "📝" },
-                        };
-
-                        const eventType = event.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
-                        const style = eventStyles[eventType] || eventStyles.other;
-
-                        return (
-                          <div
-                            key={event.id || index}
-                            style={{
-                              padding: '16px',
-                              borderBottom: index < eventsWithoutLocation.length - 1 ? '1px solid #fecaca' : 'none',
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center'
-                            }}
-                          >
-                            <div style={{ flex: 1 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                                <div
-                                  style={{
-                                    width: '12px',
-                                    height: '12px',
-                                    backgroundColor: style.color,
-                                    borderRadius: '50%',
-                                  }}
-                                ></div>
-                                <span style={{ fontSize: '16px' }}>{style.emoji}</span>
-                                <span style={{ fontWeight: '600', color: '#374151', fontSize: '15px' }}>
-                                  {style.label}
-                                </span>
-                                <span style={{
-                                  fontSize: '12px',
-                                  color: '#6b7280',
-                                  padding: '2px 8px',
-                                  backgroundColor: '#f1f5f9',
-                                  borderRadius: '12px'
-                                }}>
-                                  {new Date(event.event_date).toLocaleDateString()}
-                                </span>
-                              </div>
-
-                              <div style={{ fontSize: '13px', color: '#dc2626', fontWeight: '500', marginBottom: '4px' }}>
-                                ⚠️ No location recorded
-                              </div>
-
-                              {event.notes && (
-                                <div style={{ fontSize: '13px', color: '#4b5563', lineHeight: '1.4' }}>
-                                  {event.notes}
-                                </div>
-                              )}
-                            </div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
-                              <button
-                                onClick={() => startEditingActivity(event)}
-                                style={{
-                                  padding: '6px 12px',
-                                  backgroundColor: '#f59e0b',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '4px',
-                                  cursor: 'pointer',
-                                  fontSize: '12px',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  fontWeight: '500'
-                                }}
-                                title="Edit this event to add location"
-                              >
-                                📍 Add Location
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Events List */}
-          {!showLocationMap && (
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                <h4 style={{ margin: '0', fontSize: '16px', color: '#374151' }}>
-                  Event History {activities.length > 0 && `(${activities.length})`}
-                </h4>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  {showActivityForm && (
-                    <button
-                      onClick={() => setShowActivityForm(false)}
-                      style={{
-                        padding: '6px 12px',
-                        backgroundColor: '#ef4444',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                      }}
-                    >
-                      ✕ Cancel
-                    </button>
-                  )}
-                  <button
-                    onClick={loadActivities}
-                    disabled={isLoadingActivities}
-                    style={{
-                      padding: '4px 8px',
-                      backgroundColor: '#f3f4f6',
-                      color: '#374151',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}
-                  >
-                    <RefreshCw size={12} style={{ animation: isLoadingActivities ? 'spin 1s linear infinite' : 'none' }} />
-                    Refresh
-                  </button>
-                </div>
-              </div>
 
             {isLoadingActivities ? (
               <div style={{ textAlign: 'center', padding: '20px', color: '#6b7280' }}>
