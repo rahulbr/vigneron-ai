@@ -3003,76 +3003,239 @@ export function WeatherDashboard({
                         Click "View All on Google Maps" to see events plotted on an interactive map
                       </p>
                       
-                      {/* Create Google Maps URL with multiple markers */}
-                      {(() => {
-                        const vineyard = currentVineyard;
-                        const centerLat = vineyard?.latitude || latitude;
-                        const centerLng = vineyard?.longitude || longitude;
+                      {/* Multiple options for viewing event locations */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         
-                        // Create individual marker parameters for each event location
-                        const markerParams = eventsWithLocation.map((event, index) => {
-                          const eventStyles: { [key: string]: { label: string, emoji: string, color: string } } = {
-                            bud_break: { label: "Bud Break", emoji: "🌱", color: "green" },
-                            bloom: { label: "Bloom", emoji: "🌸", color: "yellow" },
-                            veraison: { label: "Veraison", emoji: "🍇", color: "purple" },
-                            harvest: { label: "Harvest", emoji: "🍷", color: "red" },
-                            pruning: { label: "Pruning", emoji: "✂️", color: "blue" },
-                            irrigation: { label: "Irrigation", emoji: "💧", color: "blue" },
-                            spray_application: { label: "Spray Application", emoji: "🌿", color: "orange" },
-                            fertilization: { label: "Fertilization", emoji: "🌱", color: "green" },
-                            canopy_management: { label: "Canopy Management", emoji: "🍃", color: "green" },
-                            soil_work: { label: "Soil Work", emoji: "🌍", color: "brown" },
-                            equipment_maintenance: { label: "Equipment Maintenance", emoji: "🔧", color: "gray" },
-                            fruit_set: { label: "Fruit Set", emoji: "🫐", color: "yellow" },
-                            pest: { label: "Pest Observation", emoji: "🐞", color: "red" },
-                            scouting: { label: "Scouting", emoji: "🔍", color: "green" },
-                            other: { label: "Other", emoji: "📝", color: "gray" },
-                          };
+                        {/* Route View - Primary Option */}
+                        {(() => {
+                          if (eventsWithLocation.length < 2) {
+                            // Single location - direct view
+                            const event = eventsWithLocation[0];
+                            return (
+                              <a
+                                href={`https://www.google.com/maps?q=${event.location_lat},${event.location_lng}&z=18`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  padding: '12px 24px',
+                                  backgroundColor: '#0ea5e9',
+                                  color: 'white',
+                                  textDecoration: 'none',
+                                  borderRadius: '8px',
+                                  fontSize: '16px',
+                                  fontWeight: '600',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '8px',
+                                  boxShadow: '0 4px 12px rgba(14, 165, 233, 0.3)',
+                                  transition: 'all 0.2s ease'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.backgroundColor = '#0284c7';
+                                  e.currentTarget.style.transform = 'translateY(-2px)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.backgroundColor = '#0ea5e9';
+                                  e.currentTarget.style.transform = 'translateY(0)';
+                                }}
+                              >
+                                🗺️ View Event Location
+                              </a>
+                            );
+                          }
+
+                          // Multiple locations - create a route through all points
+                          const waypoints = eventsWithLocation.map(event => 
+                            `${event.location_lat},${event.location_lng}`
+                          ).join('|');
                           
-                          const eventType = event.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
-                          const style = eventStyles[eventType] || eventStyles.other;
-                          const markerLabel = encodeURIComponent(`${style.label} - ${event.event_date}${event.notes ? ': ' + event.notes.substring(0, 50) + (event.notes.length > 50 ? '...' : '') : ''}`);
+                          const origin = `${eventsWithLocation[0].location_lat},${eventsWithLocation[0].location_lng}`;
+                          const destination = `${eventsWithLocation[eventsWithLocation.length - 1].location_lat},${eventsWithLocation[eventsWithLocation.length - 1].location_lng}`;
                           
-                          return `markers=color:${style.color}%7Clabel:${index + 1}%7C${event.location_lat},${event.location_lng}`;
-                        }).join('&');
-                        
-                        // Add vineyard location as a distinct marker
-                        const vineyardMarker = vineyard ? `&markers=color:blue%7Clabel:V%7C${vineyard.latitude},${vineyard.longitude}` : '';
-                        
-                        const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${centerLat},${centerLng}&${markerParams}${vineyardMarker}`;
-                        
-                        return (
-                          <a
-                            href={googleMapsUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          // Create directions URL with waypoints
+                          const directionsUrl = eventsWithLocation.length > 2 
+                            ? `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}`
+                            : `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
+
+                          return (
+                            <a
+                              href={directionsUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                padding: '12px 24px',
+                                backgroundColor: '#0ea5e9',
+                                color: 'white',
+                                textDecoration: 'none',
+                                borderRadius: '8px',
+                                fontSize: '16px',
+                                fontWeight: '600',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px',
+                                boxShadow: '0 4px 12px rgba(14, 165, 233, 0.3)',
+                                transition: 'all 0.2s ease'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = '#0284c7';
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = '#0ea5e9';
+                                e.currentTarget.style.transform = 'translateY(0)';
+                              }}
+                            >
+                              🗺️ Route Through All Locations ({eventsWithLocation.length} stops)
+                            </a>
+                          );
+                        })()}
+
+                        {/* Copy Coordinates for Farm Management Software */}
+                        <div style={{
+                          padding: '12px',
+                          backgroundColor: '#f0f9ff',
+                          border: '1px solid #bae6fd',
+                          borderRadius: '8px'
+                        }}>
+                          <h5 style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#0369a1', fontWeight: '600' }}>
+                            📋 Copy Coordinates for Farm Software
+                          </h5>
+                          <div style={{
+                            backgroundColor: 'white',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '6px',
+                            padding: '8px',
+                            fontSize: '12px',
+                            fontFamily: 'monospace',
+                            maxHeight: '120px',
+                            overflowY: 'auto',
+                            color: '#374151'
+                          }}>
+                            {eventsWithLocation.map((event, index) => {
+                              const eventStyles: { [key: string]: { label: string } } = {
+                                bud_break: { label: "Bud Break" },
+                                bloom: { label: "Bloom" },
+                                veraison: { label: "Veraison" },
+                                harvest: { label: "Harvest" },
+                                pruning: { label: "Pruning" },
+                                irrigation: { label: "Irrigation" },
+                                spray_application: { label: "Spray Application" },
+                                fertilization: { label: "Fertilization" },
+                                canopy_management: { label: "Canopy Management" },
+                                soil_work: { label: "Soil Work" },
+                                equipment_maintenance: { label: "Equipment Maintenance" },
+                                fruit_set: { label: "Fruit Set" },
+                                pest: { label: "Pest Observation" },
+                                scouting: { label: "Scouting" },
+                                other: { label: "Other" },
+                              };
+                              
+                              const eventType = event.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
+                              const style = eventStyles[eventType] || eventStyles.other;
+                              
+                              return (
+                                <div key={index} style={{ marginBottom: '4px' }}>
+                                  {index + 1}. {style.label} ({event.event_date}): {event.location_lat.toFixed(6)}, {event.location_lng.toFixed(6)}
+                                  {event.location_name && <span> - {event.location_name}</span>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <button
+                            onClick={() => {
+                              const coordinates = eventsWithLocation.map((event, index) => {
+                                const eventStyles: { [key: string]: { label: string } } = {
+                                  bud_break: { label: "Bud Break" },
+                                  bloom: { label: "Bloom" },
+                                  veraison: { label: "Veraison" },
+                                  harvest: { label: "Harvest" },
+                                  pruning: { label: "Pruning" },
+                                  irrigation: { label: "Irrigation" },
+                                  spray_application: { label: "Spray Application" },
+                                  fertilization: { label: "Fertilization" },
+                                  canopy_management: { label: "Canopy Management" },
+                                  soil_work: { label: "Soil Work" },
+                                  equipment_maintenance: { label: "Equipment Maintenance" },
+                                  fruit_set: { label: "Fruit Set" },
+                                  pest: { label: "Pest Observation" },
+                                  scouting: { label: "Scouting" },
+                                  other: { label: "Other" },
+                                };
+                                
+                                const eventType = event.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
+                                const style = eventStyles[eventType] || eventStyles.other;
+                                
+                                return `${index + 1}. ${style.label} (${event.event_date}): ${event.location_lat.toFixed(6)}, ${event.location_lng.toFixed(6)}${event.location_name ? ' - ' + event.location_name : ''}`;
+                              }).join('\n');
+                              
+                              navigator.clipboard.writeText(coordinates).then(() => {
+                                alert('📋 Coordinates copied to clipboard!\n\nYou can now paste these into John Deere Operations Center, Climate FieldView, or other farm management software.');
+                              }).catch(() => {
+                                // Fallback for older browsers
+                                const textArea = document.createElement('textarea');
+                                textArea.value = coordinates;
+                                document.body.appendChild(textArea);
+                                textArea.select();
+                                document.execCommand('copy');
+                                document.body.removeChild(textArea);
+                                alert('📋 Coordinates copied to clipboard!');
+                              });
+                            }}
                             style={{
-                              padding: '12px 24px',
-                              backgroundColor: '#0ea5e9',
+                              marginTop: '8px',
+                              padding: '6px 12px',
+                              backgroundColor: '#10b981',
                               color: 'white',
-                              textDecoration: 'none',
-                              borderRadius: '8px',
-                              fontSize: '16px',
-                              fontWeight: '600',
-                              display: 'inline-flex',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: '500',
+                              display: 'flex',
                               alignItems: 'center',
-                              gap: '8px',
-                              boxShadow: '0 4px 12px rgba(14, 165, 233, 0.3)',
-                              transition: 'all 0.2s ease'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = '#0284c7';
-                              e.currentTarget.style.transform = 'translateY(-2px)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = '#0ea5e9';
-                              e.currentTarget.style.transform = 'translateY(0)';
+                              gap: '4px'
                             }}
                           >
-                            🗺️ View All on Google Maps
-                          </a>
-                        );
-                      })()}
+                            📋 Copy All Coordinates
+                          </button>
+                        </div>
+
+                        {/* Embedded Google Maps Option */}
+                        {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && (
+                          <div style={{
+                            padding: '12px',
+                            backgroundColor: '#fefce8',
+                            border: '1px solid #fde68a',
+                            borderRadius: '8px'
+                          }}>
+                            <h5 style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#92400e', fontWeight: '600' }}>
+                              🗺️ Interactive Map (Google Maps API)
+                            </h5>
+                            <div style={{
+                              width: '100%',
+                              height: '300px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '6px',
+                              overflow: 'hidden'
+                            }}>
+                              <iframe
+                                src={`https://www.google.com/maps/embed/v1/view?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&center=${latitude},${longitude}&zoom=14`}
+                                width="100%"
+                                height="100%"
+                                style={{ border: 0 }}
+                                allowFullScreen
+                                loading="lazy"
+                                referrerPolicy="no-referrer-when-downgrade"
+                              ></iframe>
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#92400e', marginTop: '6px' }}>
+                              Note: This shows the vineyard area. Individual event markers require advanced Google Maps integration.
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* Event List with Location Details */}
@@ -3235,12 +3398,73 @@ export function WeatherDashboard({
                   </div>
                 )}
 
-                {/* Events Missing Locations */}
-                {eventsWithoutLocation.length > 0 && (
-                  <div style={{ marginTop: '24px' }}>
-                    <h4 style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#374151' }}>
-                      ⚠️ Events Missing Locations ({eventsWithoutLocation.length})
-                    </h4>
+                {/* Comprehensive Coordinate Summary for Farmers */}
+              {eventsWithLocation.length > 0 && (
+                <div style={{ marginTop: '24px' }}>
+                  <h4 style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#374151' }}>
+                    📊 Location Summary for Farm Management
+                  </h4>
+                  <div style={{
+                    padding: '16px',
+                    backgroundColor: '#f0f9ff',
+                    border: '1px solid #bae6fd',
+                    borderRadius: '8px',
+                    marginBottom: '16px'
+                  }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '12px' }}>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '24px', fontWeight: '700', color: '#0369a1' }}>
+                          {eventsWithLocation.length}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#0284c7' }}>
+                          Events with GPS coordinates
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '24px', fontWeight: '700', color: '#dc2626' }}>
+                          {eventsWithoutLocation.length}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#991b1b' }}>
+                          Events need location data
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '24px', fontWeight: '700', color: '#059669' }}>
+                          {locationCoveragePercent}%
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#065f46' }}>
+                          Location coverage
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div style={{
+                      padding: '12px',
+                      backgroundColor: 'white',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '6px',
+                      fontSize: '13px',
+                      color: '#374151'
+                    }}>
+                      <strong>🚜 Perfect for Farm Management Software:</strong>
+                      <ul style={{ margin: '8px 0 0 20px', padding: '0' }}>
+                        <li>John Deere Operations Center</li>
+                        <li>Climate FieldView</li>
+                        <li>Trimble Ag Software</li>
+                        <li>Raven Slingshot</li>
+                        <li>Any precision agriculture platform</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Events Missing Locations */}
+              {eventsWithoutLocation.length > 0 && (
+                <div style={{ marginTop: '24px' }}>
+                  <h4 style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#374151' }}>
+                    ⚠️ Events Missing Locations ({eventsWithoutLocation.length})
+                  </h4>
                     <div style={{
                       maxHeight: '300px',
                       overflowY: 'auto',
