@@ -570,22 +570,23 @@ export function EnhancedGDDChart({
 
           <button
             onClick={() => {
-              console.log('📊 Add Event button clicked - scrolling to Event Log');
-              const eventLogSection = document.querySelector('[data-section="event-log"]');
+              console.log('📊 Add Event button clicked - opening Add Event form');
+              // Scroll to Event Log section
+              const eventLogSection = document.querySelector('[data-event-log-section]');
               if (eventLogSection) {
                 eventLogSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-                // Trigger the Add Event form after a short delay
-                setTimeout(() => {
-                  const addEventButton = document.querySelector('[data-action="add-event"]') as HTMLButtonElement;
-                  if (addEventButton) {
-                    addEventButton.click();
-                  }
-                }, 500);
-              } else {
-                // Fallback: just scroll down to where Event Log should be
-                window.scrollBy({ top: 600, behavior: 'smooth' });
               }
+
+              // Directly click the Add Event button to open the form
+              setTimeout(() => {
+                const addEventButton = document.querySelector('[data-event-log-add-button]') as HTMLButtonElement;
+                if (addEventButton) {
+                  console.log('📊 Clicking Add Event button to open form');
+                  addEventButton.click();
+                } else {
+                  console.warn('📊 Could not find Add Event button');
+                }
+              }, 300);
             }}
             disabled={loading}
             style={{
@@ -881,7 +882,7 @@ export function EnhancedGDDChart({
               const firstFutureIndex = chartData.findIndex(point => !point.hasData);
 
               if (lastActualIndex >= 0 && firstFutureIndex >= 0) {
-                const startX = padding + (lastActualIndex / (chartData.length - 1)) * (width - 2 * padding);
+                const startX= padding + (lastActualIndex / (chartData.length - 1)) * (width - 2 * padding);
                 const endX = padding + ((chartData.length - 1) / (chartData.length - 1)) * (width - 2 * padding);
                 const y = height - padding - ((actualDataPoints[actualDataPoints.length - 1].cumulativeGDD - minGDD) / (maxGDD - minGDD)) * (height - 2 * padding);
 
