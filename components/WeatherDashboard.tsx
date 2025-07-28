@@ -2230,7 +2230,7 @@ export function WeatherDashboard({
 
       {/* Streamlined Event Log Section */}
       {currentVineyard && (
-        <div className="card section-spacing">
+        <div className="card section-spacing" data-event-log-section>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <div>
               <h3 style={{ margin: '0 0 4px 0', fontSize: '1.25rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -2429,6 +2429,7 @@ export function WeatherDashboard({
             <div style={{ marginBottom: '20px' }}>
               <button
                 onClick={() => setShowActivityForm(true)}
+                data-event-log-add-button
                 style={{
                   padding: '12px 20px',
                   backgroundColor: '#22c55e',
