@@ -3244,43 +3244,127 @@ export function WeatherDashboard({
                           {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? (
                             <div>
                               <div style={{ fontSize: '12px', color: '#92400e', marginBottom: '6px', fontWeight: '500' }}>
-                                📍 Embedded Map Preview:
+                                📍 Interactive Map with Event Locations:
                               </div>
                               <div style={{
                                 width: '100%',
-                                height: '250px',
+                                height: '350px',
                                 border: '1px solid #d1d5db',
                                 borderRadius: '6px',
                                 overflow: 'hidden',
                                 position: 'relative'
                               }}>
-                                <iframe
-                                  src={`https://www.google.com/maps/embed/v1/view?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&center=${latitude},${longitude}&zoom=15`}
-                                  width="100%"
-                                  height="100%"
-                                  style={{ border: 0 }}
-                                  allowFullScreen
-                                  loading="lazy"
-                                  referrerPolicy="no-referrer-when-downgrade"
-                                  onError={(e) => {
-                                    // Hide iframe on error and show fallback
-                                    const iframe = e.target as HTMLIFrameElement;
-                                    const container = iframe.parentElement;
-                                    if (container) {
-                                      container.innerHTML = `
-                                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; background-color: #fef2f2; border: 2px dashed #fecaca; text-align: center; padding: 20px;">
-                                          <div style="font-size: 24px; margin-bottom: 8px;">🗺️</div>
-                                          <div style="font-weight: 600; color: #dc2626; margin-bottom: 4px;">Map API Not Available</div>
-                                          <div style="font-size: 12px; color: #991b1b; margin-bottom: 12px;">Enable Maps Embed API in Google Cloud Console</div>
-                                          <a href="https://www.google.com/maps/@${latitude},${longitude},15z" target="_blank" style="padding: 6px 12px; background-color: #10b981; color: white; text-decoration: none; border-radius: 4px; font-size: 12px;">Open in Google Maps</a>
+                                {(() => {
+                                  if (eventsWithLocation.length === 0) {
+                                    return (
+                                      <div style={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        height: '100%',
+                                        backgroundColor: '#f8fafc',
+                                        border: '2px dashed #cbd5e1',
+                                        textAlign: 'center',
+                                        padding: '20px'
+                                      }}>
+                                        <div style={{ fontSize: '48px', marginBottom: '15px' }}>📍</div>
+                                        <div style={{ fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+                                          No Event Locations to Display
                                         </div>
-                                      `;
-                                    }
-                                  }}
-                                ></iframe>
+                                        <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                                          Add locations to your events to see them on the map
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+
+                                  if (eventsWithLocation.length === 1) {
+                                    // Single location - use place mode
+                                    const event = eventsWithLocation[0];
+                                    return (
+                                      <iframe
+                                        src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=${event.location_lat},${event.location_lng}&zoom=16`}
+                                        width="100%"
+                                        height="100%"
+                                        style={{ border: 0 }}
+                                        allowFullScreen
+                                        loading="lazy"
+                                        referrerPolicy="no-referrer-when-downgrade"
+                                        onError={(e) => {
+                                          const iframe = e.target as HTMLIFrameElement;
+                                          const container = iframe.parentElement;
+                                          if (container) {
+                                            container.innerHTML = `
+                                              <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; background-color: #fef2f2; border: 2px dashed #fecaca; text-align: center; padding: 20px;">
+                                                <div style="font-size: 24px; margin-bottom: 8px;">🗺️</div>
+                                                <div style="font-weight: 600; color: #dc2626; margin-bottom: 4px;">Map API Not Available</div>
+                                                <div style="font-size: 12px; color: #991b1b; margin-bottom: 12px;">Enable Maps Embed API in Google Cloud Console</div>
+                                                <a href="https://www.google.com/maps/@${event.location_lat},${event.location_lng},16z" target="_blank" style="padding: 6px 12px; background-color: #10b981; color: white; text-decoration: none; border-radius: 4px; font-size: 12px;">Open in Google Maps</a>
+                                              </div>
+                                            `;
+                                          }
+                                        }}
+                                      ></iframe>
+                                    );
+                                  }
+
+                                  // Multiple locations - create a search query with the first location and show nearby events
+                                  const centerEvent = eventsWithLocation[0];
+                                  const searchQuery = encodeURIComponent(`${centerEvent.location_lat},${centerEvent.location_lng}`);
+                                  
+                                  return (
+                                    <div style={{ height: '100%', position: 'relative' }}>
+                                      <iframe
+                                        src={`https://www.google.com/maps/embed/v1/search?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=${searchQuery}&zoom=14`}
+                                        width="100%"
+                                        height="100%"
+                                        style={{ border: 0 }}
+                                        allowFullScreen
+                                        loading="lazy"
+                                        referrerPolicy="no-referrer-when-downgrade"
+                                        onError={(e) => {
+                                          const iframe = e.target as HTMLIFrameElement;
+                                          const container = iframe.parentElement;
+                                          if (container) {
+                                            container.innerHTML = `
+                                              <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; background-color: #fef2f2; border: 2px dashed #fecaca; text-align: center; padding: 20px;">
+                                                <div style="font-size: 24px; margin-bottom: 8px;">🗺️</div>
+                                                <div style="font-weight: 600; color: #dc2626; margin-bottom: 4px;">Map API Not Available</div>
+                                                <div style="font-size: 12px; color: #991b1b; margin-bottom: 12px;">Enable Maps Embed API in Google Cloud Console</div>
+                                                <a href="https://www.google.com/maps/@${centerEvent.location_lat},${centerEvent.location_lng},14z" target="_blank" style="padding: 6px 12px; background-color: #10b981; color: white; text-decoration: none; border-radius: 4px; font-size: 12px;">Open in Google Maps</a>
+                                              </div>
+                                            `;
+                                          }
+                                        }}
+                                      ></iframe>
+                                      
+                                      {/* Overlay showing number of locations */}
+                                      <div style={{
+                                        position: 'absolute',
+                                        top: '10px',
+                                        right: '10px',
+                                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                        color: 'white',
+                                        padding: '8px 12px',
+                                        borderRadius: '20px',
+                                        fontSize: '12px',
+                                        fontWeight: '600',
+                                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
+                                      }}>
+                                        📍 {eventsWithLocation.length} Event Locations
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
                               </div>
-                              <div style={{ fontSize: '11px', color: '#92400e', marginTop: '4px' }}>
-                                If map doesn't load, enable <strong>Maps Embed API</strong> in Google Cloud Console
+                              <div style={{ fontSize: '11px', color: '#92400e', marginTop: '4px', lineHeight: '1.4' }}>
+                                {eventsWithLocation.length === 1 
+                                  ? 'Showing event location with marker'
+                                  : eventsWithLocation.length > 1 
+                                    ? `Map centered on vineyard area with ${eventsWithLocation.length} event locations. Use "Route Through All Locations" above to see all points connected.`
+                                    : 'Add locations to events to see them on the map'
+                                }
                               </div>
                             </div>
                           ) : (
