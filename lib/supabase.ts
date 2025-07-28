@@ -402,6 +402,14 @@ export async function savePhenologyEvent(
     longitude?: number;
     locationName?: string;
     accuracy?: number;
+  },
+  sprayData?: {
+    product?: string;
+    quantity?: string;
+    unit?: string;
+    target?: string;
+    conditions?: string;
+    equipment?: string;
   }
 ): Promise<PhenologyEvent> {
   try {
@@ -439,6 +447,28 @@ export async function savePhenologyEvent(
       }
       if (locationData.accuracy !== undefined) {
         insertData.location_accuracy = locationData.accuracy;
+      }
+    }
+
+    // Add spray application data if provided
+    if (sprayData) {
+      if (sprayData.product) {
+        insertData.spray_product = sprayData.product;
+      }
+      if (sprayData.quantity) {
+        insertData.spray_quantity = sprayData.quantity;
+      }
+      if (sprayData.unit) {
+        insertData.spray_unit = sprayData.unit;
+      }
+      if (sprayData.target) {
+        insertData.spray_target = sprayData.target;
+      }
+      if (sprayData.conditions) {
+        insertData.spray_conditions = sprayData.conditions;
+      }
+      if (sprayData.equipment) {
+        insertData.spray_equipment = sprayData.equipment;
       }
     }
 

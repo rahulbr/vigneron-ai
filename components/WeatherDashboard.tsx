@@ -43,6 +43,34 @@ export function WeatherDashboard({
   // Multi-vineyard management state
   const [userVineyards, setUserVineyards] = useState<any[]>([]);
   const [currentVineyard, setCurrentVineyard] = useState<any | null>(null);
+
+  // Spray safety database - common agricultural chemicals with safety intervals
+  const sprayDatabase = {
+    'Captan': { reentryHours: 48, preharvestDays: 14, category: 'Fungicide', signal: 'CAUTION' },
+    'Copper Sulfate': { reentryHours: 24, preharvestDays: 0, category: 'Fungicide', signal: 'CAUTION' },
+    'Sulfur': { reentryHours: 24, preharvestDays: 0, category: 'Fungicide', signal: 'CAUTION' },
+    'Mancozeb': { reentryHours: 24, preharvestDays: 66, category: 'Fungicide', signal: 'CAUTION' },
+    'Chlorothalonil': { reentryHours: 12, preharvestDays: 42, category: 'Fungicide', signal: 'WARNING' },
+    'Propiconazole': { reentryHours: 24, preharvestDays: 30, category: 'Fungicide', signal: 'CAUTION' },
+    'Myclobutanil': { reentryHours: 12, preharvestDays: 21, category: 'Fungicide', signal: 'CAUTION' },
+    'Tebuconazole': { reentryHours: 12, preharvestDays: 45, category: 'Fungicide', signal: 'CAUTION' },
+    'Imidacloprid': { reentryHours: 12, preharvestDays: 7, category: 'Insecticide', signal: 'CAUTION' },
+    'Spinosad': { reentryHours: 4, preharvestDays: 7, category: 'Insecticide', signal: 'CAUTION' },
+    'Carbaryl': { reentryHours: 12, preharvestDays: 7, category: 'Insecticide', signal: 'CAUTION' },
+    'Malathion': { reentryHours: 12, preharvestDays: 1, category: 'Insecticide', signal: 'WARNING' },
+    'Glyphosate': { reentryHours: 4, preharvestDays: 14, category: 'Herbicide', signal: 'CAUTION' },
+    '2,4-D': { reentryHours: 48, preharvestDays: 60, category: 'Herbicide', signal: 'DANGER' },
+    'Dicamba': { reentryHours: 24, preharvestDays: 21, category: 'Herbicide', signal: 'WARNING' },
+    'Paraquat': { reentryHours: 12, preharvestDays: 21, category: 'Herbicide', signal: 'DANGER' },
+    'Roundup': { reentryHours: 4, preharvestDays: 14, category: 'Herbicide', signal: 'CAUTION' },
+    'Bt (Bacillus thuringiensis)': { reentryHours: 4, preharvestDays: 0, category: 'Biological', signal: 'CAUTION' },
+    'Kaolin Clay': { reentryHours: 4, preharvestDays: 0, category: 'Protectant', signal: 'CAUTION' },
+    'Neem Oil': { reentryHours: 4, preharvestDays: 0, category: 'Botanical', signal: 'CAUTION' },
+    'Horticultural Oil': { reentryHours: 4, preharvestDays: 0, category: 'Oil', signal: 'CAUTION' }
+  };
+
+  // Safety alerts state
+  const [safetyAlerts, setSafetyAlerts] = useState<any[]>([]);
   const [isLoadingVineyards, setIsLoadingVineyards] = useState(true);
   const [showCreateVineyard, setShowCreateVineyard] = useState(false);
   const [editingVineyardId, setEditingVineyardId] = useState<string | null>(null);
@@ -67,7 +95,14 @@ export function WeatherDashboard({
     location_lat: null as number | null,
     location_lng: null as number | null,
     location_name: '',
-    location_accuracy: null as number | null
+    location_accuracy: null as number | null,
+    // Spray application specific fields
+    spray_product: '',
+    spray_quantity: '',
+    spray_unit: 'oz/acre',
+    spray_target: '',
+    spray_conditions: '',
+    spray_equipment: ''
   });
   const [isLoadingActivities, setIsLoadingActivities] = useState(false);
   const [isSavingActivity, setIsSavingActivity] = useState(false);
@@ -529,6 +564,98 @@ export function WeatherDashboard({
     }
   }, [vineyardId]);
 
+  // Calculate safety alerts when activities change
+  useEffect(() => {
+    calculateSafetyAlerts();
+  }, [activities]);
+
+  // Calculate safety alerts for spray applications
+  const calculateSafetyAlerts = () => {
+    const alerts: any[] = [];
+    const today = new Date();
+    
+    // Check recent spray applications for re-entry and pre-harvest intervals
+    const sprayApplications = activities.filter(activity => 
+      activity.event_type === 'spray_application' && 
+      activity.spray_product &&
+      sprayDatabase[activity.spray_product as keyof typeof sprayDatabase]
+    );
+
+    sprayApplications.forEach(spray => {
+      const sprayDate = new Date(spray.event_date);
+      const productInfo = sprayDatabase[spray.spray_product as keyof typeof sprayDatabase];
+      
+      if (!productInfo) return;
+
+      // Calculate days since spray
+      const daysSinceSpray = Math.floor((today.getTime() - sprayDate.getTime()) / (1000 * 60 * 60 * 24));
+      const hoursSinceSpray = Math.floor((today.getTime() - sprayDate.getTime()) / (1000 * 60 * 60));
+
+      // Re-entry interval check
+      if (hoursSinceSpray < productInfo.reentryHours) {
+        const hoursRemaining = productInfo.reentryHours - hoursSinceSpray;
+        alerts.push({
+          id: `reentry-${spray.id}`,
+          type: 'reentry',
+          severity: 'high',
+          title: '🚫 Re-Entry Restriction Active',
+          message: `Block treated with ${spray.spray_product} on ${spray.event_date} - ${hoursRemaining} hours remaining until safe re-entry`,
+          location: spray.location_name || 'Unknown location',
+          productInfo,
+          sprayDate: spray.event_date,
+          hoursRemaining
+        });
+      }
+
+      // Pre-harvest interval check (if harvest events exist)
+      const harvestEvents = activities.filter(activity => activity.event_type === 'harvest');
+      harvestEvents.forEach(harvest => {
+        const harvestDate = new Date(harvest.event_date);
+        const daysFromSprayToHarvest = Math.floor((harvestDate.getTime() - sprayDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (daysFromSprayToHarvest >= 0 && daysFromSprayToHarvest < productInfo.preharvestDays) {
+          alerts.push({
+            id: `preharvest-${spray.id}-${harvest.id}`,
+            type: 'preharvest',
+            severity: 'critical',
+            title: '⚠️ Pre-Harvest Interval Violation',
+            message: `${spray.spray_product} applied ${daysFromSprayToHarvest} days before harvest on ${harvest.event_date}. Required interval: ${productInfo.preharvestDays} days`,
+            location: spray.location_name || 'Unknown location',
+            productInfo,
+            sprayDate: spray.event_date,
+            harvestDate: harvest.event_date,
+            daysShort: productInfo.preharvestDays - daysFromSprayToHarvest
+          });
+        }
+      });
+
+      // Upcoming harvest warning (within 30 days)
+      if (productInfo.preharvestDays > 0) {
+        const upcomingHarvestCutoff = new Date(sprayDate);
+        upcomingHarvestCutoff.setDate(upcomingHarvestCutoff.getDate() + productInfo.preharvestDays);
+        
+        const daysUntilSafeHarvest = Math.floor((upcomingHarvestCutoff.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (daysUntilSafeHarvest > 0 && daysUntilSafeHarvest <= 30) {
+          alerts.push({
+            id: `harvest-warning-${spray.id}`,
+            type: 'harvest_warning',
+            severity: 'medium',
+            title: '📅 Harvest Timing Notice',
+            message: `${spray.spray_product} applied on ${spray.event_date} - safe to harvest after ${upcomingHarvestCutoff.toLocaleDateString()}`,
+            location: spray.location_name || 'Unknown location',
+            productInfo,
+            sprayDate: spray.event_date,
+            safeHarvestDate: upcomingHarvestCutoff.toLocaleDateString(),
+            daysRemaining: daysUntilSafeHarvest
+          });
+        }
+      }
+    });
+
+    setSafetyAlerts(alerts);
+  };
+
   // Listen for chart date clicks to pre-populate form
   useEffect(() => {
     const handleChartDateClicked = (event: CustomEvent) => {
@@ -568,6 +695,19 @@ export function WeatherDashboard({
         accuracy: activityForm.location_accuracy || undefined
       } : undefined;
 
+      // Prepare spray application data if applicable
+      let sprayData = undefined;
+      if (activityForm.activity_type === 'Spray Application' && activityForm.spray_product) {
+        sprayData = {
+          product: activityForm.spray_product,
+          quantity: activityForm.spray_quantity,
+          unit: activityForm.spray_unit,
+          target: activityForm.spray_target,
+          conditions: activityForm.spray_conditions,
+          equipment: activityForm.spray_equipment
+        };
+      }
+
       await savePhenologyEvent(
         vineyardId,
         activityForm.activity_type.toLowerCase().replace(' ', '_'),
@@ -575,7 +715,8 @@ export function WeatherDashboard({
         activityForm.notes,
         activityForm.end_date || undefined,
         undefined, // harvestBlock
-        locationData
+        locationData,
+        sprayData
       );
 
       // Reset form
@@ -587,7 +728,13 @@ export function WeatherDashboard({
         location_lat: null,
         location_lng: null,
         location_name: '',
-        location_accuracy: null
+        location_accuracy: null,
+        spray_product: '',
+        spray_quantity: '',
+        spray_unit: 'oz/acre',
+        spray_target: '',
+        spray_conditions: '',
+        spray_equipment: ''
       });
       setShowActivityForm(false);
 
@@ -1126,6 +1273,76 @@ export function WeatherDashboard({
 
   return (
     <div className="container section-spacing" style={{ padding: '1rem' }}>
+      {/* Safety Alerts */}
+      {safetyAlerts.length > 0 && (
+        <div style={{ marginBottom: '20px' }}>
+          {safetyAlerts.map(alert => (
+            <div
+              key={alert.id}
+              style={{
+                padding: '15px 20px',
+                backgroundColor: alert.severity === 'critical' ? '#fef2f2' : 
+                                alert.severity === 'high' ? '#fffbeb' : '#f0f9ff',
+                border: `2px solid ${alert.severity === 'critical' ? '#ef4444' : 
+                                   alert.severity === 'high' ? '#f59e0b' : '#3b82f6'}`,
+                borderRadius: '8px',
+                marginBottom: '10px',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '12px'
+              }}
+            >
+              <div style={{ 
+                fontSize: '20px',
+                marginTop: '2px',
+                color: alert.severity === 'critical' ? '#ef4444' : 
+                       alert.severity === 'high' ? '#f59e0b' : '#3b82f6'
+              }}>
+                {alert.severity === 'critical' ? '🚨' : alert.severity === 'high' ? '🚫' : '📅'}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ 
+                  fontWeight: '700', 
+                  fontSize: '16px', 
+                  marginBottom: '4px',
+                  color: alert.severity === 'critical' ? '#991b1b' : 
+                         alert.severity === 'high' ? '#92400e' : '#1e40af'
+                }}>
+                  {alert.title}
+                </div>
+                <div style={{ 
+                  fontSize: '14px', 
+                  marginBottom: '6px',
+                  color: alert.severity === 'critical' ? '#7f1d1d' : 
+                         alert.severity === 'high' ? '#78350f' : '#1e3a8a'
+                }}>
+                  {alert.message}
+                </div>
+                <div style={{ 
+                  fontSize: '12px', 
+                  color: '#6b7280',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}>
+                  <span>📍 {alert.location}</span>
+                  <span>•</span>
+                  <span>{alert.productInfo.category} - {alert.productInfo.signal} Signal Word</span>
+                  {alert.type === 'reentry' && (
+                    <>
+                      <span>•</span>
+                      <span style={{ fontWeight: '600', color: '#ef4444' }}>
+                        Safe re-entry: {new Date(Date.now() + alert.hoursRemaining * 60 * 60 * 1000).toLocaleString()}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Header */}
       <div className="fade-in" style={{ marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '2rem', fontWeight: '700', margin: '0 0 0.5rem 0', color: '#1f2937' }}>
@@ -2568,6 +2785,219 @@ export function WeatherDashboard({
                 </div>
               </div>
 
+              {/* Spray Application Specific Fields */}
+              {activityForm.activity_type === 'Spray Application' && (
+                <div style={{
+                  marginBottom: '16px',
+                  padding: '16px',
+                  backgroundColor: '#fef3c7',
+                  border: '2px solid #fbbf24',
+                  borderRadius: '8px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                    <span style={{ fontSize: '20px' }}>🌿</span>
+                    <h5 style={{ margin: '0', color: '#92400e', fontSize: '16px', fontWeight: '700' }}>
+                      Spray Application Details
+                    </h5>
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                        Product Name *
+                      </label>
+                      <select
+                        value={activityForm.spray_product}
+                        onChange={(e) => setActivityForm(prev => ({ ...prev, spray_product: e.target.value }))}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: '1px solid #f59e0b',
+                          borderRadius: '6px',
+                          backgroundColor: 'white',
+                          fontSize: '13px'
+                        }}
+                        required
+                      >
+                        <option value="">Select product...</option>
+                        <optgroup label="Fungicides">
+                          <option value="Captan">Captan</option>
+                          <option value="Copper Sulfate">Copper Sulfate</option>
+                          <option value="Sulfur">Sulfur</option>
+                          <option value="Mancozeb">Mancozeb</option>
+                          <option value="Chlorothalonil">Chlorothalonil</option>
+                          <option value="Propiconazole">Propiconazole</option>
+                          <option value="Myclobutanil">Myclobutanil</option>
+                          <option value="Tebuconazole">Tebuconazole</option>
+                        </optgroup>
+                        <optgroup label="Insecticides">
+                          <option value="Imidacloprid">Imidacloprid</option>
+                          <option value="Spinosad">Spinosad</option>
+                          <option value="Carbaryl">Carbaryl</option>
+                          <option value="Malathion">Malathion</option>
+                          <option value="Bt (Bacillus thuringiensis)">Bt (Bacillus thuringiensis)</option>
+                        </optgroup>
+                        <optgroup label="Herbicides">
+                          <option value="Glyphosate">Glyphosate</option>
+                          <option value="Roundup">Roundup</option>
+                          <option value="2,4-D">2,4-D</option>
+                          <option value="Dicamba">Dicamba</option>
+                          <option value="Paraquat">Paraquat</option>
+                        </optgroup>
+                        <optgroup label="Organic/Biological">
+                          <option value="Neem Oil">Neem Oil</option>
+                          <option value="Horticultural Oil">Horticultural Oil</option>
+                          <option value="Kaolin Clay">Kaolin Clay</option>
+                        </optgroup>
+                        <option value="Other">Other (specify in notes)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                        Quantity
+                      </label>
+                      <input
+                        type="text"
+                        value={activityForm.spray_quantity}
+                        onChange={(e) => setActivityForm(prev => ({ ...prev, spray_quantity: e.target.value }))}
+                        placeholder="e.g. 2.5"
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: '1px solid #f59e0b',
+                          borderRadius: '6px',
+                          fontSize: '13px'
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                        Unit
+                      </label>
+                      <select
+                        value={activityForm.spray_unit}
+                        onChange={(e) => setActivityForm(prev => ({ ...prev, spray_unit: e.target.value }))}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: '1px solid #f59e0b',
+                          borderRadius: '6px',
+                          backgroundColor: 'white',
+                          fontSize: '13px'
+                        }}
+                      >
+                        <option value="oz/acre">oz/acre</option>
+                        <option value="lb/acre">lb/acre</option>
+                        <option value="gal/acre">gal/acre</option>
+                        <option value="ml/acre">ml/acre</option>
+                        <option value="kg/ha">kg/ha</option>
+                        <option value="L/ha">L/ha</option>
+                        <option value="total gallons">total gallons</option>
+                        <option value="total liters">total liters</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Safety Information Display */}
+                  {activityForm.spray_product && sprayDatabase[activityForm.spray_product as keyof typeof sprayDatabase] && (
+                    <div style={{
+                      padding: '12px',
+                      backgroundColor: '#fef2f2',
+                      border: '2px solid #f87171',
+                      borderRadius: '6px',
+                      marginBottom: '12px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '16px' }}>⚠️</span>
+                        <span style={{ fontWeight: '700', color: '#991b1b', fontSize: '14px' }}>
+                          SAFETY INFORMATION
+                        </span>
+                      </div>
+                      {(() => {
+                        const productInfo = sprayDatabase[activityForm.spray_product as keyof typeof sprayDatabase];
+                        return (
+                          <div style={{ fontSize: '13px', color: '#7f1d1d' }}>
+                            <div style={{ marginBottom: '4px' }}>
+                              <strong>Re-entry Interval:</strong> {productInfo.reentryHours} hours
+                            </div>
+                            <div style={{ marginBottom: '4px' }}>
+                              <strong>Pre-harvest Interval:</strong> {productInfo.preharvestDays} days
+                            </div>
+                            <div style={{ marginBottom: '4px' }}>
+                              <strong>Category:</strong> {productInfo.category} | <strong>Signal Word:</strong> {productInfo.signal}
+                            </div>
+                            <div style={{ fontStyle: 'italic', marginTop: '6px' }}>
+                              Always follow label instructions and local regulations
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                        Target Pest/Disease
+                      </label>
+                      <input
+                        type="text"
+                        value={activityForm.spray_target}
+                        onChange={(e) => setActivityForm(prev => ({ ...prev, spray_target: e.target.value }))}
+                        placeholder="e.g. Powdery mildew, Spider mites"
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: '1px solid #f59e0b',
+                          borderRadius: '6px',
+                          fontSize: '13px'
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                        Equipment Used
+                      </label>
+                      <input
+                        type="text"
+                        value={activityForm.spray_equipment}
+                        onChange={(e) => setActivityForm(prev => ({ ...prev, spray_equipment: e.target.value }))}
+                        placeholder="e.g. Airblast sprayer, Backpack"
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: '1px solid #f59e0b',
+                          borderRadius: '6px',
+                          fontSize: '13px'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                      Weather Conditions
+                    </label>
+                    <input
+                      type="text"
+                      value={activityForm.spray_conditions}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, spray_conditions: e.target.value }))}
+                      placeholder="e.g. Wind: 5mph SW, Temp: 72°F, Humidity: 65%"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #f59e0b',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
                   Notes (Optional)
@@ -2575,7 +3005,10 @@ export function WeatherDashboard({
                 <textarea
                   value={activityForm.notes}
                   onChange={(e) => setActivityForm(prev => ({ ...prev, notes: e.target.value }))}
-                  placeholder="Add any details about this event..."
+                  placeholder={activityForm.activity_type === 'Spray Application' ? 
+                    "Additional notes about application conditions, coverage, any issues encountered..." :
+                    "Add any details about this event..."
+                  }
                   style={{
                     width: '100%',
                     padding: '8px 12px',
@@ -3378,6 +3811,95 @@ export function WeatherDashboard({
                             ) : (
                               <div style={{ fontSize: '12px', color: '#dc2626', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                 ⚠️ No location recorded
+                              </div>
+                            )}
+
+                            {/* Spray Application Details */}
+                            {activity.event_type === 'spray_application' && activity.spray_product && (
+                              <div style={{
+                                margin: '8px 0',
+                                padding: '10px',
+                                backgroundColor: '#fef3c7',
+                                border: '1px solid #fbbf24',
+                                borderRadius: '6px'
+                              }}>
+                                <div style={{ 
+                                  fontWeight: '600', 
+                                  fontSize: '13px', 
+                                  color: '#92400e',
+                                  marginBottom: '6px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px'
+                                }}>
+                                  🌿 Spray Application Details
+                                  {(() => {
+                                    const productInfo = sprayDatabase[activity.spray_product as keyof typeof sprayDatabase];
+                                    if (productInfo) {
+                                      const sprayDate = new Date(activity.event_date);
+                                      const today = new Date();
+                                      const hoursSinceSpray = Math.floor((today.getTime() - sprayDate.getTime()) / (1000 * 60 * 60));
+                                      
+                                      if (hoursSinceSpray < productInfo.reentryHours) {
+                                        return (
+                                          <span style={{
+                                            padding: '2px 6px',
+                                            backgroundColor: '#ef4444',
+                                            color: 'white',
+                                            borderRadius: '10px',
+                                            fontSize: '10px',
+                                            fontWeight: '700',
+                                            textTransform: 'uppercase'
+                                          }}>
+                                            RE-ENTRY ACTIVE
+                                          </span>
+                                        );
+                                      }
+                                    }
+                                    return null;
+                                  })()}
+                                </div>
+                                <div style={{ fontSize: '12px', color: '#78350f' }}>
+                                  <div style={{ marginBottom: '3px' }}>
+                                    <strong>Product:</strong> {activity.spray_product}
+                                    {activity.spray_quantity && activity.spray_unit && (
+                                      <span> • <strong>Rate:</strong> {activity.spray_quantity} {activity.spray_unit}</span>
+                                    )}
+                                  </div>
+                                  {activity.spray_target && (
+                                    <div style={{ marginBottom: '3px' }}>
+                                      <strong>Target:</strong> {activity.spray_target}
+                                    </div>
+                                  )}
+                                  {activity.spray_equipment && (
+                                    <div style={{ marginBottom: '3px' }}>
+                                      <strong>Equipment:</strong> {activity.spray_equipment}
+                                    </div>
+                                  )}
+                                  {activity.spray_conditions && (
+                                    <div style={{ marginBottom: '3px' }}>
+                                      <strong>Conditions:</strong> {activity.spray_conditions}
+                                    </div>
+                                  )}
+                                  {(() => {
+                                    const productInfo = sprayDatabase[activity.spray_product as keyof typeof sprayDatabase];
+                                    if (productInfo) {
+                                      return (
+                                        <div style={{ 
+                                          marginTop: '6px', 
+                                          padding: '4px 6px',
+                                          backgroundColor: '#fecaca',
+                                          borderRadius: '4px',
+                                          fontSize: '11px',
+                                          color: '#991b1b'
+                                        }}>
+                                          <strong>Safety:</strong> {productInfo.reentryHours}h re-entry, {productInfo.preharvestDays}d pre-harvest
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
+                                </div>
                               </div>
                             )}
 
