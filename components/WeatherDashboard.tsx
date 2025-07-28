@@ -529,6 +529,25 @@ export function WeatherDashboard({
     }
   }, [vineyardId]);
 
+  // Listen for chart date clicks to pre-populate form
+  useEffect(() => {
+    const handleChartDateClicked = (event: CustomEvent) => {
+      const clickedDate = event.detail?.date;
+      if (clickedDate) {
+        console.log('📅 Pre-populating form with clicked date:', clickedDate);
+        setActivityForm(prev => ({
+          ...prev,
+          start_date: clickedDate
+        }));
+      }
+    };
+
+    window.addEventListener('chartDateClicked', handleChartDateClicked as EventListener);
+    return () => {
+      window.removeEventListener('chartDateClicked', handleChartDateClicked as EventListener);
+    };
+  }, []);
+
   // Save new activity
   const saveActivity = async () => {
     if (!vineyardId || !activityForm.activity_type || !activityForm.start_date) {

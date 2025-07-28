@@ -312,24 +312,55 @@ export function EnhancedGDDChart({
     })
     .join(" ");
 
-  // Handle click on chart - scroll to Event Log Add Event section
+  // Handle click on chart - scroll to Event Log Add Event section with date pre-populated
   const handleChartClick = (event: React.MouseEvent<SVGSVGElement>) => {
     if (loading) return;
 
-    console.log('📊 Chart clicked - scrolling to Event Log Add Event section');
+    // Calculate which date was clicked based on mouse position
+    const rect = event.currentTarget.getBoundingClientRect();
+    const clickX = event.clientX - rect.left;
+    
+    // Calculate the relative position within the chart area (excluding padding)
+    const chartAreaWidth = width - 2 * padding;
+    const relativeX = clickX - padding;
+    
+    // Ensure click is within the chart area
+    if (relativeX < 0 || relativeX > chartAreaWidth) {
+      console.log('📊 Click outside chart area, opening form without pre-populated date');
+      scrollToEventLogAddEvent();
+      return;
+    }
+    
+    // Calculate which data point index was clicked
+    const dataPointIndex = Math.round((relativeX / chartAreaWidth) * (chartData.length - 1));
+    const clickedDate = chartData[dataPointIndex]?.date;
+    
+    console.log('📊 Chart clicked at date:', clickedDate, 'data point index:', dataPointIndex);
 
-    // Scroll to Event Log section and trigger Add Event form
-    const eventLogSection = document.querySelector('[data-section="event-log"]');
+    // Scroll to Event Log section and trigger Add Event form with pre-populated date
+    const eventLogSection = document.querySelector('[data-event-log-section]');
     if (eventLogSection) {
       eventLogSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
       // Trigger the Add Event form after a short delay
       setTimeout(() => {
-        const addEventButton = document.querySelector('[data-action="add-event"]') as HTMLButtonElement;
+        const addEventButton = document.querySelector('[data-event-log-add-button]') as HTMLButtonElement;
         if (addEventButton) {
+          console.log('📊 Clicking Add Event button to open form with date:', clickedDate);
+          
+          // Dispatch custom event with the clicked date
+          if (clickedDate && typeof window !== 'undefined') {
+            const dateEvent = new CustomEvent('chartDateClicked', { 
+              detail: { date: clickedDate } 
+            });
+            window.dispatchEvent(dateEvent);
+          }
+          
           addEventButton.click();
+        } else {
+          console.warn('📊 Could not find Add Event button');
         }
-      }, 500);
+      }, 300);
     } else {
       // Fallback: just scroll down to where Event Log should be
       window.scrollBy({ top: 600, behavior: 'smooth' });
