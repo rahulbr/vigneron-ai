@@ -3009,34 +3009,37 @@ export function WeatherDashboard({
                         const centerLat = vineyard?.latitude || latitude;
                         const centerLng = vineyard?.longitude || longitude;
                         
-                        // Create markers for events with locations
-                        const markers = eventsWithLocation.map((event, index) => {
-                          const eventStyles: { [key: string]: { label: string, emoji: string } } = {
-                            bud_break: { label: "Bud Break", emoji: "🌱" },
-                            bloom: { label: "Bloom", emoji: "🌸" },
-                            veraison: { label: "Veraison", emoji: "🍇" },
-                            harvest: { label: "Harvest", emoji: "🍷" },
-                            pruning: { label: "Pruning", emoji: "✂️" },
-                            irrigation: { label: "Irrigation", emoji: "💧" },
-                            spray_application: { label: "Spray Application", emoji: "🌿" },
-                            fertilization: { label: "Fertilization", emoji: "🌱" },
-                            canopy_management: { label: "Canopy Management", emoji: "🍃" },
-                            soil_work: { label: "Soil Work", emoji: "🌍" },
-                            equipment_maintenance: { label: "Equipment Maintenance", emoji: "🔧" },
-                            fruit_set: { label: "Fruit Set", emoji: "🫐" },
-                            pest: { label: "Pest Observation", emoji: "🐞" },
-                            scouting: { label: "Scouting", emoji: "🔍" },
-                            other: { label: "Other", emoji: "📝" },
+                        // Create individual marker parameters for each event location
+                        const markerParams = eventsWithLocation.map((event, index) => {
+                          const eventStyles: { [key: string]: { label: string, emoji: string, color: string } } = {
+                            bud_break: { label: "Bud Break", emoji: "🌱", color: "green" },
+                            bloom: { label: "Bloom", emoji: "🌸", color: "yellow" },
+                            veraison: { label: "Veraison", emoji: "🍇", color: "purple" },
+                            harvest: { label: "Harvest", emoji: "🍷", color: "red" },
+                            pruning: { label: "Pruning", emoji: "✂️", color: "blue" },
+                            irrigation: { label: "Irrigation", emoji: "💧", color: "blue" },
+                            spray_application: { label: "Spray Application", emoji: "🌿", color: "orange" },
+                            fertilization: { label: "Fertilization", emoji: "🌱", color: "green" },
+                            canopy_management: { label: "Canopy Management", emoji: "🍃", color: "green" },
+                            soil_work: { label: "Soil Work", emoji: "🌍", color: "brown" },
+                            equipment_maintenance: { label: "Equipment Maintenance", emoji: "🔧", color: "gray" },
+                            fruit_set: { label: "Fruit Set", emoji: "🫐", color: "yellow" },
+                            pest: { label: "Pest Observation", emoji: "🐞", color: "red" },
+                            scouting: { label: "Scouting", emoji: "🔍", color: "green" },
+                            other: { label: "Other", emoji: "📝", color: "gray" },
                           };
                           
                           const eventType = event.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
                           const style = eventStyles[eventType] || eventStyles.other;
-                          const label = `${style.emoji} ${style.label} (${event.event_date})`;
+                          const markerLabel = encodeURIComponent(`${style.label} - ${event.event_date}${event.notes ? ': ' + event.notes.substring(0, 50) + (event.notes.length > 50 ? '...' : '') : ''}`);
                           
-                          return `${event.location_lat},${event.location_lng}`;
-                        }).join('|');
+                          return `markers=color:${style.color}%7Clabel:${index + 1}%7C${event.location_lat},${event.location_lng}`;
+                        }).join('&');
                         
-                        const googleMapsUrl = `https://www.google.com/maps?q=${centerLat},${centerLng}&z=15&markers=${markers}`;
+                        // Add vineyard location as a distinct marker
+                        const vineyardMarker = vineyard ? `&markers=color:blue%7Clabel:V%7C${vineyard.latitude},${vineyard.longitude}` : '';
+                        
+                        const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${centerLat},${centerLng}&${markerParams}${vineyardMarker}`;
                         
                         return (
                           <a
