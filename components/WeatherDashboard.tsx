@@ -3560,6 +3560,308 @@ export function WeatherDashboard({
                             </div>
                           </div>
 
+                          {/* Location Edit Section */}
+                          <div style={{ 
+                            marginBottom: '15px',
+                            padding: '12px',
+                            backgroundColor: '#fffbeb',
+                            border: '1px solid #fed7aa',
+                            borderRadius: '8px'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+                              <span style={{ fontSize: '16px' }}>📍</span>
+                              <label style={{ fontWeight: '600', fontSize: '13px', color: '#a16207' }}>
+                                Event Location
+                              </label>
+                              <span style={{
+                                padding: '1px 6px',
+                                backgroundColor: '#fbbf24',
+                                color: '#92400e',
+                                borderRadius: '10px',
+                                fontSize: '10px',
+                                fontWeight: '600',
+                                textTransform: 'uppercase'
+                              }}>
+                                Optional
+                              </span>
+                            </div>
+
+                            {/* Current Location Status */}
+                            {editActivityForm.location_lat && editActivityForm.location_lng ? (
+                              <div style={{
+                                padding: '8px 10px',
+                                backgroundColor: '#f0fdf4',
+                                border: '1px solid #bbf7d0',
+                                borderRadius: '6px',
+                                marginBottom: '8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between'
+                              }}>
+                                <div>
+                                  <div style={{ fontWeight: '500', color: '#065f46', fontSize: '12px', marginBottom: '1px' }}>
+                                    {editActivityForm.location_name || 'Location Set'}
+                                  </div>
+                                  <div style={{ fontSize: '11px', color: '#059669' }}>
+                                    {editActivityForm.location_lat.toFixed(6)}, {editActivityForm.location_lng.toFixed(6)}
+                                    {editActivityForm.location_accuracy && (
+                                      <span style={{ marginLeft: '6px' }}>
+                                        (±{Math.round(editActivityForm.location_accuracy)}m)
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => setEditActivityForm(prev => ({
+                                    ...prev,
+                                    location_lat: null,
+                                    location_lng: null,
+                                    location_accuracy: null,
+                                    location_name: ''
+                                  }))}
+                                  style={{
+                                    padding: '3px 6px',
+                                    backgroundColor: '#ef4444',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '3px',
+                                    cursor: 'pointer',
+                                    fontSize: '10px'
+                                  }}
+                                >
+                                  ✕ Clear
+                                </button>
+                              </div>
+                            ) : (
+                              <div style={{
+                                padding: '8px 10px',
+                                backgroundColor: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '6px',
+                                marginBottom: '8px',
+                                textAlign: 'center'
+                              }}>
+                                <div style={{ fontSize: '11px', color: '#64748b' }}>
+                                  No location set for this event
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Google Maps Location Search for Edit */}
+                            <div style={{ marginBottom: '8px' }}>
+                              <label style={{ display: 'block', marginBottom: '3px', fontWeight: '500', fontSize: '11px', color: '#374151' }}>
+                                🗺️ Search Location (Google Maps):
+                              </label>
+                              <div style={{ display: 'flex', gap: '6px' }}>
+                                <input
+                                  type="text"
+                                  value={locationSearch}
+                                  onChange={(e) => setLocationSearch(e.target.value)}
+                                  onKeyPress={(e) => e.key === 'Enter' && handleLocationSearch()}
+                                  placeholder="e.g., Block 5 North, Chardonnay Section..."
+                                  style={{
+                                    flex: 1,
+                                    padding: '5px 8px',
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: '4px',
+                                    fontSize: '11px'
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={handleLocationSearch}
+                                  disabled={isSearching || !locationSearch.trim()}
+                                  style={{
+                                    padding: '5px 8px',
+                                    backgroundColor: isSearching ? '#9ca3af' : '#4285f4',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    cursor: isSearching || !locationSearch.trim() ? 'not-allowed' : 'pointer',
+                                    fontSize: '10px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '3px'
+                                  }}
+                                >
+                                  {isSearching ? <RefreshCw size={10} style={{ animation: 'spin 1s linear infinite' }} /> : <Search size={10} />}
+                                  Search
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Search Results for Edit */}
+                            {showSearchResults && searchResults.length > 0 && (
+                              <div style={{ 
+                                marginBottom: '8px', 
+                                border: '1px solid #d1d5db', 
+                                borderRadius: '4px', 
+                                backgroundColor: 'white',
+                                maxHeight: '120px',
+                                overflowY: 'auto'
+                              }}>
+                                <div style={{ padding: '4px 8px', borderBottom: '1px solid #e5e7eb', fontWeight: '500', fontSize: '10px', backgroundColor: '#f9fafb', color: '#374151' }}>
+                                  Select Location:
+                                </div>
+                                {searchResults.map((result, index) => (
+                                  <div
+                                    key={result.placeId}
+                                    onClick={() => {
+                                      setEditActivityForm(prev => ({
+                                        ...prev,
+                                        location_lat: result.latitude,
+                                        location_lng: result.longitude,
+                                        location_name: result.name,
+                                        location_accuracy: null
+                                      }));
+                                      setLocationSearch('');
+                                      setShowSearchResults(false);
+                                      setLocationError('');
+                                    }}
+                                    style={{
+                                      padding: '6px 8px',
+                                      cursor: 'pointer',
+                                      borderBottom: index < searchResults.length - 1 ? '1px solid #f3f4f6' : 'none',
+                                      fontSize: '10px'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                                  >
+                                    <div style={{ fontWeight: '500', marginBottom: '1px' }}>{result.name}</div>
+                                    <div style={{ fontSize: '9px', color: '#6b7280', marginBottom: '1px' }}>
+                                      {result.formattedAddress}
+                                    </div>
+                                    <div style={{ fontSize: '8px', color: '#9ca3af' }}>
+                                      {result.latitude.toFixed(4)}, {result.longitude.toFixed(4)}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Location Error Display for Edit */}
+                            {locationError && (
+                              <div style={{
+                                padding: '6px 8px',
+                                backgroundColor: '#fef2f2',
+                                border: '1px solid #fecaca',
+                                borderRadius: '4px',
+                                fontSize: '10px',
+                                color: '#991b1b',
+                                marginBottom: '8px'
+                              }}>
+                                {locationError}
+                              </div>
+                            )}
+
+                            {/* Location Action Buttons for Edit */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '6px' }}>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  setIsGettingLocation(true);
+                                  setLocationError('');
+
+                                  try {
+                                    if (!navigator.geolocation) {
+                                      throw new Error('Geolocation is not supported by this browser');
+                                    }
+
+                                    const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+                                      navigator.geolocation.getCurrentPosition(
+                                        resolve,
+                                        reject,
+                                        {
+                                          enableHighAccuracy: true,
+                                          timeout: 10000,
+                                          maximumAge: 30000
+                                        }
+                                      );
+                                    });
+
+                                    const { latitude, longitude, accuracy } = position.coords;
+                                    
+                                    setEditActivityForm(prev => ({
+                                      ...prev,
+                                      location_lat: latitude,
+                                      location_lng: longitude,
+                                      location_accuracy: accuracy,
+                                      location_name: `📍 Current Location (±${Math.round(accuracy)}m)`
+                                    }));
+
+                                  } catch (error: any) {
+                                    let errorMessage = 'Failed to get location';
+                                    if (error.code === 1) {
+                                      errorMessage = 'Location access denied. Please enable location permissions.';
+                                    } else if (error.code === 2) {
+                                      errorMessage = 'Location unavailable. Please try again.';
+                                    } else if (error.code === 3) {
+                                      errorMessage = 'Location request timed out. Please try again.';
+                                    }
+                                    setLocationError(errorMessage);
+                                  } finally {
+                                    setIsGettingLocation(false);
+                                  }
+                                }}
+                                disabled={isGettingLocation}
+                                style={{
+                                  padding: '8px 10px',
+                                  backgroundColor: isGettingLocation ? '#9ca3af' : '#10b981',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  cursor: isGettingLocation ? 'not-allowed' : 'pointer',
+                                  fontSize: '11px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '4px',
+                                  fontWeight: '500'
+                                }}
+                              >
+                                {isGettingLocation ? (
+                                  <>
+                                    <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} />
+                                    Getting GPS...
+                                  </>
+                                ) : (
+                                  <>
+                                    📍 Check In Here
+                                  </>
+                                )}
+                              </button>
+
+                              {currentVineyard && (
+                                <button
+                                  type="button"
+                                  onClick={() => setEditActivityForm(prev => ({
+                                    ...prev,
+                                    location_lat: currentVineyard.latitude,
+                                    location_lng: currentVineyard.longitude,
+                                    location_accuracy: null,
+                                    location_name: `🍇 ${currentVineyard.name}`
+                                  }))}
+                                  style={{
+                                    padding: '8px 10px',
+                                    backgroundColor: '#3b82f6',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '11px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '4px',
+                                    fontWeight: '500'
+                                  }}
+                                >
+                                  🍇 Use Vineyard Location
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
                           <div style={{ marginBottom: '10px' }}>
                             <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '12px', color: '#374151' }}>
                               Notes (Optional)
