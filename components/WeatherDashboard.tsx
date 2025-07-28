@@ -2340,23 +2340,31 @@ export function WeatherDashboard({
             <div style={{
               padding: '20px',
               backgroundColor: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: '8px',
-              marginBottom: '20px'
+              border: '2px solid #3b82f6',
+              borderRadius: '12px',
+              marginBottom: '20px',
+              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.1)'
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                <h4 style={{ margin: '0', color: '#374151' }}>Log New Event</h4>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <div>
+                  <h4 style={{ margin: '0 0 5px 0', color: '#1e40af', fontSize: '18px', fontWeight: '700' }}>
+                    📝 Add New Event
+                  </h4>
+                  <p style={{ margin: '0', fontSize: '14px', color: '#3730a3' }}>
+                    Log vineyard activities with optional location check-in
+                  </p>
+                </div>
                 {currentVineyard && (
                   <div style={{
-                    padding: '6px 12px',
+                    padding: '8px 16px',
                     backgroundColor: '#e0f2fe',
                     border: '1px solid #7dd3fc',
                     borderRadius: '20px',
-                    fontSize: '12px',
+                    fontSize: '13px',
                     color: '#0369a1',
-                    fontWeight: '500'
+                    fontWeight: '600'
                   }}>
-                    📍 {currentVineyard.name}
+                    🍇 {currentVineyard.name}
                   </div>
                 )}
               </div>
@@ -2422,11 +2430,34 @@ export function WeatherDashboard({
                 </div>
               </div>
 
-              {/* Location Check-in Section */}
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '10px', fontWeight: '500', fontSize: '14px' }}>
-                  📍 Location (Optional)
-                </label>
+              {/* Location Check-in Section - Enhanced */}
+              <div style={{ 
+                marginBottom: '20px',
+                padding: '16px',
+                backgroundColor: '#fefce8',
+                border: '2px solid #facc15',
+                borderRadius: '10px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '20px' }}>📍</span>
+                  <label style={{ fontWeight: '700', fontSize: '16px', color: '#a16207' }}>
+                    Add Location (Like Dropping a Pin!)
+                  </label>
+                  <span style={{
+                    padding: '2px 8px',
+                    backgroundColor: '#fbbf24',
+                    color: '#92400e',
+                    borderRadius: '12px',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    textTransform: 'uppercase'
+                  }}>
+                    Optional
+                  </span>
+                </div>
+                <div style={{ fontSize: '13px', color: '#a16207', marginBottom: '15px', fontStyle: 'italic' }}>
+                  📱 Perfect for mobile use - record exactly where vineyard work happened
+                </div>
 
                 {/* Location Status Display */}
                 {activityForm.location_lat && activityForm.location_lng ? (
@@ -2590,30 +2621,45 @@ export function WeatherDashboard({
                   </div>
                 )}
 
-                {/* Location Action Buttons */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {/* Location Action Buttons - Enhanced for Mobile */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px' }}>
                   <button
                     type="button"
                     onClick={getCurrentLocation}
                     disabled={isGettingLocation}
                     style={{
-                      padding: '8px 12px',
-                      backgroundColor: isGettingLocation ? '#9ca3af' : '#22c55e',
+                      padding: '12px 16px',
+                      backgroundColor: isGettingLocation ? '#9ca3af' : '#10b981',
                       color: 'white',
                       border: 'none',
-                      borderRadius: '6px',
+                      borderRadius: '8px',
                       cursor: isGettingLocation ? 'not-allowed' : 'pointer',
-                      fontSize: '13px',
+                      fontSize: '14px',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px',
-                      fontWeight: '500'
+                      justifyContent: 'center',
+                      gap: '6px',
+                      fontWeight: '600',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isGettingLocation) {
+                        e.currentTarget.style.backgroundColor = '#059669';
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isGettingLocation) {
+                        e.currentTarget.style.backgroundColor = '#10b981';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                      }
                     }}
                   >
                     {isGettingLocation ? (
                       <>
-                        <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} />
-                        Getting Location...
+                        <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                        Getting GPS...
                       </>
                     ) : (
                       <>
@@ -2627,17 +2673,28 @@ export function WeatherDashboard({
                       type="button"
                       onClick={useVineyardLocation}
                       style={{
-                        padding: '8px 12px',
+                        padding: '12px 16px',
                         backgroundColor: '#3b82f6',
                         color: 'white',
                         border: 'none',
-                        borderRadius: '6px',
+                        borderRadius: '8px',
                         cursor: 'pointer',
-                        fontSize: '13px',
+                        fontSize: '14px',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '4px',
-                        fontWeight: '500'
+                        justifyContent: 'center',
+                        gap: '6px',
+                        fontWeight: '600',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#2563eb';
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#3b82f6';
+                        e.currentTarget.style.transform = 'translateY(0)';
                       }}
                     >
                       🍇 Use Vineyard Location
@@ -2645,8 +2702,8 @@ export function WeatherDashboard({
                   )}
                 </div>
 
-                <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '8px', lineHeight: '1.4' }}>
-                  💡 <strong>Tip:</strong> Search for specific vineyard areas (e.g., "Block 5", "North Field"), use "Check In Here" for GPS location, or use vineyard location for general activities.
+                <div style={{ fontSize: '12px', color: '#a16207', marginTop: '12px', lineHeight: '1.4', fontWeight: '500' }}>
+                  💡 <strong>Pro Tip:</strong> Search for specific vineyard areas (e.g., "Block 5", "North Field"), use "Check In Here" for GPS location, or use vineyard location for general activities.
                 </div>
               </div>
 
@@ -2708,31 +2765,103 @@ export function WeatherDashboard({
             </div>
           )}
 
+          {/* Add Event Button - Prominent */}
+          {!showActivityForm && (
+            <div style={{ 
+              textAlign: 'center', 
+              marginBottom: '25px',
+              padding: '20px',
+              backgroundColor: '#f0f9ff',
+              border: '2px dashed #0ea5e9',
+              borderRadius: '12px'
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '10px' }}>📱</div>
+              <h3 style={{ margin: '0 0 8px 0', color: '#0369a1', fontSize: '18px' }}>
+                Ready to Log an Event?
+              </h3>
+              <p style={{ margin: '0 0 15px 0', color: '#0284c7', fontSize: '14px' }}>
+                Add vineyard activities with location check-in (like dropping a pin in Google Maps)
+              </p>
+              <button
+                onClick={() => setShowActivityForm(true)}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: '#0ea5e9',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  margin: '0 auto',
+                  boxShadow: '0 4px 12px rgba(14, 165, 233, 0.3)',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#0284c7';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(14, 165, 233, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#0ea5e9';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(14, 165, 233, 0.3)';
+                }}
+              >
+                📝 Add Event
+              </button>
+            </div>
+          )}
+
           {/* Events List */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
               <h4 style={{ margin: '0', fontSize: '16px', color: '#374151' }}>
                 Event History {activities.length > 0 && `(${activities.length})`}
               </h4>
-              <button
-                onClick={loadActivities}
-                disabled={isLoadingActivities}
-                style={{
-                  padding: '4px 8px',
-                  backgroundColor: '#f3f4f6',
-                  color: '#374151',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                <RefreshCw size={12} style={{ animation: isLoadingActivities ? 'spin 1s linear infinite' : 'none' }} />
-                Refresh
-              </button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {showActivityForm && (
+                  <button
+                    onClick={() => setShowActivityForm(false)}
+                    style={{
+                      padding: '6px 12px',
+                      backgroundColor: '#ef4444',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    ✕ Cancel
+                  </button>
+                )}
+                <button
+                  onClick={loadActivities}
+                  disabled={isLoadingActivities}
+                  style={{
+                    padding: '4px 8px',
+                    backgroundColor: '#f3f4f6',
+                    color: '#374151',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <RefreshCw size={12} style={{ animation: isLoadingActivities ? 'spin 1s linear infinite' : 'none' }} />
+                  Refresh
+                </button>
+              </div>
             </div>
 
             {isLoadingActivities ? (
