@@ -2262,19 +2262,27 @@ export function WeatherDashboard({
                   return activity.location_lat && activity.location_lng;
                 });
 
-                return filteredEventsWithLocation.length > 1 && (
+                // Show button if there are any filtered events with locations
+                return filteredEventsWithLocation.length > 0 && (
                   <a
                     href={(() => {
-                      const waypoints = filteredEventsWithLocation.map(event => 
-                        `${event.location_lat},${event.location_lng}`
-                      ).join('|');
-                      
-                      const origin = `${filteredEventsWithLocation[0].location_lat},${filteredEventsWithLocation[0].location_lng}`;
-                      const destination = `${filteredEventsWithLocation[filteredEventsWithLocation.length - 1].location_lat},${filteredEventsWithLocation[filteredEventsWithLocation.length - 1].location_lng}`;
-                      
-                      return filteredEventsWithLocation.length > 2 
-                        ? `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}`
-                        : `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
+                      if (filteredEventsWithLocation.length === 1) {
+                        // For single location, just open the map at that location
+                        const event = filteredEventsWithLocation[0];
+                        return `https://www.google.com/maps?q=${event.location_lat},${event.location_lng}&z=18`;
+                      } else {
+                        // For multiple locations, create a route
+                        const waypoints = filteredEventsWithLocation.slice(1, -1).map(event => 
+                          `${event.location_lat},${event.location_lng}`
+                        ).join('|');
+                        
+                        const origin = `${filteredEventsWithLocation[0].location_lat},${filteredEventsWithLocation[0].location_lng}`;
+                        const destination = `${filteredEventsWithLocation[filteredEventsWithLocation.length - 1].location_lat},${filteredEventsWithLocation[filteredEventsWithLocation.length - 1].location_lng}`;
+                        
+                        return waypoints.length > 0
+                          ? `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}`
+                          : `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
+                      }
                     })()}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -2290,9 +2298,12 @@ export function WeatherDashboard({
                       gap: '4px',
                       fontWeight: '500'
                     }}
-                    title={`Route through ${filteredEventsWithLocation.length} filtered event locations`}
+                    title={filteredEventsWithLocation.length === 1 
+                      ? 'View event location on map'
+                      : `Route through ${filteredEventsWithLocation.length} filtered event locations`
+                    }
                   >
-                    🗺️ Route All ({filteredEventsWithLocation.length})
+                    🗺️ {filteredEventsWithLocation.length === 1 ? 'View' : 'Route All'} ({filteredEventsWithLocation.length})
                   </a>
                 );
               })()}
