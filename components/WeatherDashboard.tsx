@@ -173,6 +173,10 @@ export function WeatherDashboard({
   const [eventFilterTypes, setEventFilterTypes] = useState<string[]>([]);
   const [showEventFilterDropdown, setShowEventFilterDropdown] = useState(false);
 
+  // Location visualization state
+  const [showLocationMap, setShowLocationMap] = useState(false);
+  const [selectedMapEvent, setSelectedMapEvent] = useState<any | null>(null);
+
   const { isConnected, testing, testConnection } = useWeatherConnection();
 
   const weatherOptions = {
@@ -1024,6 +1028,17 @@ export function WeatherDashboard({
   const totalRainfall = data.reduce((sum, day) => sum + day.rainfall, 0);
   const avgTempHigh = data.length > 0 ? data.reduce((sum, day) => sum + day.temp_high, 0) / data.length : 0;
   const avgTempLow = data.length > 0 ? data.reduce((sum, day) => sum + day.temp_low, 0) / data.length : 0;
+
+  // Calculate location statistics
+  const eventsWithLocation = activities.filter(activity => 
+    activity.location_lat && activity.location_lng
+  );
+  const eventsWithoutLocation = activities.filter(activity => 
+    !activity.location_lat || !activity.location_lng
+  );
+  const locationCoveragePercent = activities.length > 0 
+    ? Math.round((eventsWithLocation.length / activities.length) * 100) 
+    : 0;
 
   // Get icon for insight type (harvest-focused)
   const getInsightIcon = (type: string) => {
@@ -2816,21 +2831,555 @@ export function WeatherDashboard({
             </div>
           )}
 
+          {/* Location Summary & Map Toggle */}
+          {activities.length > 0 && (
+            <div style={{
+              marginBottom: '20px',
+              padding: '16px',
+              backgroundColor: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '10px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h4 style={{ margin: '0', fontSize: '16px', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  📍 Event Locations
+                </h4>
+                <button
+                  onClick={() => setShowLocationMap(!showLocationMap)}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: showLocationMap ? '#ef4444' : '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontWeight: '500'
+                  }}
+                >
+                  {showLocationMap ? (
+                    <>📋 Show Event List</>
+                  ) : (
+                    <>🗺️ Show Location Map</>
+                  )}
+                </button>
+              </div>
+
+              {/* Location Statistics */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+                <div style={{
+                  padding: '10px',
+                  backgroundColor: '#f0fdf4',
+                  border: '1px solid #bbf7d0',
+                  borderRadius: '6px',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '18px', fontWeight: '700', color: '#059669' }}>
+                    {eventsWithLocation.length}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#065f46' }}>
+                    📍 With Location
+                  </div>
+                </div>
+
+                <div style={{
+                  padding: '10px',
+                  backgroundColor: eventsWithoutLocation.length > 0 ? '#fef2f2' : '#f8fafc',
+                  border: `1px solid ${eventsWithoutLocation.length > 0 ? '#fecaca' : '#e2e8f0'}`,
+                  borderRadius: '6px',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ 
+                    fontSize: '18px', 
+                    fontWeight: '700', 
+                    color: eventsWithoutLocation.length > 0 ? '#dc2626' : '#6b7280' 
+                  }}>
+                    {eventsWithoutLocation.length}
+                  </div>
+                  <div style={{ 
+                    fontSize: '12px', 
+                    color: eventsWithoutLocation.length > 0 ? '#991b1b' : '#6b7280' 
+                  }}>
+                    ⚠️ Missing Location
+                  </div>
+                </div>
+
+                <div style={{
+                  padding: '10px',
+                  backgroundColor: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  borderRadius: '6px',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '18px', fontWeight: '700', color: '#2563eb' }}>
+                    {locationCoveragePercent}%
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#1e40af' }}>
+                    📊 Coverage
+                  </div>
+                </div>
+              </div>
+
+              {eventsWithoutLocation.length > 0 && (
+                <div style={{
+                  marginTop: '12px',
+                  padding: '10px',
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  color: '#991b1b',
+                  fontWeight: '500'
+                }}>
+                  💡 Tip: Add locations to {eventsWithoutLocation.length} event{eventsWithoutLocation.length !== 1 ? 's' : ''} for better tracking and analysis.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Interactive Location Map */}
+          {showLocationMap && activities.length > 0 && (
+            <div style={{
+              marginBottom: '20px',
+              border: '2px solid #3b82f6',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              backgroundColor: 'white'
+            }}>
+              {/* Map Header */}
+              <div style={{
+                padding: '16px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <div>
+                  <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '700' }}>
+                    🗺️ Event Location Map
+                  </h3>
+                  <p style={{ margin: '0', fontSize: '14px', opacity: '0.9' }}>
+                    {eventsWithLocation.length} events plotted • {eventsWithoutLocation.length} missing locations
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowLocationMap(false)}
+                  style={{
+                    padding: '6px 10px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                    color: 'white',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '12px'
+                  }}
+                >
+                  ✕ Close Map
+                </button>
+              </div>
+
+              {/* Map Content */}
+              <div style={{ padding: '20px' }}>
+                {eventsWithLocation.length > 0 ? (
+                  <>
+                    {/* Google Maps Integration */}
+                    <div style={{
+                      marginBottom: '20px',
+                      padding: '20px',
+                      backgroundColor: '#f0f9ff',
+                      border: '2px dashed #0ea5e9',
+                      borderRadius: '10px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ fontSize: '48px', marginBottom: '12px' }}>🗺️</div>
+                      <h4 style={{ margin: '0 0 8px 0', color: '#0369a1', fontSize: '18px' }}>
+                        Interactive Map View
+                      </h4>
+                      <p style={{ margin: '0 0 16px 0', color: '#0284c7', fontSize: '14px' }}>
+                        Click "View All on Google Maps" to see events plotted on an interactive map
+                      </p>
+                      
+                      {/* Create Google Maps URL with multiple markers */}
+                      {(() => {
+                        const vineyard = currentVineyard;
+                        const centerLat = vineyard?.latitude || latitude;
+                        const centerLng = vineyard?.longitude || longitude;
+                        
+                        // Create markers for events with locations
+                        const markers = eventsWithLocation.map((event, index) => {
+                          const eventStyles: { [key: string]: { label: string, emoji: string } } = {
+                            bud_break: { label: "Bud Break", emoji: "🌱" },
+                            bloom: { label: "Bloom", emoji: "🌸" },
+                            veraison: { label: "Veraison", emoji: "🍇" },
+                            harvest: { label: "Harvest", emoji: "🍷" },
+                            pruning: { label: "Pruning", emoji: "✂️" },
+                            irrigation: { label: "Irrigation", emoji: "💧" },
+                            spray_application: { label: "Spray Application", emoji: "🌿" },
+                            fertilization: { label: "Fertilization", emoji: "🌱" },
+                            canopy_management: { label: "Canopy Management", emoji: "🍃" },
+                            soil_work: { label: "Soil Work", emoji: "🌍" },
+                            equipment_maintenance: { label: "Equipment Maintenance", emoji: "🔧" },
+                            fruit_set: { label: "Fruit Set", emoji: "🫐" },
+                            pest: { label: "Pest Observation", emoji: "🐞" },
+                            scouting: { label: "Scouting", emoji: "🔍" },
+                            other: { label: "Other", emoji: "📝" },
+                          };
+                          
+                          const eventType = event.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
+                          const style = eventStyles[eventType] || eventStyles.other;
+                          const label = `${style.emoji} ${style.label} (${event.event_date})`;
+                          
+                          return `${event.location_lat},${event.location_lng}`;
+                        }).join('|');
+                        
+                        const googleMapsUrl = `https://www.google.com/maps?q=${centerLat},${centerLng}&z=15&markers=${markers}`;
+                        
+                        return (
+                          <a
+                            href={googleMapsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              padding: '12px 24px',
+                              backgroundColor: '#0ea5e9',
+                              color: 'white',
+                              textDecoration: 'none',
+                              borderRadius: '8px',
+                              fontSize: '16px',
+                              fontWeight: '600',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              boxShadow: '0 4px 12px rgba(14, 165, 233, 0.3)',
+                              transition: 'all 0.2s ease'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = '#0284c7';
+                              e.currentTarget.style.transform = 'translateY(-2px)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = '#0ea5e9';
+                              e.currentTarget.style.transform = 'translateY(0)';
+                            }}
+                          >
+                            🗺️ View All on Google Maps
+                          </a>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Event List with Location Details */}
+                    <div>
+                      <h4 style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#374151' }}>
+                        📍 Events with Locations ({eventsWithLocation.length})
+                      </h4>
+                      <div style={{
+                        maxHeight: '400px',
+                        overflowY: 'auto',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        backgroundColor: 'white'
+                      }}>
+                        {eventsWithLocation.map((event, index) => {
+                          const eventStyles: { [key: string]: { color: string, label: string, emoji: string } } = {
+                            bud_break: { color: "#22c55e", label: "Bud Break", emoji: "🌱" },
+                            bloom: { color: "#f59e0b", label: "Bloom", emoji: "🌸" },
+                            veraison: { color: "#8b5cf6", label: "Veraison", emoji: "🍇" },
+                            harvest: { color: "#ef4444", label: "Harvest", emoji: "🍷" },
+                            pruning: { color: "#6366f1", label: "Pruning", emoji: "✂️" },
+                            irrigation: { color: "#06b6d4", label: "Irrigation", emoji: "💧" },
+                            spray_application: { color: "#f97316", label: "Spray Application", emoji: "🌿" },
+                            fertilization: { color: "#84cc16", label: "Fertilization", emoji: "🌱" },
+                            canopy_management: { color: "#10b981", label: "Canopy Management", emoji: "🍃" },
+                            soil_work: { color: "#8b5cf6", label: "Soil Work", emoji: "🌍" },
+                            equipment_maintenance: { color: "#6b7280", label: "Equipment Maintenance", emoji: "🔧" },
+                            fruit_set: { color: "#f59e0b", label: "Fruit Set", emoji: "🫐" },
+                            pest: { color: "#dc2626", label: "Pest Observation", emoji: "🐞" },
+                            scouting: { color: "#059669", label: "Scouting", emoji: "🔍" },
+                            other: { color: "#9ca3af", label: "Other", emoji: "📝" },
+                          };
+
+                          const eventType = event.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
+                          const style = eventStyles[eventType] || eventStyles.other;
+
+                          return (
+                            <div
+                              key={event.id || index}
+                              style={{
+                                padding: '16px',
+                                borderBottom: index < eventsWithLocation.length - 1 ? '1px solid #f3f4f6' : 'none',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                              }}
+                            >
+                              <div style={{ flex: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                                  <div
+                                    style={{
+                                      width: '12px',
+                                      height: '12px',
+                                      backgroundColor: style.color,
+                                      borderRadius: '50%',
+                                    }}
+                                  ></div>
+                                  <span style={{ fontSize: '16px' }}>{style.emoji}</span>
+                                  <span style={{ fontWeight: '600', color: '#374151', fontSize: '15px' }}>
+                                    {style.label}
+                                  </span>
+                                  <span style={{
+                                    fontSize: '12px',
+                                    color: '#6b7280',
+                                    padding: '2px 8px',
+                                    backgroundColor: '#f1f5f9',
+                                    borderRadius: '12px'
+                                  }}>
+                                    {new Date(event.event_date).toLocaleDateString()}
+                                  </span>
+                                </div>
+
+                                {/* Location Details */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
+                                  <div style={{ fontSize: '13px', color: '#059669', fontWeight: '500' }}>
+                                    📍 {event.location_name || 'Custom Location'}
+                                  </div>
+                                  <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                                    {event.location_lat.toFixed(4)}, {event.location_lng.toFixed(4)}
+                                  </div>
+                                  {event.location_accuracy && (
+                                    <div style={{ fontSize: '11px', color: '#9ca3af' }}>
+                                      ±{Math.round(event.location_accuracy)}m accuracy
+                                    </div>
+                                  )}
+                                </div>
+
+                                {event.notes && (
+                                  <div style={{ fontSize: '13px', color: '#4b5563', lineHeight: '1.4' }}>
+                                    {event.notes}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Quick Actions */}
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                                {/* View on Google Maps */}
+                                <a
+                                  href={`https://www.google.com/maps?q=${event.location_lat},${event.location_lng}&z=18`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    padding: '4px 8px',
+                                    backgroundColor: '#10b981',
+                                    color: 'white',
+                                    textDecoration: 'none',
+                                    borderRadius: '4px',
+                                    fontSize: '11px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    fontWeight: '500'
+                                  }}
+                                  title="View this location on Google Maps"
+                                >
+                                  🗺️ View
+                                </a>
+
+                                {/* Get Directions */}
+                                <a
+                                  href={`https://www.google.com/maps/dir/?api=1&destination=${event.location_lat},${event.location_lng}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    padding: '4px 8px',
+                                    backgroundColor: '#3b82f6',
+                                    color: 'white',
+                                    textDecoration: 'none',
+                                    borderRadius: '4px',
+                                    fontSize: '11px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    fontWeight: '500'
+                                  }}
+                                  title="Get directions to this location"
+                                >
+                                  🧭 Directions
+                                </a>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{
+                    padding: '40px',
+                    textAlign: 'center',
+                    backgroundColor: '#f8fafc',
+                    borderRadius: '8px',
+                    border: '2px dashed #cbd5e1'
+                  }}>
+                    <div style={{ fontSize: '48px', marginBottom: '15px' }}>📍</div>
+                    <h4 style={{ margin: '0 0 8px 0', color: '#374151' }}>No Events with Locations</h4>
+                    <p style={{ margin: '0', color: '#6b7280', fontSize: '14px' }}>
+                      Add locations to your events to see them plotted on the map.
+                    </p>
+                  </div>
+                )}
+
+                {/* Events Missing Locations */}
+                {eventsWithoutLocation.length > 0 && (
+                  <div style={{ marginTop: '24px' }}>
+                    <h4 style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#374151' }}>
+                      ⚠️ Events Missing Locations ({eventsWithoutLocation.length})
+                    </h4>
+                    <div style={{
+                      maxHeight: '300px',
+                      overflowY: 'auto',
+                      border: '1px solid #fecaca',
+                      borderRadius: '8px',
+                      backgroundColor: '#fef2f2'
+                    }}>
+                      {eventsWithoutLocation.map((event, index) => {
+                        const eventStyles: { [key: string]: { color: string, label: string, emoji: string } } = {
+                          bud_break: { color: "#22c55e", label: "Bud Break", emoji: "🌱" },
+                          bloom: { color: "#f59e0b", label: "Bloom", emoji: "🌸" },
+                          veraison: { color: "#8b5cf6", label: "Veraison", emoji: "🍇" },
+                          harvest: { color: "#ef4444", label: "Harvest", emoji: "🍷" },
+                          pruning: { color: "#6366f1", label: "Pruning", emoji: "✂️" },
+                          irrigation: { color: "#06b6d4", label: "Irrigation", emoji: "💧" },
+                          spray_application: { color: "#f97316", label: "Spray Application", emoji: "🌿" },
+                          fertilization: { color: "#84cc16", label: "Fertilization", emoji: "🌱" },
+                          canopy_management: { color: "#10b981", label: "Canopy Management", emoji: "🍃" },
+                          soil_work: { color: "#8b5cf6", label: "Soil Work", emoji: "🌍" },
+                          equipment_maintenance: { color: "#6b7280", label: "Equipment Maintenance", emoji: "🔧" },
+                          fruit_set: { color: "#f59e0b", label: "Fruit Set", emoji: "🫐" },
+                          pest: { color: "#dc2626", label: "Pest Observation", emoji: "🐞" },
+                          scouting: { color: "#059669", label: "Scouting", emoji: "🔍" },
+                          other: { color: "#9ca3af", label: "Other", emoji: "📝" },
+                        };
+
+                        const eventType = event.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
+                        const style = eventStyles[eventType] || eventStyles.other;
+
+                        return (
+                          <div
+                            key={event.id || index}
+                            style={{
+                              padding: '16px',
+                              borderBottom: index < eventsWithoutLocation.length - 1 ? '1px solid #fecaca' : 'none',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center'
+                            }}
+                          >
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                                <div
+                                  style={{
+                                    width: '12px',
+                                    height: '12px',
+                                    backgroundColor: style.color,
+                                    borderRadius: '50%',
+                                  }}
+                                ></div>
+                                <span style={{ fontSize: '16px' }}>{style.emoji}</span>
+                                <span style={{ fontWeight: '600', color: '#374151', fontSize: '15px' }}>
+                                  {style.label}
+                                </span>
+                                <span style={{
+                                  fontSize: '12px',
+                                  color: '#6b7280',
+                                  padding: '2px 8px',
+                                  backgroundColor: '#f1f5f9',
+                                  borderRadius: '12px'
+                                }}>
+                                  {new Date(event.event_date).toLocaleDateString()}
+                                </span>
+                              </div>
+
+                              <div style={{ fontSize: '13px', color: '#dc2626', fontWeight: '500', marginBottom: '4px' }}>
+                                ⚠️ No location recorded
+                              </div>
+
+                              {event.notes && (
+                                <div style={{ fontSize: '13px', color: '#4b5563', lineHeight: '1.4' }}>
+                                  {event.notes}
+                                </div>
+                              )}
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                              <button
+                                onClick={() => startEditingActivity(event)}
+                                style={{
+                                  padding: '6px 12px',
+                                  backgroundColor: '#f59e0b',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontSize: '12px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  fontWeight: '500'
+                                }}
+                                title="Edit this event to add location"
+                              >
+                                📍 Add Location
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Events List */}
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-              <h4 style={{ margin: '0', fontSize: '16px', color: '#374151' }}>
-                Event History {activities.length > 0 && `(${activities.length})`}
-              </h4>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                {showActivityForm && (
+          {!showLocationMap && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                <h4 style={{ margin: '0', fontSize: '16px', color: '#374151' }}>
+                  Event History {activities.length > 0 && `(${activities.length})`}
+                </h4>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {showActivityForm && (
+                    <button
+                      onClick={() => setShowActivityForm(false)}
+                      style={{
+                        padding: '6px 12px',
+                        backgroundColor: '#ef4444',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      ✕ Cancel
+                    </button>
+                  )}
                   <button
-                    onClick={() => setShowActivityForm(false)}
+                    onClick={loadActivities}
+                    disabled={isLoadingActivities}
                     style={{
-                      padding: '6px 12px',
-                      backgroundColor: '#ef4444',
-                      color: 'white',
-                      border: 'none',
+                      padding: '4px 8px',
+                      backgroundColor: '#f3f4f6',
+                      color: '#374151',
+                      border: '1px solid #d1d5db',
                       borderRadius: '4px',
                       cursor: 'pointer',
                       fontSize: '12px',
@@ -2839,30 +3388,11 @@ export function WeatherDashboard({
                       gap: '4px'
                     }}
                   >
-                    ✕ Cancel
+                    <RefreshCw size={12} style={{ animation: isLoadingActivities ? 'spin 1s linear infinite' : 'none' }} />
+                    Refresh
                   </button>
-                )}
-                <button
-                  onClick={loadActivities}
-                  disabled={isLoadingActivities}
-                  style={{
-                    padding: '4px 8px',
-                    backgroundColor: '#f3f4f6',
-                    color: '#374151',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}
-                >
-                  <RefreshCw size={12} style={{ animation: isLoadingActivities ? 'spin 1s linear infinite' : 'none' }} />
-                  Refresh
-                </button>
+                </div>
               </div>
-            </div>
 
             {isLoadingActivities ? (
               <div style={{ textAlign: 'center', padding: '20px', color: '#6b7280' }}>
@@ -3141,19 +3671,46 @@ export function WeatherDashboard({
                               </div>
                             )}
 
-                            {(activity.location_lat && activity.location_lng) && (
-                              <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                📍 
-                                {activity.location_name ? (
-                                  <span>{activity.location_name}</span>
-                                ) : (
-                                  <span>{activity.location_lat.toFixed(4)}, {activity.location_lng.toFixed(4)}</span>
-                                )}
-                                {activity.location_accuracy && (
-                                  <span style={{ fontSize: '11px', color: '#9ca3af' }}>
-                                    (±{Math.round(activity.location_accuracy)}m)
-                                  </span>
-                                )}
+                            {/* Location Status */}
+                            {(activity.location_lat && activity.location_lng) ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                <div style={{ fontSize: '12px', color: '#059669', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  📍 
+                                  {activity.location_name ? (
+                                    <span>{activity.location_name}</span>
+                                  ) : (
+                                    <span>{activity.location_lat.toFixed(4)}, {activity.location_lng.toFixed(4)}</span>
+                                  )}
+                                  {activity.location_accuracy && (
+                                    <span style={{ fontSize: '11px', color: '#9ca3af' }}>
+                                      (±{Math.round(activity.location_accuracy)}m)
+                                    </span>
+                                  )}
+                                </div>
+                                <a
+                                  href={`https://www.google.com/maps?q=${activity.location_lat},${activity.location_lng}&z=18`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    padding: '2px 6px',
+                                    backgroundColor: '#10b981',
+                                    color: 'white',
+                                    textDecoration: 'none',
+                                    borderRadius: '4px',
+                                    fontSize: '10px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '2px',
+                                    fontWeight: '500'
+                                  }}
+                                  title="View location on Google Maps"
+                                >
+                                  🗺️ Map
+                                </a>
+                              </div>
+                            ) : (
+                              <div style={{ fontSize: '12px', color: '#dc2626', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                ⚠️ No location recorded
                               </div>
                             )}
 
@@ -3191,9 +3748,9 @@ export function WeatherDashboard({
                                 }}
                                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d97706'}
                                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f59e0b'}
-                                title={`Edit this ${style.label} event`}
+                                title={`Edit this ${style.label} event${!activity.location_lat ? ' (add location)' : ''}`}
                               >
-                                ✏️ Edit
+                                {!activity.location_lat ? '📍 Add Location' : '✏️ Edit'}
                               </button>
 
                               {/* Delete button */}
@@ -3227,8 +3784,8 @@ export function WeatherDashboard({
                 })}
               </div>
             )}
-          </div>
-
+            </div>
+          )}
 
         </div>
       )}
