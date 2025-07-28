@@ -3202,39 +3202,108 @@ export function WeatherDashboard({
                           </button>
                         </div>
 
-                        {/* Embedded Google Maps Option */}
-                        {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && (
-                          <div style={{
-                            padding: '12px',
-                            backgroundColor: '#fefce8',
-                            border: '1px solid #fde68a',
-                            borderRadius: '8px'
-                          }}>
-                            <h5 style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#92400e', fontWeight: '600' }}>
-                              🗺️ Interactive Map (Google Maps API)
-                            </h5>
-                            <div style={{
-                              width: '100%',
-                              height: '300px',
-                              border: '1px solid #d1d5db',
-                              borderRadius: '6px',
-                              overflow: 'hidden'
-                            }}>
-                              <iframe
-                                src={`https://www.google.com/maps/embed/v1/view?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&center=${latitude},${longitude}&zoom=14`}
-                                width="100%"
-                                height="100%"
-                                style={{ border: 0 }}
-                                allowFullScreen
-                                loading="lazy"
-                                referrerPolicy="no-referrer-when-downgrade"
-                              ></iframe>
-                            </div>
-                            <div style={{ fontSize: '12px', color: '#92400e', marginTop: '6px' }}>
-                              Note: This shows the vineyard area. Individual event markers require advanced Google Maps integration.
+                        {/* Interactive Map Options */}
+                        <div style={{
+                          padding: '12px',
+                          backgroundColor: '#fefce8',
+                          border: '1px solid #fde68a',
+                          borderRadius: '8px'
+                        }}>
+                          <h5 style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#92400e', fontWeight: '600' }}>
+                            🗺️ Interactive Map Options
+                          </h5>
+                          
+                          {/* Primary option - Google Maps web link (always works) */}
+                          <div style={{ marginBottom: '12px' }}>
+                            <a
+                              href={`https://www.google.com/maps/@${latitude},${longitude},15z`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '10px 16px',
+                                backgroundColor: '#10b981',
+                                color: 'white',
+                                textDecoration: 'none',
+                                borderRadius: '6px',
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                              }}
+                            >
+                              🌍 Open in Google Maps
+                            </a>
+                            <div style={{ fontSize: '11px', color: '#92400e', marginTop: '4px' }}>
+                              Opens vineyard area in Google Maps (always works)
                             </div>
                           </div>
-                        )}
+
+                          {/* Embedded map option with API key check */}
+                          {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? (
+                            <div>
+                              <div style={{ fontSize: '12px', color: '#92400e', marginBottom: '6px', fontWeight: '500' }}>
+                                📍 Embedded Map Preview:
+                              </div>
+                              <div style={{
+                                width: '100%',
+                                height: '250px',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '6px',
+                                overflow: 'hidden',
+                                position: 'relative'
+                              }}>
+                                <iframe
+                                  src={`https://www.google.com/maps/embed/v1/view?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&center=${latitude},${longitude}&zoom=15`}
+                                  width="100%"
+                                  height="100%"
+                                  style={{ border: 0 }}
+                                  allowFullScreen
+                                  loading="lazy"
+                                  referrerPolicy="no-referrer-when-downgrade"
+                                  onError={(e) => {
+                                    // Hide iframe on error and show fallback
+                                    const iframe = e.target as HTMLIFrameElement;
+                                    const container = iframe.parentElement;
+                                    if (container) {
+                                      container.innerHTML = `
+                                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; background-color: #fef2f2; border: 2px dashed #fecaca; text-align: center; padding: 20px;">
+                                          <div style="font-size: 24px; margin-bottom: 8px;">🗺️</div>
+                                          <div style="font-weight: 600; color: #dc2626; margin-bottom: 4px;">Map API Not Available</div>
+                                          <div style="font-size: 12px; color: #991b1b; margin-bottom: 12px;">Enable Maps Embed API in Google Cloud Console</div>
+                                          <a href="https://www.google.com/maps/@${latitude},${longitude},15z" target="_blank" style="padding: 6px 12px; background-color: #10b981; color: white; text-decoration: none; border-radius: 4px; font-size: 12px;">Open in Google Maps</a>
+                                        </div>
+                                      `;
+                                    }
+                                  }}
+                                ></iframe>
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#92400e', marginTop: '4px' }}>
+                                If map doesn't load, enable <strong>Maps Embed API</strong> in Google Cloud Console
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{
+                              padding: '16px',
+                              backgroundColor: '#f0f9ff',
+                              border: '2px dashed #bae6fd',
+                              borderRadius: '6px',
+                              textAlign: 'center'
+                            }}>
+                              <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔑</div>
+                              <div style={{ fontWeight: '600', color: '#0369a1', marginBottom: '4px' }}>
+                                Google Maps API Key Required
+                              </div>
+                              <div style={{ fontSize: '12px', color: '#0284c7', marginBottom: '8px' }}>
+                                Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to enable embedded maps
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#6b7280' }}>
+                                For now, use the "Open in Google Maps" link above
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
 
