@@ -40,8 +40,10 @@ export function EnhancedGDDChart({
   onEditEvent,
   onDeleteEvent,
 }: EnhancedChartProps) {
-  const [phenologyEvents, setPhenologyEvents] = useState<PhenologyEvent[]>([]);
+  const [selectedGDD, setSelectedGDD] = useState<number>(0);
+  const [selectedDate, setSelectedDate] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [phenologyEvents, setPhenologyEvents] = useState<PhenologyEvent[]>([]);
   const [eventTypeFilter, setEventTypeFilter] = useState<string[]>([]);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
@@ -310,10 +312,28 @@ export function EnhancedGDDChart({
     })
     .join(" ");
 
-  // Handle chart click to scroll to Event Log Add Event section
+  // Handle click on chart - scroll to Event Log Add Event section
   const handleChartClick = (event: React.MouseEvent<SVGSVGElement>) => {
     if (loading) return;
-    scrollToEventLogAddEvent();
+
+    console.log('📊 Chart clicked - scrolling to Event Log Add Event section');
+
+    // Scroll to Event Log section and trigger Add Event form
+    const eventLogSection = document.querySelector('[data-section="event-log"]');
+    if (eventLogSection) {
+      eventLogSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      // Trigger the Add Event form after a short delay
+      setTimeout(() => {
+        const addEventButton = document.querySelector('[data-action="add-event"]') as HTMLButtonElement;
+        if (addEventButton) {
+          addEventButton.click();
+        }
+      }, 500);
+    } else {
+      // Fallback: just scroll down to where Event Log should be
+      window.scrollBy({ top: 600, behavior: 'smooth' });
+    }
   };
 
   // Function to scroll to Event Log Add Event section
@@ -549,7 +569,24 @@ export function EnhancedGDDChart({
           </div>
 
           <button
-            onClick={scrollToEventLogAddEvent}
+            onClick={() => {
+              console.log('📊 Add Event button clicked - scrolling to Event Log');
+              const eventLogSection = document.querySelector('[data-section="event-log"]');
+              if (eventLogSection) {
+                eventLogSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                // Trigger the Add Event form after a short delay
+                setTimeout(() => {
+                  const addEventButton = document.querySelector('[data-action="add-event"]') as HTMLButtonElement;
+                  if (addEventButton) {
+                    addEventButton.click();
+                  }
+                }, 500);
+              } else {
+                // Fallback: just scroll down to where Event Log should be
+                window.scrollBy({ top: 600, behavior: 'smooth' });
+              }
+            }}
             disabled={loading}
             style={{
               padding: "8px 16px",
@@ -1253,12 +1290,9 @@ export function EnhancedGDDChart({
           lineHeight: "1.4"
         }}
       >
-        <strong>📈 Growth Curve Guide:</strong> Click anywhere on the curve to log vineyard events. 
-        Phenology stages (bud break, bloom, veraison) can span date ranges, while harvest picks are individual dates with block labels.
+        <strong>📈 Growth Curve Guide:</strong> Click anywhere on the curve or the "Add Event" button to scroll down to the Event Log section where you can add vineyard events.
         <br />
         <strong>🎯 Visual Elements:</strong> Solid blue line shows actual weather data, dashed gray line projects through growing season end.
-        <br />
-        <strong>💾 Data Storage:</strong> All events are saved to your personal vineyard database and sync across the application.
       </div>
     </div>
   );
