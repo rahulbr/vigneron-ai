@@ -31,3 +31,7 @@ ALTER TABLE phenology_events ADD COLUMN scout_focus TEXT;
 ALTER TABLE phenology_events ADD COLUMN scout_severity TEXT;
 ALTER TABLE phenology_events ADD COLUMN scout_distribution TEXT;
 ALTER TABLE phenology_events ADD COLUMN scout_action TEXT;
+-- Add missing spray_conditions column
+ALTER TABLE phenology_events ADD COLUMN spray_conditions TEXT;
+-- Add missing spray_conditions column
+ALTER TABLE phenology_events ADD COLUMN spray_conditions TEXT;
