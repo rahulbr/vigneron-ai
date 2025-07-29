@@ -3674,6 +3674,7 @@ export function WeatherDashboard({
                           <option value="crown gall">Crown gall</option>
                           <option value="esca">Esca</option>
                           <option value="eutypa">Eutypa</option>
+                          <option value="other disease">Other</option>
                         </optgroup>
                         <optgroup label="Insect Pests">
                           <option value="spider mites">Spider mites</option>
@@ -3684,6 +3685,8 @@ export function WeatherDashboard({
                           <option value="grape berry moth">Grape berry moth</option>
                           <option value="scale insects">Scale insects</option>
                           <option value="cutworms">Cutworms</option>
+                          <option value="japanese beetles">Japanese beetles</option>
+                          <option value="other insect">Other</option>
                         </optgroup>
                         <optgroup label="General Scouting">
                           <option value="general health">General plant health</option>
@@ -5152,6 +5155,7 @@ export function WeatherDashboard({
                                       <option value="crown gall">Crown gall</option>
                                       <option value="esca">Esca</option>
                                       <option value="eutypa">Eutypa</option>
+                                      <option value="other disease">Other</option>
                                     </optgroup>
                                     <optgroup label="Insect Pests">
                                       <option value="spider mites">Spider mites</option>
@@ -5162,6 +5166,8 @@ export function WeatherDashboard({
                                       <option value="grape berry moth">Grape berry moth</option>
                                       <option value="scale insects">Scale insects</option>
                                       <option value="cutworms">Cutworms</option>
+                                      <option value="japanese beetles">Japanese beetles</option>
+                                      <option value="other insect">Other</option>
                                     </optgroup>
                                     <optgroup label="General Scouting">
                                       <option value="general health">General plant health</option>
@@ -5839,9 +5845,9 @@ export function WeatherDashboard({
                                 }}
                                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d97706'}
                                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f59e0b'}
-                                title={`Edit this ${style.label} event${!activity.location_lat ? ' (add location)' : ''}`}
+                                title={`Edit this ${style.label} event`}
                               >
-                                {!activity.location_lat ? '📍 Add Location' : '✏️ Edit'}
+                                ✏️ Edit
                               </button>
 
                               {/* Delete button */}
