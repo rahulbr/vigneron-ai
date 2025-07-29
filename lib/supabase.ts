@@ -96,13 +96,14 @@ export async function getVineyard(id: string): Promise<Vineyard | null> {
     .from('vineyards')
     .select('*')
     .eq('id', id)
-    .limit(1);
+    .maybeSingle();
 
-  if (error) throw error;
-  if (!data || data.length === 0) {
-    return null; // Return null instead of throwing error
+  if (error) {
+    console.error('Error fetching vineyard:', error);
+    return null;
   }
-  return data[0];
+  
+  return data;
 }
 
 export async function getVineyardDetails(vineyardId: string): Promise<Vineyard | null> {
@@ -111,24 +112,23 @@ export async function getVineyardDetails(vineyardId: string): Promise<Vineyard |
       .from('vineyards')
       .select('*')
       .eq('id', vineyardId)
-      .limit(1);
+      .maybeSingle();
 
     if (error) {
       console.error('Error fetching vineyard details:', error);
-      throw new Error(error.message);
+      return null;
     }
 
-    if (!data || data.length === 0) {
+    if (!data) {
       console.log('🍇 No vineyard found with ID:', vineyardId);
-      return null; // Return null instead of throwing error
+      return null;
     }
 
-    const vineyard = data[0];
-    console.log('🍇 Loaded vineyard details:', vineyard);
-    return vineyard;
+    console.log('🍇 Loaded vineyard details:', data);
+    return data;
   } catch (error) {
     console.error('❌ Failed to fetch vineyard details:', error);
-    throw error;
+    return null;
   }
 }
 
