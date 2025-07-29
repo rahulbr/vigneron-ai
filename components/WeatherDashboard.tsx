@@ -6,7 +6,8 @@ import { EnhancedGDDChart } from './EnhancedGDDChart';
 import { googleGeocodingService, GeocodeResult } from '../lib/googleGeocodingService';
 import { openaiService, VineyardContext, AIInsight } from '../lib/openaiService';
 import { supabase } from '../lib/supabase'; // Added for user authentication
-import { AlertCircle, RefreshCw, MapPin, Calendar, Thermometer, CloudRain, TrendingUp, Search, Brain, Lightbulb, AlertTriangle, CheckCircle, Info } from 'lucide-react';
+import { AlertCircle, RefreshCw, MapPin, Calendar, Thermometer, CloudRain, TrendingUp, Search, Brain, Lightbulb, AlertTriangle, CheckCircle, Info, FileText } from 'lucide-react';
+import { ReportsModal } from './ReportsModal';
 
 interface WeatherDashboardProps {
   vineyardId?: string;
@@ -139,6 +140,9 @@ export function WeatherDashboard({
 
   // Edit activity state
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
+  
+  // Reports modal state
+  const [showReportsModal, setShowReportsModal] = useState(false);
   const [editActivityForm, setEditActivityForm] = useState({
     activity_type: '',
     start_date: '',
@@ -631,6 +635,16 @@ export function WeatherDashboard({
   useEffect(() => {
     calculateSafetyAlerts();
   }, [activities]);
+
+  // Open reports modal with current vineyard data
+  const openReportsModal = () => {
+    if (!currentVineyard) {
+      alert('Please select a vineyard first to generate reports.');
+      return;
+    }
+
+    setShowReportsModal(true);
+  };
 
   // Calculate safety alerts for spray applications
   const calculateSafetyAlerts = () => {
@@ -2863,6 +2877,29 @@ export function WeatherDashboard({
                 );
               })()}
               
+              {/* Reports Button */}
+              <button
+                onClick={openReportsModal}
+                disabled={!currentVineyard || activities.length === 0}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: !currentVineyard || activities.length === 0 ? '#9ca3af' : '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: !currentVineyard || activities.length === 0 ? 'not-allowed' : 'pointer',
+                  fontSize: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontWeight: '500'
+                }}
+                title={!currentVineyard ? 'Select a vineyard first' : activities.length === 0 ? 'No events to report' : 'Generate vineyard reports'}
+              >
+                <FileText size={12} />
+                📊 Reports
+              </button>
+
               {/* Filter Dropdown */}
               <div style={{ position: "relative" }}>
                 <button
@@ -6099,6 +6136,20 @@ export function WeatherDashboard({
             </div>
           )}
         </div>
+      )}
+
+      {/* Reports Modal */}
+      {showReportsModal && currentVineyard && (
+        <ReportsModal
+          isOpen={showReportsModal}
+          onClose={() => setShowReportsModal(false)}
+          reportData={{
+            vineyard: currentVineyard,
+            phenologyEvents: activities,
+            weatherData: data,
+            dateRange: dateRange
+          }}
+        />
       )}
     </div>
   );
