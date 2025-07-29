@@ -852,10 +852,6 @@ export function WeatherDashboard({
         fertilizationData,
         harvestData,
         canopyData,
-        scoutData,
-        fertilizationData,
-        harvestData,
-        canopyData,
         scoutData
       );
 
