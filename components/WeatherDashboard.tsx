@@ -27,7 +27,7 @@ export function WeatherDashboard({
   const [locationSearch, setLocationSearch] = useState('');
   const [searchResults, setSearchResults] = useState<GeocodeResult[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
-  const [isSearching, setIsSearching] = useState(isSearching);
+  const [isSearching, setIsSearching] = useState(false);
   const [dateRange, setDateRange] = useState({
     start: '',
     end: ''
@@ -857,7 +857,8 @@ export function WeatherDashboard({
         spray_target: '',
         spray_conditions: '',
         spray_equipment: '',
-        irrigation_amount: '',
+        ```
+irrigation_amount: '',
         irrigation_unit: 'inches',
         irrigation_method: '',
         irrigation_duration: '',
@@ -963,7 +964,7 @@ export function WeatherDashboard({
       fertilizer_npk: activity.fertilizer_npk || '',
       fertilizer_rate: activity.fertilizer_rate || '',
       fertilizer_unit: activity.fertilizer_unit || 'lbs/acre',
-      fertilizer_method: activity.fertilizer_method || '',
+      fertilizer_method: '',
       // Harvest specific fields
       harvest_yield: activity.harvest_yield || '',
       harvest_unit: activity.harvest_unit || 'tons/acre',
@@ -1453,6 +1454,7 @@ export function WeatherDashboard({
 
 
 
+
   // Date range button handlers
   const setCurrentYear = () => {
     const now = new Date();
@@ -1569,33 +1571,73 @@ export function WeatherDashboard({
     }
   };
 
-  // Don't render until initialized
-  if (!isInitialized) {
-    return (
-      <div style={{ padding: '20px', textAlign: 'center' }}>
-        <div style={{ 
-          width: '30px', 
-          height: '30px', 
-          border: '3px solid #f3f3f3',
-          borderTop: '3px solid #3498db',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
-          margin: '0 auto 10px'
-        }}></div>
-        <p>Initializing weather dashboard...</p>
-      </div>
-    );
-  }
-
   const currentYear = new Date().getFullYear();
   const previousYear = currentYear - 1;
 
+  const filteredEventsWithLocation = activities.filter(activity =>
+    activity.location_lat && activity.location_lng &&
+    (eventFilterTypes.length === 0 || eventFilterTypes.includes(activity.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other'))
+  );
+
+  // Event filtering logic
+  const toggleEventType = (eventType: string) => {
+    setEventFilterTypes(prev => {
+      if (prev.includes(eventType)) {
+        return prev.filter(type => type !== eventType);
+      } else {
+        return [...prev, eventType];
+      }
+    });
+  };
+
+  // Clear current location
+  const clearCurrentLocation = () => {
+    setEditActivityForm(prev => ({
+      ...prev,
+      location_lat: null,
+      location_lng: null,
+      location_name: '',
+      location_accuracy: null
+    }));
+  };
+
+  // Handle location search for edit form
+  const handleEditLocationSearch = async (searchQuery: string) => {
+    if (!searchQuery.trim()) return;
+
+    setIsSearching(true);
+    try {
+      const results = await googleGeocodingService.geocodeLocation(searchQuery);
+      setSearchResults(results);
+      setShowSearchResults(true);
+    } catch (error) {
+      console.error('Google Maps search error:', error);
+      alert('Search failed: ' + (error as Error).message + '\n\nFalling back to La Honda, CA');
+
+      // Use La Honda fallback if search fails
+      const fallback = googleGeocodingService.getLaHondaFallback();
+      selectEditLocation(fallback);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Select a location from search results on the edit form
+  const selectEditLocation = (location: GeocodeResult) => {
+    setEditActivityForm(prev => ({
+      ...prev,
+      location_lat: location.latitude,
+      location_lng: location.longitude,
+      location_name: location.name,
+      location_accuracy: null
+    }));
+    setShowSearchResults(false);
+    setLocationSearch('');
+
+    console.log('📍 Selected location for edit:', location);
+  };
+
   return (
-    
-        
-          
-        
-    
     <div 
         className="mobile-safe-area"
         style={{
@@ -1608,12 +1650,17 @@ export function WeatherDashboard({
         
           
             
+              
                 
                     
                 
                 
                     
                 
+                
+                    
+                
+              
             
         
       
@@ -1622,7 +1669,6 @@ export function WeatherDashboard({
           
             
               
-                
                 
                   
                     🍇 My Vineyards
@@ -1785,9 +1831,7 @@ export function WeatherDashboard({
                       Select New Location:
                     
                     
-                      
-                        
-                          
+                                                
                             
                               {result.name}
                             
@@ -1863,7 +1907,6 @@ export function WeatherDashboard({
                                 📍 {vineyard.name}
                               
                             )}
-
                             
                               
                                 ✓ Save
@@ -1924,15 +1967,16 @@ export function WeatherDashboard({
                 
               
             
+            
               
                 
                 
-                  
                   Weather API Connection Failed
                   
                   Retry Connection
                 
               
+            
             
               
                 
@@ -1967,13 +2011,17 @@ export function WeatherDashboard({
                       {currentYear} Growing Season (Apr 1 - Today)
                     
                   
+                
 
+                
                   
                     
                       {previousYear} Growing Season (Apr 1 - Oct 31)
                     
                   
+                
 
+                
                   
                     
                       Custom Date Range
@@ -2107,24 +2155,23 @@ export function WeatherDashboard({
         
           
             
-              
-                Loading Weather Data
-              
-              
-                Fetching weather data for {customLocation}...
-              
+              Loading Weather Data
+            
+            
+              Fetching weather data for {customLocation}...
             
           
         
+      
 
+      
         
           
         
       
 
       
-        
-          Last updated: {lastUpdated.toLocaleString()}
+        Last updated: {lastUpdated.toLocaleString()}
           
           {data.length} data points loaded
           
@@ -2134,8 +2181,6 @@ export function WeatherDashboard({
             
           
         
-      
-
       
 
       
@@ -2728,8 +2773,8 @@ export function WeatherDashboard({
                   
 
                   
-                    
 
+                    
                       ⚠️
                       SAFETY INFORMATION
                     
@@ -2777,9 +2822,7 @@ export function WeatherDashboard({
                       Weather Conditions
                     
                     
-                  
 
-                  
                     
                       
                         Safety Data Sources:
@@ -2821,7 +2864,6 @@ export function WeatherDashboard({
                       No location set
                     
                   )}
-
                 
                   
                     
@@ -2904,12 +2946,12 @@ export function WeatherDashboard({
                 ) : (
                   
                     {activities.filter(activity => {
-                      
+                      // Event filtering logic
                       if (eventFilterTypes.length === 0) return true;
                       const eventType = activity.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
                       return eventFilterTypes.includes(eventType);
                     }).map((activity, index) => {
-                      
+                      // Style definitions
                       const eventStyles: { [key: string]: { color: string, label: string, emoji: string } } = {
                         bud_break: { color: "#22c55e", label: "Bud Break", emoji: "🌱" },
                         bloom: { color: "#f59e0b", label: "Bloom", emoji: "🌸" },
@@ -2928,20 +2970,20 @@ export function WeatherDashboard({
                         other: { color: "#9ca3af", label: "Other", emoji: "📝" },
                       };
 
-                      
+                      // Normalize event type from DB to display format
                       let eventType = activity.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
 
-                      
+                      // Legacy support - map old event types to new ones
                       if (eventType === 'pest_observation') eventType = 'pest';
                       if (eventType === 'scouting_activity') eventType = 'scouting';
 
                       const style = eventStyles[eventType] || eventStyles.other;
 
-                      
+                      // Get GDD data for the event
                       const gddAtEvent = data.find(d => d.date === activity.event_date)?.gdd || 0;
                       const cumulativeGDD = data.filter(d => d.date <= activity.event_date).reduce((sum, d) => sum + d.gdd, 0);
 
-                      
+                      // Check if the event is currently being edited
                       const isBeingEdited = editingActivityId === activity.id;
 
                       return (
@@ -2994,7 +3036,9 @@ export function WeatherDashboard({
                                 Spray Application Details
                               
                             
+                          
 
+                          
                             
                               
                                 
@@ -3035,14 +3079,18 @@ export function WeatherDashboard({
                                     Other
                                   
                                 
+                              
 
+                              
                                 
                                   
                                     Quantity
                                   
                                   
                                 
+                              
 
+                              
                                 
                                   
                                     Unit
@@ -3059,7 +3107,9 @@ export function WeatherDashboard({
                                   
                                 
                               
+                            
 
+                            
                               
                                 
 
@@ -3068,7 +3118,9 @@ export function WeatherDashboard({
                                     SAFETY INFORMATION
                                   
                                 
+                              
 
+                              
                                 
                                   
                                     
@@ -3088,21 +3140,27 @@ export function WeatherDashboard({
                                     
                                   
                                 
+                              
 
+                              
                                 
                                   
                                     Target Pest/Disease
                                   
                                   
                                 
+                              
 
+                              
                                 
                                   
                                     Equipment Used
                                   
                                   
                                 
+                              
 
+                              
                                 
                                   
                                     Weather Conditions
@@ -3112,7 +3170,9 @@ export function WeatherDashboard({
                               
                             
                           
+                        
 
+                        
                           
                             
                               💧
@@ -3167,587 +3227,613 @@ export function WeatherDashboard({
                             
                           
                         
-                      
 
-                      
-                        
-                          🌱
-                          Fertilization Details
-                        
-                      
-
-                      
-                        
-                          
-                            Fertilizer Type
-                          
-                          
-                            Select type...
-                            granular NPK
-                            liquid fertilizer
-                            compost
-                            manure
-                            bone meal
-                            fish emulsion
-                            calcium sulfate
-                            potassium sulfate
-                            urea
-                            ammonium sulfate
-                            organic blend
-                          
-                        
-                      
-
-                      
-                        
-                          N-P-K Ratio
-                        
-                        
-                      
-
-                      
-                        
-                          Application Rate
-                        
-                        
-                      
-
-                      
-                        
-                          Unit
-                        
-                        
-                          lbs/acre
-                          kg/hectare
-                          tons/acre
-                          gal/acre
-                          L/hectare
-                          cubic yards
-                          total lbs
-                        
-                      
-
-                      
-                        
-                          Application Method
-                        
-                        
-                          Select method...
-                          broadcast
-                          banded application
-                          foliar spray
-                          fertigation
-                          side-dress
-                          topdress
-                          soil incorporation
-                        
-                      
-                    
-                  
-
-                  
-                    
-                      🍷
-                      Harvest Details
-                    
-                  
-
-                  
-                    
-                      
-                        Yield
-                        
-                        
-                      
-
-                      
-                        
-                          Unit
-                        
-                        
-                          tons/acre
-                          tonnes/hectare
-                          lbs/vine
-                          kg/vine
-                          total tons
-                          total lbs
-                          bins
-                          cases
-                        
-                      
-
-                      
-                        
-                          Brix (°Bx)
-                        
-                        
-                      
-
-                      
-                        
-                          pH
-                        
-                        
-                      
-
-                      
-                        
-                          TA (g/L)
-                        
-                        
-                      
-
-                      
-                        
-                          Block/Variety
-                        
-                        
-                      
-                    
-                  
-
-                  
-                    
-                      🍃
-                      Canopy Management Details
-                    
-                  
-
-                  
-                    
-                      
-                        Activity Type
-                        
-                        
-                          Select activity...
-                          shoot thinning
-                          leaf removal
-                          cluster thinning
-                          hedging
-                          positioning
-                          topping
-                          suckering
-                          lateral removal
-                          tying
-                        
-                      
-                    
-
-                    
-                      
-                        Intensity
-                        
-                        
-                          Select intensity...
-                          light
-                          moderate
-                          heavy
-                          selective
-                          complete
-                        
-                      
-                    
-
-                    
-                      
-                        Side/Location
-                        
-                        
-                          Select side...
-                          both sides
-                          east side
-                          west side
-                          morning sun
-                          afternoon sun
-                          fruit zone
-                          upper canopy
-                          basal leaves
-                        
-                      
-                    
-
-                    
-                      
-                        Growth Stage
-                        
-                        
-                          Select stage...
-                          pre-bloom
-                          bloom
-                          post-bloom
-                          fruit set
-                          lag phase
-                          veraison
-                          pre-harvest
-                          post-harvest
-                        
-                      
-                    
-                  
-
-                  
-                    
-                      {editActivityForm.activity_type === 'Pest' ? '🐞' : '🔍'}
-                      {editActivityForm.activity_type === 'Pest' ? 'Pest Observation' : 'Scouting'} Details
-                    
-                  
-
-                  
-                    
-                      
-                        Focus/Pest Type
-                        
-                        
-                          Select focus...
-                          Diseases
-                            powdery mildew
-                            downy mildew
-                            botrytis
-                            black rot
-                            phomopsis
-                            crown gall
-                            esca
-                            eutypa
-                            other disease
-                          Insect Pests
-                            spider mites
-                            thrips
-                            leafhoppers
-                            aphids
-                            mealybugs
-                            grape berry moth
-                            scale insects
-                            cutworms
-                            japanese beetles
-                            other insect
-                          General Scouting
-                            general health
-                            nutrient deficiency
-                            water stress
-                            frost damage
-                            wind damage
-                            bird damage
-                            wildlife damage
-                        
-                      
-                    
-                    
-                      
-                        Severity Level
-                        
-                        
-                          Select severity...
-                          none
-                          trace
-                          light
-                          moderate
-                          heavy
-                          severe
-                        
-                      
-                    
-
-                    
-                      
-                        Distribution
-                        
-                        
-                          Select distribution...
-                          isolated
-                          scattered
-                          widespread
-                          uniform
-                          edge rows
-                          wet areas
-                          hilltops
-                          specific block
-                        
-                      
-                    
-
-                    
-                      
-                        Action Needed
-                        
-                        
-                          Select action...
-                          none
-                          monitor weekly
-                          monitor bi-weekly
-                          treatment required
-                          spray scheduled
-                          cultural practices
-                          consult advisor
-                          lab analysis
-                        
-                      
-                    
-                  
-
-                  
-                    📍
-                     Event Location
-                      Optional
-                    
-
-                    
-                      {editActivityForm.location_lat && editActivityForm.location_lng ? (
-                        
-                          
-                            {editActivityForm.location_name || 'Location Set'}
-                          
-                          
-                            ✕ Clear
-                          
-                        
-                      ) : (
-                        
-                          No location set for this event
-                        
-                      )}
-
-                    
-                      
-                        
-                          🗺️ Search Location (Google Maps):
-                        
                         
                           
                             
+                              🌱
+                              Fertilization Details
+                            
                           
-                          
-                            Search
-                          
-                        
-                      
-                    
 
-                    
-                      
-                        Select Location:
-                      
-                      
-                        
-                          
-                            
-                              {result.name}
-                            
-                            
-                              {result.formattedAddress}
-                            
-                            
-                              {result.latitude.toFixed(4)}, {result.longitude.toFixed(4)}
-                            
-                          
-                        
-                      
-                    
-
-                    
-                      
-                        {locationError}
-                      
-                    
-
-                    
-                      
-                        
                           
                             
                               
+                                Fertilizer Type
+                              
+                              
+                                Select type...
+                                granular NPK
+                                liquid fertilizer
+                                compost
+                                manure
+                                bone meal
+                                fish emulsion
+                                calcium sulfate
+                                potassium sulfate
+                                urea
+                                ammonium sulfate
+                                organic blend
+                              
+                            
+                          
+
+                          
+                            
+                              
+                                N-P-K Ratio
+                              
+                              
+                            
+                          
+
+                          
+                            
+                              
+                                Application Rate
+                              
+                              
+                            
+                          
+
+                          
+                            
+                              
+                                Unit
+                              
+                              
+                                lbs/acre
+                                kg/hectare
+                                tons/acre
+                                gal/acre
+                                L/hectare
+                                cubic yards
+                                total lbs
+                              
+                            
+                          
+
+                          
+                            
+                              
+                                Application Method
+                              
+                              
+                                Select method...
+                                broadcast
+                                banded application
+                                foliar spray
+                                fertigation
+                                side-dress
+                                topdress
+                                soil incorporation
+                              
+                            
+                          
+                        
+                      
+
+                      
+                        
+                          
+                            🍷
+                            Harvest Details
+                          
+                        
+
+                          
+                            
+                              
+                                Yield
+                              
+                              
+                            
+
+                            
+                              
+                                Unit
+                              
+                              
+                                tons/acre
+                                tonnes/hectare
+                                lbs/vine
+                                kg/vine
+                                total tons
+                                total lbs
+                                bins
+                                cases
+                              
+                            
+                          
+
+                          
+                            
+                              
+                                Brix (°Bx)
+                              
+                              
+                            
+                          
+
+                          
+                            
+                              
+                                pH
+                              
+                              
+                            
+                          
+
+                          
+                            
+                              
+                                TA (g/L)
+                              
+                              
+                            
+                          
+
+                          
+                            
+                              
+                                Block/Variety
+                              
+                              
+                            
+                          
+                        
+                      
+
+                      
+                        
+                          
+                            🍃
+                            Canopy Management Details
+                          
+                        
+
+                          
+                            
+                              
+                                Activity Type
+                              
+                              
+                                Select activity...
+                                shoot thinning
+                                leaf removal
+                                cluster thinning
+                                hedging
+                                positioning
+                                topping
+                                suckering
+                                lateral removal
+                                tying
+                              
+                            
+                          
+
+                          
+                            
+                              
+                                Intensity
+                              
+                              
+                                Select intensity...
+                                light
+                                moderate
+                                heavy
+                                selective
+                                complete
+                              
+                            
+                          
+
+                          
+                            
+                              
+                                Side/Location
+                              
+                              
+                                Select side...
+                                both sides
+                                east side
+                                west side
+                                morning sun
+                                afternoon sun
+                                fruit zone
+                                upper canopy
+                                basal leaves
+                              
+                            
+                          
+
+                          
+                            
+                              
+                                Growth Stage
+                              
+                              
+                                Select stage...
+                                pre-bloom
+                                bloom
+                                post-bloom
+                                fruit set
+                                lag phase
+                                veraison
+                                pre-harvest
+                                post-harvest
+                              
+                            
+                          
+                        
+                      
+
+                      
+                        
+                          
+                            {editActivityForm.activity_type === 'Pest' ? '🐞' : '🔍'}
+                            {editActivityForm.activity_type === 'Pest' ? 'Pest Observation' : 'Scouting'} Details
+                          
+                        
+
+                          
+                            
+                              
+                                Focus/Pest Type
                                 
-                                  
-                                    
-                                      Getting GPS...
-                                    
-                                  
-                                  📍 Check In Here
+                                
+                                  Select focus...
+                                  Diseases
+                                    powdery mildew
+                                    downy mildew
+                                    botrytis
+                                    black rot
+                                    phomopsis
+                                    crown gall
+                                    esca
+                                    eutypa
+                                    other disease
+                                  Insect Pests
+                                    spider mites
+                                    thrips
+                                    leafhoppers
+                                    aphids
+                                    mealybugs
+                                    grape berry moth
+                                    scale insects
+                                    cutworms
+                                    japanese beetles
+                                    other insect
+                                  General Scouting
+                                    general health
+                                    nutrient deficiency
+                                    water stress
+                                    frost damage
+                                    wind damage
+                                    bird damage
+                                    wildlife damage
                                 
                               
+                            
+                          
 
-                              {currentVineyard && (
+                          
+                            
+                              
+                                Severity Level
+                              
+                              
+                                Select severity...
+                                none
+                                trace
+                                light
+                                moderate
+                                heavy
+                                severe
+                              
+                            
+                          
+
+                          
+                            
+                              
+                                Distribution
+                              
+                              
+                                Select distribution...
+                                isolated
+                                scattered
+                                widespread
+                                uniform
+                                edge rows
+                                wet areas
+                                hilltops
+                                specific block
+                              
+                            
+                          
+
+                          
+                            
+                              
+                                Action Needed
+                              
+                              
+                                Select action...
+                                none
+                                monitor weekly
+                                monitor bi-weekly
+                                treatment required
+                                spray scheduled
+                                cultural practices
+                                consult advisor
+                                lab analysis
+                              
+                            
+                          
+                        
+
+                        
+                          
+                            📍
+                             Event Location
+                              Optional
+                            
+
+                            
+                              {editActivityForm.location_lat && editActivityForm.location_lng ? (
                                 
-                                  🍇 Use Vineyard Location
+                                  
+                                    {editActivityForm.location_name || 'Location Set'}
+                                  
+                                  
+                                    ✕ Clear
+                                  
+                                
+                              ) : (
+                                
+                                  No location set for this event
                                 
                               )}
                             
-                          
-                        
-                      
-                    
-                  
+                              
+                                
+                                  
+                                    🗺️ Search Location (Google Maps):
+                                  
+                                  
+                                    
+                                      
+                                    
+                                    
+                                      Search
+                                    
+                                  
+                                
+                              
 
-                  
-                    
-                      Notes (Optional)
-                    
-                    
-                  
+                              
+                                
+                                  Select Location:
+                                
+                                
+                                  
+                                    
+                                      
+                                        {result.name}
+                                      
+                                      
+                                        {result.formattedAddress}
+                                      
+                                      
+                                        {result.latitude.toFixed(4)}, {result.longitude.toFixed(4)}
+                                      
+                                    
+                                  
+                                
+                              
 
-                  
-                    
-                      {isUpdatingActivity || !editActivityForm.activity_type || !editActivityForm.start_date ? 'Updating...' : 'Save Changes'}
-                    
-                    Cancel
-                  
-                
-              
-            ) : (
-              
-                
-                  
-                    
-                      
-                        
-                          
-                        
-                        
-                          {style.emoji}
-                          
-                            {style.label}
-                          
-                           
-                          
-                          {new Date(activity.event_date).toLocaleDateString()}
-                          {cumulativeGDD > 0 && (
-                            
-                              {Math.round(cumulativeGDD)} GDDs
-                            
-                          )}
-                        
-                        {activity.end_date && (
-                          
-                            Duration: {activity.event_date} to {activity.end_date}
-                          
-                        )}
-
-                        {activity.harvest_block && (
-                          
-                            Block: {activity.harvest_block}
-                          
-                        )}
-
-                        
-                          {(activity.location_lat && activity.location_lng) ? (
                             
                               
-                                📍 
-                                {activity.location_name ? (
+                                {locationError}
+                              
+                            
+                              
+                                
                                   
-                                    {activity.location_name}
+                                    
+                                      
+                                        Getting GPS...
+                                      
+                                    
+                                    📍 Check In Here
                                   
-                                ) : (
+                                
+
+                                {currentVineyard && (
                                   
-                                    {activity.location_lat.toFixed(4)}, {activity.location_lng.toFixed(4)}
+                                    🍇 Use Vineyard Location
                                   
-                                )}
-                                {activity.location_accuracy && (
-                                  (±{Math.round(activity.location_accuracy)}m)
                                 )}
                               
                             
-                            
-                              🗺️ Map
-                            
                           
-                        ) : (
-                          
-                            ⚠️ No location recorded
-                          
-                        )}
 
+                          
+                            
+                              Notes (Optional)
+                            
+                            
+                          
+
+                          
+                            
+                              {isUpdatingActivity || !editActivityForm.activity_type || !editActivityForm.start_date ? 'Updating...' : 'Save Changes'}
+                            
+                            Cancel
+                          
                         
-                          {activity.event_type === 'spray_application' && activity.spray_product && (
+                      
+                    ) : (
+                      
+                        
+                          
                             
                               
-                                🌿 Spray Application Details
-                                {(() => {
-                                  const productInfo = sprayDatabase[activity.spray_product as keyof typeof sprayDatabase];
-                                  if (productInfo) {
-                                    const sprayDate = new Date(activity.event_date);
-                                    const today = new Date();
-                                    const hoursSinceSpray = Math.floor((today.getTime() - sprayDate.getTime()) / (1000 * 60 * 60));
+                                
+                              
+                              
+                                {style.emoji}
+                                
+                                  {style.label}
+                                
+                                
+                              
+                             
+                              
+                              {new Date(activity.event_date).toLocaleDateString()}
+                              {cumulativeGDD > 0 && (
+                                
+                                  {Math.round(cumulativeGDD)} GDDs
+                                
+                              )}
+                            
+                            {activity.end_date && (
+                              
+                                Duration: {activity.event_date} to {activity.end_date}
+                              
+                            )}
 
-                                    if (hoursSinceSpray < productInfo.reentryHours) {
+                            {activity.harvest_block && (
+                              
+                                Block: {activity.harvest_block}
+                              
+                            )}
+
+                            
+                              {(activity.location_lat && activity.location_lng) ? (
+                                
+                                  
+                                    📍 
+                                    {activity.location_name ? (
+                                      
+                                        {activity.location_name}
+                                      
+                                    ) : (
+                                      
+                                        {activity.location_lat.toFixed(4)}, {activity.location_lng.toFixed(4)}
+                                      
+                                    )}
+                                    {activity.location_accuracy && (
+                                      (±{Math.round(activity.location_accuracy)}m)
+                                    )}
+                                  
+                                
+                                
+                                  🗺️ Map
+                                
+                              
+                              ) : (
+                                
+                                  ⚠️ No location recorded
+                                
+                              )}
+
+                            
+                              {activity.event_type === 'spray_application' && activity.spray_product && (
+                                
+                                  
+                                    🌿 Spray Application Details
+                                    {(() => {
+                                      const productInfo = sprayDatabase[activity.spray_product as keyof typeof sprayDatabase];
+                                      if (productInfo) {
+                                        const sprayDate = new Date(activity.event_date);
+                                        const today = new Date();
+                                        const hoursSinceSpray = Math.floor((today.getTime() - sprayDate.getTime()) / (1000 * 60 * 60));
+
+                                        if (hoursSinceSpray < productInfo.reentryHours) {
+                                          return (
+                                            
+                                              RE-ENTRY ACTIVE
+                                            
+                                          );
+                                        }
+                                      }
+                                      return null;
+                                    })()}
+                                  
+                                  
+                                    Product: {activity.spray_product}
+                                    {activity.spray_quantity && activity.spray_unit && (
+                                      <span> • Rate: {activity.spray_quantity} {activity.spray_unit}
+                                    )}
+                                  
+                                  {activity.spray_target && (
+                                    
+                                      Target: {activity.spray_target}
+                                    
+                                  )}
+                                  {activity.spray_equipment && (
+                                    
+                                      Equipment: {activity.spray_equipment}
+                                    
+                                  )}
+                                  {activity.spray_conditions && (
+                                    
+                                      Conditions: {activity.spray_conditions}
+                                    
+                                  )}
+                                  {(() => {
+                                    const productInfo = sprayDatabase[activity.spray_product as keyof typeof sprayDatabase];
+                                    if (productInfo) {
                                       return (
                                         
-                                          RE-ENTRY ACTIVE
+                                          Safety: {productInfo.reentryHours}h re-entry, {productInfo.preharvestDays}d pre-harvest
                                         
                                       );
                                     }
-                                  }
-                                  return null;
-                                })()}
-                              
-                              
-                                Product: {activity.spray_product}
-                                {activity.spray_quantity && activity.spray_unit && (
-                                  <span> • Rate: {activity.spray_quantity} {activity.spray_unit}
-                                )}
-                              
-                              {activity.spray_target && (
-                                
-                                  Target: {activity.spray_target}
+                                    return null;
+                                  })()}
                                 
                               )}
-                              {activity.spray_equipment && (
-                                
-                                  Equipment: {activity.spray_equipment}
-                                
-                              )}
-                              {activity.spray_conditions && (
-                                
-                                  Conditions: {activity.spray_conditions}
-                                
-                              )}
-                              {(() => {
-                                const productInfo = sprayDatabase[activity.spray_product as keyof typeof sprayDatabase];
-                                if (productInfo) {
-                                  return (
-                                    
-                                      Safety: {productInfo.reentryHours}h re-entry, {productInfo.preharvestDays}d pre-harvest
-                                    
-                                  );
-                                }
-                                return null;
-                              })()}
+
+                            {activity.notes && (
+                              
+                                {activity.notes}
+                              
+                            )}
+                          
+                        
+
+                        
+                          {activity.created_at && (
+                            
+                              Logged: {new Date(activity.created_at).toLocaleDateString()}
                             
                           )}
 
-                        {activity.notes && (
                           
-                            {activity.notes}
-                          
-                        )}
-                      
-                    
-
-                    
-                      {activity.created_at && (
-                        
-                          Logged: {new Date(activity.created_at).toLocaleDateString()}
-                        
-                      )}
-
-                      
-                        
-                          
-                            ✏️ Edit
-                          
-                          
-                            🗑️ Delete
+                            
+                              
+                                
+                                  ✏️ Edit
+                                
+                                
+                                  🗑️ Delete
+                                
+                              
+                            
                           
                         
                       
                     
                   
                 
-              
-            )}
+              )}
+            
           
         )}
       
-    
 
       
         
@@ -3762,13 +3848,13 @@ export function WeatherDashboard({
                   
                 
               
-              
-                Add NEXT_PUBLIC_OPENAI_API_KEY to enable AI features
-              
+              Add NEXT_PUBLIC_OPENAI_API_KEY to enable AI features
             
           
         
+      
 
+      
         
           
             
@@ -3819,6 +3905,7 @@ export function WeatherDashboard({
                                     
                                     
                                     
+                                    
                                       {insight.daysToAction} days
                                     
                                   
@@ -3860,7 +3947,9 @@ export function WeatherDashboard({
                         
                           
                             
-                              📈 Development & Timing
+                              
+                                📈 Development & Timing
+                              
                             
                             
                               {phenologyAnalysis}
