@@ -684,7 +684,7 @@ export async function ensureVineyardExistsInDatabase(vineyardId: string): Promis
           user_id: user?.id || null
         }])
         .select()
-        .single();
+        .maybeSingle();
 
       if (createError) {
         console.error('❌ Error creating vineyard:', createError);

@@ -55,7 +55,7 @@ export default function Home() {
         .from('vineyards')
         .select('*')
         .eq('id', vineyardId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('❌ Database error:', error);
