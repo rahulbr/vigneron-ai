@@ -451,11 +451,15 @@ export async function savePhenologyEvent(
     // First, ensure the vineyard exists - if not, create it
     await ensureVineyardExistsInDatabase(vineyardId);
 
+    // Get current user for multi-user support
+    const { data: { user } } = await supabase.auth.getUser();
+
     const insertData: any = {
       vineyard_id: vineyardId,
       event_type: eventType,
       event_date: eventDate,
-      notes: notes || ''
+      notes: notes || '',
+      user_id: user?.id || null
     };
 
     // Only add optional fields if they have values
@@ -623,16 +627,27 @@ export async function getPhenologyEvents(vineyardId: string): Promise<PhenologyE
     // Validate vineyard ID before querying
     const validVineyardId = validateAndFixVineyardId(vineyardId);
 
+    // Get current user for filtering
+    const { data: { user } } = await supabase.auth.getUser();
+
     console.log('🔍 Getting phenology events for vineyard ID validation:', { 
       originalId: vineyardId, 
-      validId: validVineyardId 
+      validId: validVineyardId,
+      userId: user?.id 
     });
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('phenology_events')
       .select('*')
       .eq('vineyard_id', validVineyardId)
       .order('event_date', { ascending: true });
+
+    // Filter by user if authenticated
+    if (user) {
+      query = query.eq('user_id', user.id);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error fetching phenology events:', error);
