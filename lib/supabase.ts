@@ -771,6 +771,57 @@ export const saveVineyardSimple = async (vineyard: Omit<Vineyard, 'id' | 'user_i
     })
 }
 
+export async function updatePhenologyEvent(
+  eventId: string,
+  updates: Partial<PhenologyEvent & {
+    location_lat?: number;
+    location_lng?: number;
+    location_name?: string;
+    location_accuracy?: number;
+    spray_product?: string;
+    spray_quantity?: string;
+    spray_unit?: string;
+    spray_target?: string;
+    spray_equipment?: string;
+    spray_conditions?: string;
+    irrigation_amount?: string;
+    irrigation_unit?: string;
+    irrigation_method?: string;
+    irrigation_duration?: string;
+    harvest_yield?: string;
+    harvest_unit?: string;
+    harvest_brix?: string;
+    harvest_ph?: string;
+    harvest_ta?: string;
+    harvest_block?: string;
+  }>
+): Promise<PhenologyEvent> {
+  try {
+    console.log('💾 Updating phenology event:', eventId, updates);
+
+    const { data, error } = await supabase
+      .from('phenology_events')
+      .update(updates)
+      .eq('id', eventId)
+      .select();
+
+    if (error) {
+      console.error('❌ Database error updating phenology event:', error);
+      throw new Error(`Database error: ${error.message}`);
+    }
+
+    if (!data || data.length === 0) {
+      throw new Error('Failed to update phenology event');
+    }
+
+    console.log('✅ Phenology event updated successfully:', data[0]);
+    return data[0];
+  } catch (error) {
+    console.error('❌ Failed to update phenology event:', error);
+    throw error;
+  }
+}
+
 export async function deletePhenologyEvent(eventId: string): Promise<void> {
   try {
     console.log('🗑️ Deleting phenology event:', eventId);
