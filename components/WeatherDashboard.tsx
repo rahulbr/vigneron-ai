@@ -147,7 +147,42 @@ export function WeatherDashboard({
     location_lat: null as number | null,
     location_lng: null as number | null,
     location_name: '',
-    location_accuracy: null as number | null
+    location_accuracy: null as number | null,
+    // Spray application specific fields
+    spray_product: '',
+    spray_quantity: '',
+    spray_unit: 'oz/acre',
+    spray_target: '',
+    spray_conditions: '',
+    spray_equipment: '',
+    // Irrigation specific fields
+    irrigation_amount: '',
+    irrigation_unit: 'inches',
+    irrigation_method: '',
+    irrigation_duration: '',
+    // Fertilization specific fields
+    fertilizer_type: '',
+    fertilizer_npk: '',
+    fertilizer_rate: '',
+    fertilizer_unit: 'lbs/acre',
+    fertilizer_method: '',
+    // Harvest specific fields
+    harvest_yield: '',
+    harvest_unit: 'tons/acre',
+    harvest_brix: '',
+    harvest_ph: '',
+    harvest_ta: '',
+    harvest_block: '',
+    // Canopy management specific fields
+    canopy_activity: '',
+    canopy_intensity: '',
+    canopy_side: '',
+    canopy_stage: '',
+    // Scouting/Pest specific fields
+    scout_focus: '',
+    scout_severity: '',
+    scout_distribution: '',
+    scout_action: ''
   });
   const [isUpdatingActivity, setIsUpdatingActivity] = useState(false);
 
@@ -880,7 +915,42 @@ export function WeatherDashboard({
       location_lat: activity.location_lat || null,
       location_lng: activity.location_lng || null,
       location_name: activity.location_name || '',
-      location_accuracy: activity.location_accuracy || null
+      location_accuracy: activity.location_accuracy || null,
+      // Spray application specific fields
+      spray_product: activity.spray_product || '',
+      spray_quantity: activity.spray_quantity || '',
+      spray_unit: activity.spray_unit || 'oz/acre',
+      spray_target: activity.spray_target || '',
+      spray_conditions: activity.spray_conditions || '',
+      spray_equipment: activity.spray_equipment || '',
+      // Irrigation specific fields
+      irrigation_amount: activity.irrigation_amount || '',
+      irrigation_unit: activity.irrigation_unit || 'inches',
+      irrigation_method: activity.irrigation_method || '',
+      irrigation_duration: activity.irrigation_duration || '',
+      // Fertilization specific fields
+      fertilizer_type: activity.fertilizer_type || '',
+      fertilizer_npk: activity.fertilizer_npk || '',
+      fertilizer_rate: activity.fertilizer_rate || '',
+      fertilizer_unit: activity.fertilizer_unit || 'lbs/acre',
+      fertilizer_method: activity.fertilizer_method || '',
+      // Harvest specific fields
+      harvest_yield: activity.harvest_yield || '',
+      harvest_unit: activity.harvest_unit || 'tons/acre',
+      harvest_brix: activity.harvest_brix || '',
+      harvest_ph: activity.harvest_ph || '',
+      harvest_ta: activity.harvest_ta || '',
+      harvest_block: activity.harvest_block || '',
+      // Canopy management specific fields
+      canopy_activity: activity.canopy_activity || '',
+      canopy_intensity: activity.canopy_intensity || '',
+      canopy_side: activity.canopy_side || '',
+      canopy_stage: activity.canopy_stage || '',
+      // Scouting/Pest specific fields
+      scout_focus: activity.scout_focus || '',
+      scout_severity: activity.scout_severity || '',
+      scout_distribution: activity.scout_distribution || '',
+      scout_action: activity.scout_action || ''
     });
   };
 
@@ -895,7 +965,42 @@ export function WeatherDashboard({
       location_lat: null,
       location_lng: null,
       location_name: '',
-      location_accuracy: null
+      location_accuracy: null,
+      // Spray application specific fields
+      spray_product: '',
+      spray_quantity: '',
+      spray_unit: 'oz/acre',
+      spray_target: '',
+      spray_conditions: '',
+      spray_equipment: '',
+      // Irrigation specific fields
+      irrigation_amount: '',
+      irrigation_unit: 'inches',
+      irrigation_method: '',
+      irrigation_duration: '',
+      // Fertilization specific fields
+      fertilizer_type: '',
+      fertilizer_npk: '',
+      fertilizer_rate: '',
+      fertilizer_unit: 'lbs/acre',
+      fertilizer_method: '',
+      // Harvest specific fields
+      harvest_yield: '',
+      harvest_unit: 'tons/acre',
+      harvest_brix: '',
+      harvest_ph: '',
+      harvest_ta: '',
+      harvest_block: '',
+      // Canopy management specific fields
+      canopy_activity: '',
+      canopy_intensity: '',
+      canopy_side: '',
+      canopy_stage: '',
+      // Scouting/Pest specific fields
+      scout_focus: '',
+      scout_severity: '',
+      scout_distribution: '',
+      scout_action: ''
     });
   };
 
@@ -910,38 +1015,78 @@ export function WeatherDashboard({
     try {
       console.log('✏️ Updating activity:', { activityId, form: editActivityForm });
 
-      // Delete the old event and create a new one (since we don't have an update function)
-      const { deletePhenologyEvent, savePhenologyEvent } = await import('../lib/supabase');
+      // Use the updatePhenologyEvent function instead of delete/recreate
+      const { updatePhenologyEvent } = await import('../lib/supabase');
 
-      // Delete the old event
-      await deletePhenologyEvent(activityId);
+      // Prepare update data with all fields
+      const updateData: any = {
+        event_type: editActivityForm.activity_type.toLowerCase().replace(' ', '_'),
+        event_date: editActivityForm.start_date,
+        notes: editActivityForm.notes || '',
+        end_date: editActivityForm.end_date || null,
+        harvest_block: editActivityForm.harvest_block || null
+      };
 
-      // Create the updated event
-      const locationData = (editActivityForm.location_lat && editActivityForm.location_lng) ? {
-        latitude: editActivityForm.location_lat,
-        longitude: editActivityForm.location_lng,
-        locationName: editActivityForm.location_name,
-        accuracy: editActivityForm.location_accuracy || undefined
-      } : undefined;
+      // Add location data if provided
+      if (editActivityForm.location_lat && editActivityForm.location_lng) {
+        updateData.location_lat = editActivityForm.location_lat;
+        updateData.location_lng = editActivityForm.location_lng;
+        updateData.location_name = editActivityForm.location_name;
+        updateData.location_accuracy = editActivityForm.location_accuracy;
+      }
 
-      await savePhenologyEvent(
-        vineyardId,
-        editActivityForm.activity_type.toLowerCase().replace(' ', '_'),
-        editActivityForm.start_date,
-        editActivityForm.notes,
-        editActivityForm.end_date || undefined,
-        undefined, // harvestBlock
-        locationData
-      );
+      // Add event-type specific data
+      if (editActivityForm.activity_type === 'Spray Application') {
+        updateData.spray_product = editActivityForm.spray_product || null;
+        updateData.spray_quantity = editActivityForm.spray_quantity || null;
+        updateData.spray_unit = editActivityForm.spray_unit || null;
+        updateData.spray_target = editActivityForm.spray_target || null;
+        updateData.spray_conditions = editActivityForm.spray_conditions || null;
+        updateData.spray_equipment = editActivityForm.spray_equipment || null;
+      }
+
+      if (editActivityForm.activity_type === 'Irrigation') {
+        updateData.irrigation_amount = editActivityForm.irrigation_amount || null;
+        updateData.irrigation_unit = editActivityForm.irrigation_unit || null;
+        updateData.irrigation_method = editActivityForm.irrigation_method || null;
+        updateData.irrigation_duration = editActivityForm.irrigation_duration || null;
+      }
+
+      if (editActivityForm.activity_type === 'Fertilization') {
+        updateData.fertilizer_type = editActivityForm.fertilizer_type || null;
+        updateData.fertilizer_npk = editActivityForm.fertilizer_npk || null;
+        updateData.fertilizer_rate = editActivityForm.fertilizer_rate || null;
+        updateData.fertilizer_unit = editActivityForm.fertilizer_unit || null;
+        updateData.fertilizer_method = editActivityForm.fertilizer_method || null;
+      }
+
+      if (editActivityForm.activity_type === 'Harvest') {
+        updateData.harvest_yield = editActivityForm.harvest_yield || null;
+        updateData.harvest_unit = editActivityForm.harvest_unit || null;
+        updateData.harvest_brix = editActivityForm.harvest_brix || null;
+        updateData.harvest_ph = editActivityForm.harvest_ph || null;
+        updateData.harvest_ta = editActivityForm.harvest_ta || null;
+        updateData.harvest_block = editActivityForm.harvest_block || null;
+      }
+
+      if (editActivityForm.activity_type === 'Canopy Management') {
+        updateData.canopy_activity = editActivityForm.canopy_activity || null;
+        updateData.canopy_intensity = editActivityForm.canopy_intensity || null;
+        updateData.canopy_side = editActivityForm.canopy_side || null;
+        updateData.canopy_stage = editActivityForm.canopy_stage || null;
+      }
+
+      if (editActivityForm.activity_type === 'Scouting' || editActivityForm.activity_type === 'Pest') {
+        updateData.scout_focus = editActivityForm.scout_focus || null;
+        updateData.scout_severity = editActivityForm.scout_severity || null;
+        updateData.scout_distribution = editActivityForm.scout_distribution || null;
+        updateData.scout_action = editActivityForm.scout_action || null;
+      }
+
+      await updatePhenologyEvent(activityId, updateData);
 
       // Clear editing state
-      setEditingActivityId(null);
-      setEditActivityForm({
-        activity_type: '',
-        start_date: '',
-        end_date: '',
-        notes: ''
-      });
+      cancelEditingActivity();
 
       // Reload activities
       await loadActivities();
@@ -4096,7 +4241,7 @@ export function WeatherDashboard({
                             </button>
                           </div>
 
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px', marginBottom: '10px' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px', marginBottom: '15px' }}>
                             <div>
                               <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '12px', color: '#374151' }}>
                                 Event Type *
@@ -4159,6 +4304,897 @@ export function WeatherDashboard({
                               />
                             </div>
                           </div>
+
+                          {/* Event Type Specific Details for Edit Form */}
+                          
+                          {/* Spray Application Details */}
+                          {editActivityForm.activity_type === 'Spray Application' && (
+                            <div style={{
+                              marginBottom: '15px',
+                              padding: '14px',
+                              backgroundColor: '#fef3c7',
+                              border: '2px solid #fbbf24',
+                              borderRadius: '8px'
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                                <span style={{ fontSize: '18px' }}>🌿</span>
+                                <h5 style={{ margin: '0', color: '#92400e', fontSize: '14px', fontWeight: '700' }}>
+                                  Spray Application Details
+                                </h5>
+                              </div>
+                              
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginBottom: '10px' }}>
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#92400e' }}>
+                                    Product Name *
+                                  </label>
+                                  <select
+                                    value={editActivityForm.spray_product}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, spray_product: e.target.value }))}
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #f59e0b',
+                                      borderRadius: '6px',
+                                      backgroundColor: 'white',
+                                      fontSize: '11px'
+                                    }}
+                                    required
+                                  >
+                                    <option value="">Select product...</option>
+                                    <optgroup label="Fungicides">
+                                      <option value="Captan">Captan</option>
+                                      <option value="Copper Sulfate">Copper Sulfate</option>
+                                      <option value="Sulfur">Sulfur</option>
+                                      <option value="Mancozeb">Mancozeb</option>
+                                      <option value="Chlorothalonil">Chlorothalonil</option>
+                                      <option value="Propiconazole">Propiconazole</option>
+                                      <option value="Myclobutanil">Myclobutanil</option>
+                                      <option value="Tebuconazole">Tebuconazole</option>
+                                    </optgroup>
+                                    <optgroup label="Insecticides">
+                                      <option value="Imidacloprid">Imidacloprid</option>
+                                      <option value="Spinosad">Spinosad</option>
+                                      <option value="Carbaryl">Carbaryl</option>
+                                      <option value="Malathion">Malathion</option>
+                                      <option value="Bt (Bacillus thuringiensis)">Bt (Bacillus thuringiensis)</option>
+                                    </optgroup>
+                                    <optgroup label="Herbicides">
+                                      <option value="Glyphosate">Glyphosate</option>
+                                      <option value="Roundup">Roundup</option>
+                                      <option value="2,4-D">2,4-D</option>
+                                      <option value="Dicamba">Dicamba</option>
+                                      <option value="Paraquat">Paraquat</option>
+                                    </optgroup>
+                                    <optgroup label="Organic/Biological">
+                                      <option value="Neem Oil">Neem Oil</option>
+                                      <option value="Horticultural Oil">Horticultural Oil</option>
+                                      <option value="Kaolin Clay">Kaolin Clay</option>
+                                    </optgroup>
+                                    <option value="Other">Other (specify in notes)</option>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#92400e' }}>
+                                    Quantity
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={editActivityForm.spray_quantity}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, spray_quantity: e.target.value }))}
+                                    placeholder="e.g. 2.5"
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #f59e0b',
+                                      borderRadius: '6px',
+                                      fontSize: '11px'
+                                    }}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#92400e' }}>
+                                    Unit
+                                  </label>
+                                  <select
+                                    value={editActivityForm.spray_unit}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, spray_unit: e.target.value }))}
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #f59e0b',
+                                      borderRadius: '6px',
+                                      backgroundColor: 'white',
+                                      fontSize: '11px'
+                                    }}
+                                  >
+                                    <option value="oz/acre">oz/acre</option>
+                                    <option value="lb/acre">lb/acre</option>
+                                    <option value="gal/acre">gal/acre</option>
+                                    <option value="ml/acre">ml/acre</option>
+                                    <option value="kg/ha">kg/ha</option>
+                                    <option value="L/ha">L/ha</option>
+                                    <option value="total gallons">total gallons</option>
+                                    <option value="total liters">total liters</option>
+                                  </select>
+                                </div>
+                              </div>
+
+                              {/* Safety Information Display for Edit */}
+                              {editActivityForm.spray_product && sprayDatabase[editActivityForm.spray_product as keyof typeof sprayDatabase] && (
+                                <div style={{
+                                  padding: '10px',
+                                  backgroundColor: '#fef2f2',
+                                  border: '2px solid #f87171',
+                                  borderRadius: '6px',
+                                  marginBottom: '10px'
+                                }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                                    <span style={{ fontSize: '14px' }}>⚠️</span>
+                                    <span style={{ fontWeight: '700', color: '#991b1b', fontSize: '12px' }}>
+                                      SAFETY INFORMATION
+                                    </span>
+                                  </div>
+                                  {(() => {
+                                    const productInfo = sprayDatabase[editActivityForm.spray_product as keyof typeof sprayDatabase];
+                                    return (
+                                      <div style={{ fontSize: '11px', color: '#7f1d1d' }}>
+                                        <div style={{ marginBottom: '3px' }}>
+                                          <strong>Re-entry Interval:</strong> {productInfo.reentryHours} hours
+                                        </div>
+                                        <div style={{ marginBottom: '3px' }}>
+                                          <strong>Pre-harvest Interval:</strong> {productInfo.preharvestDays} days
+                                        </div>
+                                        <div style={{ marginBottom: '3px' }}>
+                                          <strong>Category:</strong> {productInfo.category} | <strong>Signal Word:</strong> {productInfo.signal}
+                                        </div>
+                                        <div style={{ fontStyle: 'italic', marginTop: '4px' }}>
+                                          Always follow label instructions and local regulations
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                              )}
+
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px', marginBottom: '10px' }}>
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#92400e' }}>
+                                    Target Pest/Disease
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={editActivityForm.spray_target}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, spray_target: e.target.value }))}
+                                    placeholder="e.g. Powdery mildew, Spider mites"
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #f59e0b',
+                                      borderRadius: '6px',
+                                      fontSize: '11px'
+                                    }}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#92400e' }}>
+                                    Equipment Used
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={editActivityForm.spray_equipment}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, spray_equipment: e.target.value }))}
+                                    placeholder="e.g. Airblast sprayer, Backpack"
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #f59e0b',
+                                      borderRadius: '6px',
+                                      fontSize: '11px'
+                                    }}
+                                  />
+                                </div>
+                              </div>
+
+                              <div style={{ marginBottom: '10px' }}>
+                                <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#92400e' }}>
+                                  Weather Conditions
+                                </label>
+                                <input
+                                  type="text"
+                                  value={editActivityForm.spray_conditions}
+                                  onChange={(e) => setEditActivityForm(prev => ({ ...prev, spray_conditions: e.target.value }))}
+                                  placeholder="e.g. Wind: 5mph SW, Temp: 72°F, Humidity: 65%"
+                                  style={{
+                                    width: '100%',
+                                    padding: '6px 10px',
+                                    border: '1px solid #f59e0b',
+                                    borderRadius: '6px',
+                                    fontSize: '11px'
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Irrigation Details */}
+                          {editActivityForm.activity_type === 'Irrigation' && (
+                            <div style={{
+                              marginBottom: '15px',
+                              padding: '14px',
+                              backgroundColor: '#e0f7fa',
+                              border: '2px solid #26c6da',
+                              borderRadius: '8px'
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                                <span style={{ fontSize: '18px' }}>💧</span>
+                                <h5 style={{ margin: '0', color: '#00695c', fontSize: '14px', fontWeight: '700' }}>
+                                  Irrigation Details
+                                </h5>
+                              </div>
+                              
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '10px' }}>
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#00695c' }}>
+                                    Water Amount
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={editActivityForm.irrigation_amount}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, irrigation_amount: e.target.value }))}
+                                    placeholder="e.g. 1.5"
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #26c6da',
+                                      borderRadius: '6px',
+                                      fontSize: '11px'
+                                    }}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#00695c' }}>
+                                    Unit
+                                  </label>
+                                  <select
+                                    value={editActivityForm.irrigation_unit}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, irrigation_unit: e.target.value }))}
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #26c6da',
+                                      borderRadius: '6px',
+                                      backgroundColor: 'white',
+                                      fontSize: '11px'
+                                    }}
+                                  >
+                                    <option value="inches">inches</option>
+                                    <option value="gallons/acre">gallons/acre</option>
+                                    <option value="hours">hours</option>
+                                    <option value="mm">mm</option>
+                                    <option value="liters/hectare">liters/hectare</option>
+                                    <option value="minutes">minutes</option>
+                                    <option value="total gallons">total gallons</option>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#00695c' }}>
+                                    Method
+                                  </label>
+                                  <select
+                                    value={editActivityForm.irrigation_method}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, irrigation_method: e.target.value }))}
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #26c6da',
+                                      borderRadius: '6px',
+                                      backgroundColor: 'white',
+                                      fontSize: '11px'
+                                    }}
+                                  >
+                                    <option value="">Select method...</option>
+                                    <option value="drip">Drip irrigation</option>
+                                    <option value="sprinkler">Sprinkler system</option>
+                                    <option value="flood">Flood irrigation</option>
+                                    <option value="micro-sprinkler">Micro-sprinkler</option>
+                                    <option value="furrow">Furrow irrigation</option>
+                                    <option value="overhead">Overhead irrigation</option>
+                                    <option value="hand watering">Hand watering</option>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#00695c' }}>
+                                    Duration
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={editActivityForm.irrigation_duration}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, irrigation_duration: e.target.value }))}
+                                    placeholder="e.g. 2 hours, 30 minutes"
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #26c6da',
+                                      borderRadius: '6px',
+                                      fontSize: '11px'
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Fertilization Details */}
+                          {editActivityForm.activity_type === 'Fertilization' && (
+                            <div style={{
+                              marginBottom: '15px',
+                              padding: '14px',
+                              backgroundColor: '#f0fdf4',
+                              border: '2px solid #84cc16',
+                              borderRadius: '8px'
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                                <span style={{ fontSize: '18px' }}>🌱</span>
+                                <h5 style={{ margin: '0', color: '#365314', fontSize: '14px', fontWeight: '700' }}>
+                                  Fertilization Details
+                                </h5>
+                              </div>
+                              
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '10px' }}>
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#365314' }}>
+                                    Fertilizer Type
+                                  </label>
+                                  <select
+                                    value={editActivityForm.fertilizer_type}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, fertilizer_type: e.target.value }))}
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #84cc16',
+                                      borderRadius: '6px',
+                                      backgroundColor: 'white',
+                                      fontSize: '11px'
+                                    }}
+                                  >
+                                    <option value="">Select type...</option>
+                                    <option value="granular NPK">Granular N-P-K</option>
+                                    <option value="liquid fertilizer">Liquid fertilizer</option>
+                                    <option value="compost">Compost</option>
+                                    <option value="manure">Manure</option>
+                                    <option value="bone meal">Bone meal</option>
+                                    <option value="fish emulsion">Fish emulsion</option>
+                                    <option value="calcium sulfate">Calcium sulfate</option>
+                                    <option value="potassium sulfate">Potassium sulfate</option>
+                                    <option value="urea">Urea</option>
+                                    <option value="ammonium sulfate">Ammonium sulfate</option>
+                                    <option value="organic blend">Organic blend</option>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#365314' }}>
+                                    N-P-K Ratio
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={editActivityForm.fertilizer_npk}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, fertilizer_npk: e.target.value }))}
+                                    placeholder="e.g. 10-10-10, 20-5-5"
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #84cc16',
+                                      borderRadius: '6px',
+                                      fontSize: '11px'
+                                    }}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#365314' }}>
+                                    Application Rate
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={editActivityForm.fertilizer_rate}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, fertilizer_rate: e.target.value }))}
+                                    placeholder="e.g. 50"
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #84cc16',
+                                      borderRadius: '6px',
+                                      fontSize: '11px'
+                                    }}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#365314' }}>
+                                    Unit
+                                  </label>
+                                  <select
+                                    value={editActivityForm.fertilizer_unit}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, fertilizer_unit: e.target.value }))}
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #84cc16',
+                                      borderRadius: '6px',
+                                      backgroundColor: 'white',
+                                      fontSize: '11px'
+                                    }}
+                                  >
+                                    <option value="lbs/acre">lbs/acre</option>
+                                    <option value="kg/hectare">kg/hectare</option>
+                                    <option value="tons/acre">tons/acre</option>
+                                    <option value="gal/acre">gal/acre</option>
+                                    <option value="L/hectare">L/hectare</option>
+                                    <option value="cubic yards">cubic yards</option>
+                                    <option value="total lbs">total lbs</option>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#365314' }}>
+                                    Application Method
+                                  </label>
+                                  <select
+                                    value={editActivityForm.fertilizer_method}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, fertilizer_method: e.target.value }))}
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #84cc16',
+                                      borderRadius: '6px',
+                                      backgroundColor: 'white',
+                                      fontSize: '11px'
+                                    }}
+                                  >
+                                    <option value="">Select method...</option>
+                                    <option value="broadcast">Broadcast</option>
+                                    <option value="banded">Banded application</option>
+                                    <option value="foliar">Foliar spray</option>
+                                    <option value="fertigation">Fertigation</option>
+                                    <option value="side-dress">Side-dress</option>
+                                    <option value="topdress">Topdress</option>
+                                    <option value="incorporation">Soil incorporation</option>
+                                  </select>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Harvest Details */}
+                          {editActivityForm.activity_type === 'Harvest' && (
+                            <div style={{
+                              marginBottom: '15px',
+                              padding: '14px',
+                              backgroundColor: '#fef2f2',
+                              border: '2px solid #ef4444',
+                              borderRadius: '8px'
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                                <span style={{ fontSize: '18px' }}>🍷</span>
+                                <h5 style={{ margin: '0', color: '#991b1b', fontSize: '14px', fontWeight: '700' }}>
+                                  Harvest Details
+                                </h5>
+                              </div>
+                              
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '10px' }}>
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#991b1b' }}>
+                                    Yield
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={editActivityForm.harvest_yield}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, harvest_yield: e.target.value }))}
+                                    placeholder="e.g. 4.5"
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #ef4444',
+                                      borderRadius: '6px',
+                                      fontSize: '11px'
+                                    }}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#991b1b' }}>
+                                    Unit
+                                  </label>
+                                  <select
+                                    value={editActivityForm.harvest_unit}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, harvest_unit: e.target.value }))}
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #ef4444',
+                                      borderRadius: '6px',
+                                      backgroundColor: 'white',
+                                      fontSize: '11px'
+                                    }}
+                                  >
+                                    <option value="tons/acre">tons/acre</option>
+                                    <option value="tonnes/hectare">tonnes/hectare</option>
+                                    <option value="lbs/vine">lbs/vine</option>
+                                    <option value="kg/vine">kg/vine</option>
+                                    <option value="total tons">total tons</option>
+                                    <option value="total lbs">total lbs</option>
+                                    <option value="bins">bins</option>
+                                    <option value="cases">cases</option>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#991b1b' }}>
+                                    Brix (°Bx)
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={editActivityForm.harvest_brix}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, harvest_brix: e.target.value }))}
+                                    placeholder="e.g. 24.5"
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #ef4444',
+                                      borderRadius: '6px',
+                                      fontSize: '11px'
+                                    }}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#991b1b' }}>
+                                    pH
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={editActivityForm.harvest_ph}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, harvest_ph: e.target.value }))}
+                                    placeholder="e.g. 3.4"
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #ef4444',
+                                      borderRadius: '6px',
+                                      fontSize: '11px'
+                                    }}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#991b1b' }}>
+                                    TA (g/L)
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={editActivityForm.harvest_ta}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, harvest_ta: e.target.value }))}
+                                    placeholder="e.g. 6.8"
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #ef4444',
+                                      borderRadius: '6px',
+                                      fontSize: '11px'
+                                    }}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#991b1b' }}>
+                                    Block/Variety
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={editActivityForm.harvest_block}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, harvest_block: e.target.value }))}
+                                    placeholder="e.g. Block 5 Chardonnay"
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #ef4444',
+                                      borderRadius: '6px',
+                                      fontSize: '11px'
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Canopy Management Details */}
+                          {editActivityForm.activity_type === 'Canopy Management' && (
+                            <div style={{
+                              marginBottom: '15px',
+                              padding: '14px',
+                              backgroundColor: '#f0fdf4',
+                              border: '2px solid #10b981',
+                              borderRadius: '8px'
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                                <span style={{ fontSize: '18px' }}>🍃</span>
+                                <h5 style={{ margin: '0', color: '#065f46', fontSize: '14px', fontWeight: '700' }}>
+                                  Canopy Management Details
+                                </h5>
+                              </div>
+                              
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '10px' }}>
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#065f46' }}>
+                                    Activity Type
+                                  </label>
+                                  <select
+                                    value={editActivityForm.canopy_activity}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, canopy_activity: e.target.value }))}
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #10b981',
+                                      borderRadius: '6px',
+                                      backgroundColor: 'white',
+                                      fontSize: '11px'
+                                    }}
+                                  >
+                                    <option value="">Select activity...</option>
+                                    <option value="shoot thinning">Shoot thinning</option>
+                                    <option value="leaf removal">Leaf removal</option>
+                                    <option value="cluster thinning">Cluster thinning</option>
+                                    <option value="hedging">Hedging</option>
+                                    <option value="positioning">Shoot positioning</option>
+                                    <option value="topping">Topping</option>
+                                    <option value="suckering">Suckering</option>
+                                    <option value="lateral removal">Lateral removal</option>
+                                    <option value="tying">Cane tying</option>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#065f46' }}>
+                                    Intensity
+                                  </label>
+                                  <select
+                                    value={editActivityForm.canopy_intensity}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, canopy_intensity: e.target.value }))}
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #10b981',
+                                      borderRadius: '6px',
+                                      backgroundColor: 'white',
+                                      fontSize: '11px'
+                                    }}
+                                  >
+                                    <option value="">Select intensity...</option>
+                                    <option value="light">Light (10-25%)</option>
+                                    <option value="moderate">Moderate (25-50%)</option>
+                                    <option value="heavy">Heavy (50%+)</option>
+                                    <option value="selective">Selective</option>
+                                    <option value="complete">Complete removal</option>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#065f46' }}>
+                                    Side/Location
+                                  </label>
+                                  <select
+                                    value={editActivityForm.canopy_side}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, canopy_side: e.target.value }))}
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #10b981',
+                                      borderRadius: '6px',
+                                      backgroundColor: 'white',
+                                      fontSize: '11px'
+                                    }}
+                                  >
+                                    <option value="">Select side...</option>
+                                    <option value="both sides">Both sides</option>
+                                    <option value="east side">East side</option>
+                                    <option value="west side">West side</option>
+                                    <option value="morning sun">Morning sun side</option>
+                                    <option value="afternoon sun">Afternoon sun side</option>
+                                    <option value="fruit zone">Fruit zone</option>
+                                    <option value="upper canopy">Upper canopy</option>
+                                    <option value="basal leaves">Basal leaves</option>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#065f46' }}>
+                                    Growth Stage
+                                  </label>
+                                  <select
+                                    value={editActivityForm.canopy_stage}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, canopy_stage: e.target.value }))}
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #10b981',
+                                      borderRadius: '6px',
+                                      backgroundColor: 'white',
+                                      fontSize: '11px'
+                                    }}
+                                  >
+                                    <option value="">Select stage...</option>
+                                    <option value="pre-bloom">Pre-bloom</option>
+                                    <option value="bloom">Bloom</option>
+                                    <option value="post-bloom">Post-bloom</option>
+                                    <option value="fruit set">Fruit set</option>
+                                    <option value="lag phase">Lag phase</option>
+                                    <option value="veraison">Veraison</option>
+                                    <option value="pre-harvest">Pre-harvest</option>
+                                    <option value="post-harvest">Post-harvest</option>
+                                  </select>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Scouting/Pest Details */}
+                          {(editActivityForm.activity_type === 'Scouting' || editActivityForm.activity_type === 'Pest') && (
+                            <div style={{
+                              marginBottom: '15px',
+                              padding: '14px',
+                              backgroundColor: '#f0f9ff',
+                              border: '2px solid #059669',
+                              borderRadius: '8px'
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                                <span style={{ fontSize: '18px' }}>{editActivityForm.activity_type === 'Pest' ? '🐞' : '🔍'}</span>
+                                <h5 style={{ margin: '0', color: '#064e3b', fontSize: '14px', fontWeight: '700' }}>
+                                  {editActivityForm.activity_type === 'Pest' ? 'Pest Observation' : 'Scouting'} Details
+                                </h5>
+                              </div>
+                              
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '10px' }}>
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#064e3b' }}>
+                                    Focus/Pest Type
+                                  </label>
+                                  <select
+                                    value={editActivityForm.scout_focus}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, scout_focus: e.target.value }))}
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #059669',
+                                      borderRadius: '6px',
+                                      backgroundColor: 'white',
+                                      fontSize: '11px'
+                                    }}
+                                  >
+                                    <option value="">Select focus...</option>
+                                    <optgroup label="Diseases">
+                                      <option value="powdery mildew">Powdery mildew</option>
+                                      <option value="downy mildew">Downy mildew</option>
+                                      <option value="botrytis">Botrytis (Gray mold)</option>
+                                      <option value="black rot">Black rot</option>
+                                      <option value="phomopsis">Phomopsis</option>
+                                      <option value="crown gall">Crown gall</option>
+                                      <option value="esca">Esca</option>
+                                      <option value="eutypa">Eutypa</option>
+                                    </optgroup>
+                                    <optgroup label="Insect Pests">
+                                      <option value="spider mites">Spider mites</option>
+                                      <option value="thrips">Thrips</option>
+                                      <option value="leafhoppers">Leafhoppers</option>
+                                      <option value="aphids">Aphids</option>
+                                      <option value="mealybugs">Mealybugs</option>
+                                      <option value="grape berry moth">Grape berry moth</option>
+                                      <option value="scale insects">Scale insects</option>
+                                      <option value="cutworms">Cutworms</option>
+                                    </optgroup>
+                                    <optgroup label="General Scouting">
+                                      <option value="general health">General plant health</option>
+                                      <option value="nutrient deficiency">Nutrient deficiency</option>
+                                      <option value="water stress">Water stress</option>
+                                      <option value="frost damage">Frost damage</option>
+                                      <option value="wind damage">Wind damage</option>
+                                      <option value="bird damage">Bird damage</option>
+                                      <option value="wildlife damage">Wildlife damage</option>
+                                    </optgroup>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#064e3b' }}>
+                                    Severity Level
+                                  </label>
+                                  <select
+                                    value={editActivityForm.scout_severity}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, scout_severity: e.target.value }))}
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #059669',
+                                      borderRadius: '6px',
+                                      backgroundColor: 'white',
+                                      fontSize: '11px'
+                                    }}
+                                  >
+                                    <option value="">Select severity...</option>
+                                    <option value="none">None (0%)</option>
+                                    <option value="trace">Trace (&lt;5%)</option>
+                                    <option value="light">Light (5-15%)</option>
+                                    <option value="moderate">Moderate (15-30%)</option>
+                                    <option value="heavy">Heavy (30-50%)</option>
+                                    <option value="severe">Severe (&gt;50%)</option>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#064e3b' }}>
+                                    Distribution
+                                  </label>
+                                  <select
+                                    value={editActivityForm.scout_distribution}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, scout_distribution: e.target.value }))}
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #059669',
+                                      borderRadius: '6px',
+                                      backgroundColor: 'white',
+                                      fontSize: '11px'
+                                    }}
+                                  >
+                                    <option value="">Select distribution...</option>
+                                    <option value="isolated">Isolated (few spots)</option>
+                                    <option value="scattered">Scattered patches</option>
+                                    <option value="widespread">Widespread</option>
+                                    <option value="uniform">Uniform throughout</option>
+                                    <option value="edge rows">Edge rows only</option>
+                                    <option value="wet areas">Wet/low areas</option>
+                                    <option value="hilltops">Hilltops/exposed areas</option>
+                                    <option value="specific block">Specific block only</option>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#064e3b' }}>
+                                    Action Needed
+                                  </label>
+                                  <select
+                                    value={editActivityForm.scout_action}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, scout_action: e.target.value }))}
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      border: '1px solid #059669',
+                                      borderRadius: '6px',
+                                      backgroundColor: 'white',
+                                      fontSize: '11px'
+                                    }}
+                                  >
+                                    <option value="">Select action...</option>
+                                    <option value="none">None - continue monitoring</option>
+                                    <option value="monitor weekly">Monitor weekly</option>
+                                    <option value="monitor bi-weekly">Monitor bi-weekly</option>
+                                    <option value="treatment required">Treatment required</option>
+                                    <option value="spray scheduled">Spray scheduled</option>
+                                    <option value="cultural practices">Cultural practices needed</option>
+                                    <option value="consult advisor">Consult advisor</option>
+                                    <option value="lab analysis">Send for lab analysis</option>
+                                  </select>
+                                </div>
+                              </div>
+                            </div>
+                          )}
 
                           {/* Location Edit Section */}
                           <div style={{ 
