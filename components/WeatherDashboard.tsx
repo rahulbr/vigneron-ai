@@ -906,9 +906,39 @@ export function WeatherDashboard({
 
   // Start editing an activity
   const startEditingActivity = (activity: any) => {
+    console.log('✏️ Starting to edit activity:', activity);
+    
+    // Map database event_type back to display format
+    const mapEventTypeToDisplay = (dbEventType: string): string => {
+      const eventTypeMapping: { [key: string]: string } = {
+        'bud_break': 'Bud Break',
+        'bloom': 'Bloom', 
+        'fruit_set': 'Fruit Set',
+        'veraison': 'Veraison',
+        'harvest': 'Harvest',
+        'pruning': 'Pruning',
+        'irrigation': 'Irrigation',
+        'spray_application': 'Spray Application',
+        'fertilization': 'Fertilization',
+        'canopy_management': 'Canopy Management',
+        'soil_work': 'Soil Work',
+        'equipment_maintenance': 'Equipment Maintenance',
+        'pest': 'Pest',
+        'scouting': 'Scouting',
+        'other': 'Other'
+      };
+      
+      // Handle the normalized event type from database
+      const normalizedType = dbEventType?.toLowerCase().replace(/\s+/g, '_') || 'other';
+      return eventTypeMapping[normalizedType] || 'Other';
+    };
+
+    const displayEventType = mapEventTypeToDisplay(activity.event_type);
+    console.log('✏️ Mapped event type:', { original: activity.event_type, display: displayEventType });
+
     setEditingActivityId(activity.id);
     setEditActivityForm({
-      activity_type: activity.event_type || '',
+      activity_type: displayEventType,
       start_date: activity.event_date || '',
       end_date: activity.end_date || '',
       notes: activity.notes || '',
@@ -951,6 +981,14 @@ export function WeatherDashboard({
       scout_severity: activity.scout_severity || '',
       scout_distribution: activity.scout_distribution || '',
       scout_action: activity.scout_action || ''
+    });
+    
+    console.log('✏️ Edit form populated with values:', {
+      activity_type: displayEventType,
+      start_date: activity.event_date,
+      spray_product: activity.spray_product,
+      irrigation_amount: activity.irrigation_amount,
+      irrigation_method: activity.irrigation_method
     });
   };
 
@@ -1018,9 +1056,35 @@ export function WeatherDashboard({
       // Use the updatePhenologyEvent function instead of delete/recreate
       const { updatePhenologyEvent } = await import('../lib/supabase');
 
+      // Map display event type back to database format
+      const mapDisplayToEventType = (displayType: string): string => {
+        const displayMapping: { [key: string]: string } = {
+          'Bud Break': 'bud_break',
+          'Bloom': 'bloom',
+          'Fruit Set': 'fruit_set', 
+          'Veraison': 'veraison',
+          'Harvest': 'harvest',
+          'Pruning': 'pruning',
+          'Irrigation': 'irrigation',
+          'Spray Application': 'spray_application',
+          'Fertilization': 'fertilization',
+          'Canopy Management': 'canopy_management',
+          'Soil Work': 'soil_work',
+          'Equipment Maintenance': 'equipment_maintenance',
+          'Pest': 'pest',
+          'Scouting': 'scouting',
+          'Other': 'other'
+        };
+        
+        return displayMapping[displayType] || 'other';
+      };
+
+      const dbEventType = mapDisplayToEventType(editActivityForm.activity_type);
+      console.log('💾 Mapped event type for update:', { display: editActivityForm.activity_type, db: dbEventType });
+
       // Prepare update data with all fields
       const updateData: any = {
-        event_type: editActivityForm.activity_type.toLowerCase().replace(' ', '_'),
+        event_type: dbEventType,
         event_date: editActivityForm.start_date,
         notes: editActivityForm.notes || '',
         end_date: editActivityForm.end_date || null,
