@@ -34,7 +34,9 @@ export const ReportsModal: React.FC<ReportsModalProps> = ({ isOpen, onClose, rep
       const eventDate = new Date(event.event_date);
       const startDate = new Date(dateFilter.start);
       const endDate = new Date(dateFilter.end);
-      return eventDate >= startDate && eventDate <= endDate;
+      // Use inclusive date comparison and handle timezone issues
+      const eventDateString = event.event_date; // Use string comparison for dates
+      return eventDateString >= dateFilter.start && eventDateString <= dateFilter.end;
     });
   };
 
@@ -57,8 +59,14 @@ export const ReportsModal: React.FC<ReportsModalProps> = ({ isOpen, onClose, rep
   };
 
   const generateSprayReport = () => {
-    const sprayEvents = getSprayEvents();
-    const fertEvents = getFertilizerEvents();
+    // Use all events from reportData for comprehensive reporting
+    const allEvents = reportData.phenologyEvents;
+    const sprayEvents = allEvents.filter(event => 
+      event.event_type === 'spray_application' && event.spray_product
+    );
+    const fertEvents = allEvents.filter(event => 
+      event.event_type === 'fertilization' && event.fertilizer_type
+    );
     
     let report = `SPRAY & FERTILIZER APPLICATION REPORT\n`;
     report += `=====================================\n\n`;
@@ -130,7 +138,8 @@ export const ReportsModal: React.FC<ReportsModalProps> = ({ isOpen, onClose, rep
   };
 
   const generatePhenologyReport = () => {
-    const allEvents = getAllPhenologyEvents();
+    // Use all events from reportData for comprehensive reporting
+    const allEvents = reportData.phenologyEvents;
     const weatherSummary = reportData.weatherData.slice(0, 10); // Last 10 days sample
     
     let report = `VINEYARD PHENOLOGY & MANAGEMENT REPORT\n`;
@@ -201,9 +210,16 @@ export const ReportsModal: React.FC<ReportsModalProps> = ({ isOpen, onClose, rep
   };
 
   const downloadReport = () => {
+    // Create a filtered version of reportData based on current date filter
+    const filteredReportData = {
+      ...reportData,
+      phenologyEvents: filterEventsByDate(reportData.phenologyEvents),
+      dateRange: dateFilter
+    };
+    
     const reportContent = activeReport === 'spray' 
-      ? ReportService.generateSprayComplianceReport(reportData)
-      : ReportService.generateSeasonSummaryReport(reportData);
+      ? ReportService.generateSprayComplianceReport(filteredReportData)
+      : ReportService.generateSeasonSummaryReport(filteredReportData);
     
     const fileName = `${reportData.vineyard?.name || 'vineyard'}_${activeReport}_report_${new Date().toISOString().split('T')[0]}.txt`;
     ReportService.downloadReport(reportContent, fileName);
@@ -225,9 +241,16 @@ export const ReportsModal: React.FC<ReportsModalProps> = ({ isOpen, onClose, rep
   };
 
   const copyToClipboard = () => {
+    // Create a filtered version of reportData based on current date filter
+    const filteredReportData = {
+      ...reportData,
+      phenologyEvents: filterEventsByDate(reportData.phenologyEvents),
+      dateRange: dateFilter
+    };
+    
     const reportContent = activeReport === 'spray' 
-      ? ReportService.generateSprayComplianceReport(reportData)
-      : ReportService.generateSeasonSummaryReport(reportData);
+      ? ReportService.generateSprayComplianceReport(filteredReportData)
+      : ReportService.generateSeasonSummaryReport(filteredReportData);
     
     ReportService.copyToClipboard(reportContent).then(() => {
       alert('Report copied to clipboard!');
