@@ -861,7 +861,6 @@ export function WeatherDashboard({
         irrigation_unit: 'inches',
         irrigation_method: '',
         irrigation_duration: '',
-<final_generation>
         fertilizer_type: '',
         fertilizer_npk: '',
         fertilizer_rate: '',
