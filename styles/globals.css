@@ -16,13 +16,14 @@ body {
 
 /* Mobile-first responsive design */
 @media (max-width: 768px) {
+  /* Layout adjustments */
   .grid-responsive {
     grid-template-columns: 1fr !important;
   }
   
   .flex-responsive {
     flex-direction: column !important;
-    gap: 10px !important;
+    gap: 16px !important;
   }
   
   .hide-mobile {
@@ -34,21 +35,90 @@ body {
   }
   
   .padding-mobile {
-    padding: 15px !important;
+    padding: 16px !important;
   }
   
   .margin-mobile {
-    margin: 10px !important;
+    margin: 12px !important;
+  }
+  
+  /* Container and spacing fixes */
+  .container {
+    padding: 0 16px !important;
+    max-width: 100% !important;
+  }
+  
+  /* Card improvements for mobile */
+  .card {
+    padding: 16px !important;
+    margin-bottom: 16px !important;
+    border-radius: 12px !important;
+  }
+  
+  /* Grid layouts become single column */
+  .responsive-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  
+  /* Form layouts stack properly */
+  div[style*="grid-template-columns"] {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+  }
+  
+  /* Horizontal scrolling prevention */
+  body, html {
+    overflow-x: hidden !important;
+    width: 100% !important;
+  }
+  
+  * {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* Table responsiveness */
+  table {
+    font-size: 14px !important;
+    width: 100% !important;
+  }
+  
+  td, th {
+    padding: 8px 4px !important;
+    font-size: 13px !important;
   }
 }
 
-/* Form improvements */
+/* Form improvements - Mobile-first */
 input, select, textarea {
   font-size: 16px !important; /* Prevents zoom on iOS */
-  padding: 12px !important;
+  padding: 16px !important; /* Increased for mobile */
   border-radius: 8px !important;
   border: 1px solid #d1d5db !important;
   transition: all 0.2s ease !important;
+  min-height: 48px !important; /* Minimum touch target size */
+  line-height: 1.2 !important;
+}
+
+/* Mobile-specific form adjustments */
+@media (max-width: 768px) {
+  input, select, textarea {
+    padding: 18px 16px !important;
+    font-size: 16px !important;
+    min-height: 52px !important;
+    border-radius: 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* Larger tap targets for dropdowns */
+  select {
+    padding-right: 40px !important;
+    background-size: 16px !important;
+    background-position: right 16px center !important;
+  }
 }
 
 input:focus, select:focus, textarea:focus {
@@ -57,10 +127,10 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
 }
 
-/* Button improvements */
+/* Button improvements - Mobile-first */
 button {
   font-size: 16px !important;
-  padding: 12px 20px !important;
+  padding: 14px 24px !important;
   border-radius: 8px !important;
   border: none !important;
   cursor: pointer !important;
@@ -70,6 +140,40 @@ button {
   align-items: center !important;
   justify-content: center !important;
   gap: 8px !important;
+  min-height: 48px !important; /* Minimum touch target */
+  text-align: center !important;
+}
+
+/* Mobile-specific button improvements */
+@media (max-width: 768px) {
+  button {
+    padding: 16px 20px !important;
+    min-height: 52px !important;
+    font-size: 16px !important;
+    border-radius: 12px !important;
+    width: auto !important;
+    white-space: nowrap !important;
+  }
+  
+  /* Full-width primary buttons on mobile */
+  button[style*="background-color: #22c55e"],
+  button[style*="background-color: #3b82f6"],
+  .primary-button {
+    width: 100% !important;
+    margin-bottom: 12px !important;
+  }
+  
+  /* Button groups stack on mobile */
+  .button-group {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+  
+  .button-group button {
+    width: 100% !important;
+  }
 }
 
 button:hover {
@@ -181,6 +285,7 @@ button:disabled {
   justify-content: space-between;
   max-width: 1200px;
   margin: 0 auto;
+  padding: 0 16px;
 }
 
 .nav-brand {
@@ -195,14 +300,44 @@ button:disabled {
   gap: 12px;
 }
 
-@media (max-width: 640px) {
+/* Mobile navigation */
+@media (max-width: 768px) {
+  .nav-container {
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+  }
+  
+  .nav-brand h1 {
+    font-size: 1.25rem !important;
+    text-align: center;
+  }
+  
   .nav-actions {
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
+    width: 100%;
   }
   
   .nav-actions span {
-    font-size: 12px;
+    font-size: 14px;
+    text-align: center;
+  }
+  
+  /* Header adjustments */
+  .app-header {
+    padding: 16px !important;
+    position: relative !important; /* Remove sticky on mobile to save space */
+  }
+  
+  /* Vineyard selector on mobile */
+  .nav-actions > div {
+    width: 100% !important;
+  }
+  
+  .nav-actions button {
+    width: 100% !important;
+    justify-content: center !important;
   }
 }
 
@@ -274,4 +409,99 @@ button:focus, input:focus, select:focus, textarea:focus {
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Mobile utility classes */
+@media (max-width: 768px) {
+  /* Touch-friendly spacing */
+  .mobile-touch-spacing > * {
+    margin-bottom: 16px !important;
+  }
+  
+  .mobile-touch-spacing > *:last-child {
+    margin-bottom: 0 !important;
+  }
+  
+  /* Mobile-friendly flex layouts */
+  .mobile-stack {
+    flex-direction: column !important;
+    gap: 16px !important;
+  }
+  
+  .mobile-full-width {
+    width: 100% !important;
+  }
+  
+  /* Mobile text sizing */
+  .mobile-text-sm {
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+  }
+  
+  .mobile-text-xs {
+    font-size: 12px !important;
+    line-height: 1.3 !important;
+  }
+  
+  /* Hide decorative elements on mobile */
+  .mobile-hide {
+    display: none !important;
+  }
+  
+  /* Compact mode for mobile */
+  .mobile-compact {
+    padding: 8px !important;
+    margin: 4px 0 !important;
+  }
+  
+  /* Mobile-specific positioning */
+  .mobile-fixed-bottom {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 1000 !important;
+    background: white !important;
+    padding: 16px !important;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1) !important;
+  }
+  
+  /* Scrollable containers */
+  .mobile-scroll {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  /* Mobile-friendly charts and visualizations */
+  .mobile-chart-container {
+    width: 100% !important;
+    height: 300px !important;
+    overflow: hidden !important;
+  }
+}
+
+/* Touch-specific improvements */
+@media (hover: none) and (pointer: coarse) {
+  /* Remove hover effects on touch devices */
+  button:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+  
+  .card:hover {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  }
+  
+  /* Larger touch targets */
+  button, input, select, textarea {
+    min-height: 48px !important;
+  }
+  
+  /* Touch-friendly links */
+  a {
+    min-height: 44px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    padding: 8px !important;
+  }
 }
