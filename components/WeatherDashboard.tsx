@@ -560,6 +560,65 @@ export function WeatherDashboard({
   }
 
   // Tab content components
+  // Calculate phenology predictions
+  const getPhenologyPredictions = () => {
+    if (!data.length || !activities.length) return [];
+
+    const currentGDD = totalGDD;
+    const predictions = [];
+
+    // Typical GDD requirements for phenology stages
+    const phenologyRequirements = {
+      bud_break: 150,
+      bloom: 900,
+      veraison: 1800,
+      harvest: 2400
+    };
+
+    // Find recorded events
+    const recordedEvents = {
+      bud_break: activities.find(e => e.event_type === 'bud_break' || e.event_type === 'Bud Break'),
+      bloom: activities.find(e => e.event_type === 'bloom' || e.event_type === 'Bloom'),
+      veraison: activities.find(e => e.event_type === 'veraison' || e.event_type === 'Veraison'),
+      harvest: activities.find(e => e.event_type === 'harvest' || e.event_type === 'Harvest')
+    };
+
+    // Predict missing stages
+    if (!recordedEvents.veraison && currentGDD < phenologyRequirements.veraison) {
+      const remainingGDD = phenologyRequirements.veraison - currentGDD;
+      const avgDailyGDD = data.length > 0 ? totalGDD / data.length : 8;
+      const daysToVeraison = Math.ceil(remainingGDD / avgDailyGDD);
+      const predictedDate = new Date();
+      predictedDate.setDate(predictedDate.getDate() + daysToVeraison);
+      
+      predictions.push({
+        stage: 'Veraison',
+        date: predictedDate.toLocaleDateString(),
+        gdd: phenologyRequirements.veraison,
+        confidence: currentGDD > 1000 ? 'High' : 'Medium'
+      });
+    }
+
+    if (!recordedEvents.harvest && currentGDD < phenologyRequirements.harvest) {
+      const remainingGDD = phenologyRequirements.harvest - currentGDD;
+      const avgDailyGDD = data.length > 0 ? totalGDD / data.length : 8;
+      const daysToHarvest = Math.ceil(remainingGDD / avgDailyGDD);
+      const predictedDate = new Date();
+      predictedDate.setDate(predictedDate.getDate() + daysToHarvest);
+      
+      predictions.push({
+        stage: 'Harvest',
+        date: predictedDate.toLocaleDateString(),
+        gdd: phenologyRequirements.harvest,
+        confidence: currentGDD > 1500 ? 'High' : 'Medium'
+      });
+    }
+
+    return predictions;
+  };
+
+  const phenologyPredictions = getPhenologyPredictions();
+
   const DashboardTab = () => (
     <div style={{ padding: '0 1rem 1rem 1rem' }}>
       {/* Safety Alerts */}
@@ -620,6 +679,173 @@ export function WeatherDashboard({
           </div>
         </div>
       )}
+
+      {/* Phenology Predictions */}
+      {phenologyPredictions.length > 0 && (
+        <div style={{
+          marginBottom: '20px',
+          padding: '16px',
+          backgroundColor: '#fef7ff',
+          border: '2px solid #d8b4fe',
+          borderRadius: '12px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+            <span style={{ fontSize: '20px' }}>🔮</span>
+            <h4 style={{ margin: '0', fontSize: '16px', fontWeight: '700', color: '#7c3aed' }}>
+              Predicted Phenology Stages
+            </h4>
+          </div>
+          
+          {phenologyPredictions.map((prediction, index) => (
+            <div
+              key={index}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '8px 12px',
+                backgroundColor: 'white',
+                borderRadius: '8px',
+                marginBottom: index < phenologyPredictions.length - 1 ? '8px' : '0',
+                border: '1px solid #e5e7eb'
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: '600', fontSize: '14px', color: '#374151' }}>
+                  🍇 {prediction.stage}
+                </div>
+                <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                  At {prediction.gdd} GDD • {prediction.confidence} confidence
+                </div>
+              </div>
+              <div style={{
+                fontSize: '13px',
+                fontWeight: '600',
+                color: '#7c3aed',
+                padding: '4px 8px',
+                backgroundColor: '#f3e8ff',
+                borderRadius: '6px'
+              }}>
+                {prediction.date}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Date Range Controls */}
+      <div style={{
+        marginBottom: '20px',
+        padding: '16px',
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        border: '1px solid #e5e7eb'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+          <Calendar size={16} style={{ color: '#6b7280' }} />
+          <h4 style={{ margin: '0', fontSize: '14px', fontWeight: '600', color: '#374151' }}>
+            Date Range
+          </h4>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '12px' }}>
+          {[
+            { key: 'current', label: 'Current Season' },
+            { key: 'previous', label: 'Previous Season' },
+            { key: 'custom', label: 'Custom Range' }
+          ].map((option) => (
+            <button
+              key={option.key}
+              onClick={() => {
+                setDateRangeMode(option.key as any);
+                
+                const now = new Date();
+                const currentYear = now.getFullYear();
+                
+                if (option.key === 'current') {
+                  const aprilFirst = new Date(currentYear, 3, 1);
+                  if (now < aprilFirst) {
+                    setDateRange({
+                      start: `${currentYear - 1}-04-01`,
+                      end: `${currentYear - 1}-10-31`
+                    });
+                  } else {
+                    setDateRange({
+                      start: `${currentYear}-04-01`,
+                      end: now.toISOString().split('T')[0]
+                    });
+                  }
+                  setShowCustomRange(false);
+                } else if (option.key === 'previous') {
+                  setDateRange({
+                    start: `${currentYear - 1}-04-01`,
+                    end: `${currentYear - 1}-10-31`
+                  });
+                  setShowCustomRange(false);
+                } else if (option.key === 'custom') {
+                  setShowCustomRange(true);
+                }
+              }}
+              style={{
+                padding: '8px 12px',
+                backgroundColor: dateRangeMode === option.key ? '#22c55e' : 'white',
+                color: dateRangeMode === option.key ? 'white' : '#374151',
+                border: `1px solid ${dateRangeMode === option.key ? '#22c55e' : '#d1d5db'}`,
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: '500',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
+        {showCustomRange && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', fontWeight: '500', color: '#374151' }}>
+                Start Date
+              </label>
+              <input
+                type="date"
+                value={dateRange.start}
+                onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '12px'
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', fontWeight: '500', color: '#374151' }}>
+                End Date
+              </label>
+              <input
+                type="date"
+                value={dateRange.end}
+                onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '12px'
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '8px' }}>
+          📅 {dateRange.start} to {dateRange.end} ({data.length} days)
+        </div>
+      </div>
 
       {/* Weather Summary Stats */}
       {data.length > 0 && (
@@ -713,15 +939,43 @@ export function WeatherDashboard({
           overflow: 'hidden'
         }}>
           <div style={{ padding: '16px 16px 0 16px' }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '700', color: '#374151' }}>
-              📈 GDD Accumulation & Events
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: '0', fontSize: '18px', fontWeight: '700', color: '#374151' }}>
+                📈 GDD Accumulation & Events
+              </h3>
+              <button
+                onClick={() => {
+                  setActiveTab('log');
+                  setTimeout(() => setShowActivityForm(true), 100);
+                }}
+                style={{
+                  padding: '8px 12px',
+                  backgroundColor: '#22c55e',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                <Plus size={14} />
+                Add Event
+              </button>
+            </div>
           </div>
           <EnhancedGDDChart 
             weatherData={data}
             locationName={customLocation}
             vineyardId={vineyardId}
             onEventsChange={loadActivities}
+            onAddEvent={() => {
+              setActiveTab('log');
+              setTimeout(() => setShowActivityForm(true), 100);
+            }}
           />
         </div>
       )}

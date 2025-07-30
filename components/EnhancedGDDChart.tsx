@@ -319,22 +319,22 @@ export function EnhancedGDDChart({
     // Calculate which date was clicked based on mouse position
     const rect = event.currentTarget.getBoundingClientRect();
     const clickX = event.clientX - rect.left;
-    
+
     // Calculate the relative position within the chart area (excluding padding)
     const chartAreaWidth = width - 2 * padding;
     const relativeX = clickX - padding;
-    
+
     // Ensure click is within the chart area
     if (relativeX < 0 || relativeX > chartAreaWidth) {
       console.log('📊 Click outside chart area, opening form without pre-populated date');
       scrollToEventLogAddEvent();
       return;
     }
-    
+
     // Calculate which data point index was clicked
     const dataPointIndex = Math.round((relativeX / chartAreaWidth) * (chartData.length - 1));
     const clickedDate = chartData[dataPointIndex]?.date;
-    
+
     console.log('📊 Chart clicked at date:', clickedDate, 'data point index:', dataPointIndex);
 
     // Scroll to Event Log section and trigger Add Event form with pre-populated date
@@ -347,7 +347,7 @@ export function EnhancedGDDChart({
         const addEventButton = document.querySelector('[data-event-log-add-button]') as HTMLButtonElement;
         if (addEventButton) {
           console.log('📊 Clicking Add Event button to open form with date:', clickedDate);
-          
+
           // Dispatch custom event with the clicked date
           if (clickedDate && typeof window !== 'undefined') {
             const dateEvent = new CustomEvent('chartDateClicked', { 
@@ -355,7 +355,7 @@ export function EnhancedGDDChart({
             });
             window.dispatchEvent(dateEvent);
           }
-          
+
           addEventButton.click();
         } else {
           console.warn('📊 Could not find Add Event button');
