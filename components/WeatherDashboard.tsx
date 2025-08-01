@@ -1631,6 +1631,78 @@ export function WeatherDashboard({
       ? activities 
       : activities.filter(activity => activity.event_type === eventTypeFilter);
 
+    // Complete event type mapping with all possible types
+    const eventTypeEmojis: { [key: string]: string } = {
+      'spray_application': '🌿',
+      'fertilization': '🌱',
+      'irrigation': '💧',
+      'canopy_management': '✂️',
+      'scouting': '🔍',
+      'harvest': '🍇',
+      'budbreak': '🌿',
+      'bloom': '🌸',
+      'fruit_set': '🍇',
+      'veraison': '🍷',
+      'pruning': '✂️',
+      'soil_work': '🌍',
+      'equipment_maintenance': '🔧',
+      'pest': '🐞',
+      'other': '📝',
+      // Legacy/alternative naming
+      'Spray Application': '🌿',
+      'Fertilization': '🌱',
+      'Irrigation': '💧',
+      'Canopy Management': '✂️',
+      'Scouting': '🔍',
+      'Harvest': '🍇',
+      'Bud Break': '🌿',
+      'Bloom': '🌸',
+      'Fruit Set': '🍇',
+      'Veraison': '🍷',
+      'Pruning': '✂️',
+      'Soil Work': '🌍',
+      'Equipment Maintenance': '🔧',
+      'Pest': '🐞',
+      'Other': '📝'
+    };
+
+    const eventTypeNames: { [key: string]: string } = {
+      'spray_application': 'Spray Application',
+      'fertilization': 'Fertilization',
+      'irrigation': 'Irrigation',
+      'canopy_management': 'Canopy Management',
+      'scouting': 'Scouting',
+      'harvest': 'Harvest',
+      'budbreak': 'Bud Break',
+      'bloom': 'Bloom',
+      'fruit_set': 'Fruit Set',
+      'veraison': 'Veraison',
+      'pruning': 'Pruning',
+      'soil_work': 'Soil Work',
+      'equipment_maintenance': 'Equipment Maintenance',
+      'pest': 'Pest Observation',
+      'other': 'Other',
+      // Legacy/alternative naming
+      'Spray Application': 'Spray Application',
+      'Fertilization': 'Fertilization',
+      'Irrigation': 'Irrigation',
+      'Canopy Management': 'Canopy Management',
+      'Scouting': 'Scouting',
+      'Harvest': 'Harvest',
+      'Bud Break': 'Bud Break',
+      'Bloom': 'Bloom',
+      'Fruit Set': 'Fruit Set',
+      'Veraison': 'Veraison',
+      'Pruning': 'Pruning',
+      'Soil Work': 'Soil Work',
+      'Equipment Maintenance': 'Equipment Maintenance',
+      'Pest': 'Pest Observation',
+      'Other': 'Other'
+    };
+
+    // Get unique event types from activities for dynamic filter
+    const uniqueEventTypes = [...new Set(activities.map(a => a.event_type))].sort();
+
     const getEventDetails = (activity: any) => {
       let details = [];
 
@@ -1672,8 +1744,9 @@ export function WeatherDashboard({
     const startEditEvent = (activity: any) => {
       setEditingEvent(activity);
       setShowActivityForm(true);
+      setActiveTab('log'); // Switch to log tab when editing
       setActivityForm({
-        activity_type: activity.event_type,
+        activity_type: eventTypeNames[activity.event_type] || activity.event_type,
         start_date: activity.event_date,
         end_date: activity.end_date || '',
         notes: activity.notes || '',
@@ -1771,17 +1844,12 @@ export function WeatherDashboard({
               backgroundColor: 'white'
             }}
           >
-            <option value="all">All Events</option>
-            <option value="spray_application">Spray Applications</option>
-            <option value="fertilization">Fertilizations</option>
-            <option value="irrigation">Irrigation</option>
-            <option value="canopy_management">Canopy Management</option>
-            <option value="scouting">Scouting</option>
-            <option value="harvest">Harvest</option>
-            <option value="budbreak">Budbreak</option>
-            <option value="bloom">Bloom</option>
-            <option value="fruit_set">Fruit Set</option>
-            <option value="veraison">Veraison</option>
+            <option value="all">All Events ({activities.length})</option>
+            {uniqueEventTypes.map(eventType => (
+              <option key={eventType} value={eventType}>
+                {eventTypeEmojis[eventType] || '📝'} {eventTypeNames[eventType] || eventType} ({activities.filter(a => a.event_type === eventType).length})
+              </option>
+            ))}
           </select>
 
           <button
@@ -1826,7 +1894,7 @@ export function WeatherDashboard({
             textAlign: 'center'
           }}>
             <div style={{ fontSize: '24px', fontWeight: '700', color: '#059669' }}>
-              {activities.filter(a => a.event_type === 'spray_application').length}
+              {activities.filter(a => a.event_type === 'spray_application' || a.event_type === 'Spray Application').length}
             </div>
             <div style={{ fontSize: '12px', color: '#6b7280' }}>
               Spray Apps
@@ -1840,7 +1908,7 @@ export function WeatherDashboard({
             textAlign: 'center'
           }}>
             <div style={{ fontSize: '24px', fontWeight: '700', color: '#7c3aed' }}>
-              {activities.filter(a => a.event_type === 'fertilization').length}
+              {activities.filter(a => a.event_type === 'fertilization' || a.event_type === 'Fertilization').length}
             </div>
             <div style={{ fontSize: '12px', color: '#6b7280' }}>
               Fertilizers
@@ -1854,7 +1922,7 @@ export function WeatherDashboard({
             textAlign: 'center'
           }}>
             <div style={{ fontSize: '24px', fontWeight: '700', color: '#dc2626' }}>
-              {activities.filter(a => a.event_type === 'harvest').length}
+              {activities.filter(a => a.event_type === 'harvest' || a.event_type === 'Harvest').length}
             </div>
             <div style={{ fontSize: '12px', color: '#6b7280' }}>
               Harvests
@@ -1897,7 +1965,7 @@ export function WeatherDashboard({
             <p style={{ margin: '0 0 16px 0', color: '#6b7280', fontSize: '14px' }}>
               {eventTypeFilter === 'all' 
                 ? 'Start logging your vineyard activities to see them here'
-                : `No ${eventTypeFilter.replace('_', ' ')} events found`
+                : `No ${eventTypeNames[eventTypeFilter] || eventTypeFilter.replace('_', ' ')} events found`
               }
             </p>
             <button
@@ -1924,32 +1992,6 @@ export function WeatherDashboard({
             overflow: 'hidden'
           }}>
             {filteredActivities.map((activity, index) => {
-              const eventTypeEmojis = {
-                'spray_application': '🚿',
-                'fertilization': '🌱',
-                'irrigation': '💧',
-                'canopy_management': '✂️',
-                'scouting': '🔍',
-                'harvest': '🍇',
-                'budbreak': '🌱',
-                'bloom': '🌸',
-                'fruit_set': '🍇',
-                'veraison': '🍷'
-              };
-
-              const eventTypeNames = {
-                'spray_application': 'Spray Application',
-                'fertilization': 'Fertilization',
-                'irrigation': 'Irrigation',
-                'canopy_management': 'Canopy Management',
-                'scouting': 'Scouting',
-                'harvest': 'Harvest',
-                'budbreak': 'Budbreak',
-                'bloom': 'Bloom',
-                'fruit_set': 'Fruit Set',
-                'veraison': 'Veraison'
-              };
-
               const details = getEventDetails(activity);
 
               return (
