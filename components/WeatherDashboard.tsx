@@ -35,7 +35,7 @@ export function WeatherDashboard({
   const [locationSearch, setLocationSearch] = useState('');
   const [searchResults, setSearchResults] = useState<GeocodeResult[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
-  const [isSearching, setIsSearching] = useState(isSearching);
+  const [isSearching, setIsSearching] = useState(false);
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [dateRangeMode, setDateRangeMode] = useState<'current' | 'previous' | 'custom'>('current');
   const [showCustomRange, setShowCustomRange] = useState(false);
@@ -413,7 +413,7 @@ export function WeatherDashboard({
            duration: activityForm.irrigation_duration
          };
        }
-
+ 
        let fertilizationData = undefined;
        if (activityForm.activity_type === 'Fertilization' && activityForm.fertilizer_type) {
          fertilizationData = {
@@ -424,7 +424,7 @@ export function WeatherDashboard({
            method: activityForm.fertilizer_method
          };
        }
-
+ 
        let harvestData = undefined;
        if (activityForm.activity_type === 'Harvest' && activityForm.harvest_yield) {
          harvestData = {
@@ -436,7 +436,7 @@ export function WeatherDashboard({
            block: activityForm.harvest_block
          };
        }
-
+ 
        let canopyData = undefined;
        if (activityForm.activity_type === 'Canopy Management' && activityForm.canopy_activity) {
          canopyData = {
@@ -446,7 +446,7 @@ export function WeatherDashboard({
            stage: activityForm.canopy_stage
          };
        }
-
+ 
        let scoutData = undefined;
        if (activityForm.activity_type === 'Scouting' && activityForm.scout_focus) {
          scoutData = {
@@ -779,8 +779,7 @@ export function WeatherDashboard({
               key={alert.id}
               style={{
                 padding: '15px 20px',
-                backgroundColor:```text
- alert.severity === 'critical' ? '#fef2f2' : 
+                backgroundColor: alert.severity === 'critical' ? '#fef2f2' : 
                                 alert.severity === 'high' ? '#fffbeb' : '#f0f9ff',
                 border: `2px solid ${alert.severity === 'critical' ? '#ef4444' : 
                                    alert.severity === 'high' ? '#f59e0b' : '#3b82f6'}`,
@@ -1150,1040 +1149,374 @@ export function WeatherDashboard({
     </div>
   );
 
-const LogEventTab = () => {
+  const LogEventTab = () => {
     return (
-      <div style={{ padding: '0 1rem 1rem 1rem' }}>
-        <div style={{ marginBottom: '20px' }}>
-          <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700', color: '#374151' }}>
-            {editingEvent ? '✏️ Edit Event' : '📝 Log Event'}
-        
-          <p style={{ margin: '0', fontSize: '14px', color: '#6b7280' }}>
-            {editingEvent ? 'Update vineyard activity or phenology event' : 'Record vineyard activities and phenology events'}
-          </p>
-        </div>
+    <div style={{ padding: '0 1rem 1rem 1rem' }}>
+      <div style={{ marginBottom: '20px' }}>
+        <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700', color: '#374151' }}>
+          {editingEvent ? '✏️ Edit Event' : '📝 Log Event'}
+        </h3>
+        <p style={{ margin: '0', fontSize: '14px', color: '#6b7280' }}>
+          {editingEvent ? 'Update vineyard activity or phenology event' : 'Record vineyard activities and phenology events'}
+        </p>
+      </div>
 
-        {/* Quick Action Buttons */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
-          gap: '12px',
-          marginBottom: '24px'
+      {/* Quick Action Buttons */}
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
+        gap: '12px',
+        marginBottom: '24px'
+      }}>
+        {[
+          { type: 'Spray Application', emoji: '🌿', color: '#f59e0b', bg: '#fef3c7' },
+          { type: 'Irrigation', emoji: '💧', color: '#06b6d4', bg: '#e0f7fa' },
+          { type: 'Harvest', emoji: '🍷', color: '#ef4444', bg: '#fef2f2' },
+          { type: 'Scouting', emoji: '🔍', color: '#059669', bg: '#f0f9ff' }
+        ].map((eventType) => (
+          <button
+            key={eventType.type}
+            onClick={() => {
+              setActivityForm(prev => ({ 
+                ...prev, 
+                activity_type: eventType.type,
+                start_date: new Date().toISOString().split('T')[0]
+              }));
+              setShowActivityForm(true);
+            }}
+            style={{
+              padding: '16px',
+              backgroundColor: eventType.bg,
+              border: `2px solid ${eventType.color}`,
+              borderRadius: '12px',
+              cursor: 'pointer',
+              textAlign: 'center',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+          >
+            <div style={{ fontSize: '24px', marginBottom: '8px' }}>{eventType.emoji}</div>
+            <div style={{ fontSize: '14px', fontWeight: '600', color: eventType.color }}>
+              {eventType.type}
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {/* All Event Types Button */}
+      <button
+        onClick={() => setShowActivityForm(true)}
+        style={{
+          width: '100%',
+          padding: '16px',
+          backgroundColor: '#22c55e',
+          color: 'white',
+          border: 'none',
+          borderRadius: '12px',
+          cursor: 'pointer',
+          fontSize: '16px',
+          fontWeight: '600',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          marginBottom: '24px',
+          transition: 'all 0.2s ease'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = '#16a34a';
+          e.currentTarget.style.transform = 'translateY(-1px)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = '#22c55e';
+          e.currentTarget.style.transform = 'translateY(0)';
+        }}
+      >
+        <Plus size={20} />
+        View All Event Types
+      </button>
+
+      {/* Event Form */}
+      {showActivityForm && (
+        <div style={{
+          padding: '20px',
+          backgroundColor: 'white',
+          border: '2px solid #22c55e',
+          borderRadius: '12px',
+          marginBottom: '20px'
         }}>
-          {[
-            { type: 'Spray Application', emoji: '🌿', color: '#f59e0b', bg: '#fef3c7' },
-            { type: 'Irrigation', emoji: '💧', color: '#06b6d4', bg: '#e0f7fa' },
-            { type: 'Harvest', emoji: '🍷', color: '#ef4444', bg: '#fef2f2' },
-            { type: 'Scouting', emoji: '🔍', color: '#059669', bg: '#f0f9ff' }
-          ].map((eventType) => (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h4 style={{ margin: '0', color: '#059669', fontSize: '18px', fontWeight: '700' }}>
+              {editingEvent ? '✏️ Edit Event' : '➕ New Event'}
+            </h4>
             <button
-              key={eventType.type}
-              onClick={() => {
-                setActivityForm(prev => ({ 
-                  ...prev, 
-                  activity_type: eventType.type,
-                  start_date: new Date().toISOString().split('T')[0]
-                }));
-                setShowActivityForm(true);
-              }}
+              onClick={() => setShowActivityForm(false)}
               style={{
-                padding: '16px',
-                backgroundColor: eventType.bg,
-                border: `2px solid ${eventType.color}`,
-                borderRadius: '12px',
+                padding: '4px 8px',
+                backgroundColor: '#6b7280',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
                 cursor: 'pointer',
-                textAlign: 'center',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = 'none';
+                fontSize: '12px'
               }}
             >
-              <div style={{ fontSize: '24px', marginBottom: '8px' }}>{eventType.emoji}</div>
-              <div style={{ fontSize: '14px', fontWeight: '600', color: eventType.color }}>
-                {eventType.type}
-              </div>
+              ✕
             </button>
-          ))}
-        </div>
+          </div>
 
-        {/* All Event Types Button */}
-        <button
-          onClick={() => setShowActivityForm(true)}
-          style={{
-            width: '100%',
-            padding: '16px',
-            backgroundColor: '#22c55e',
-            color: 'white',
-            border: 'none',
-            borderRadius: '12px',
-            cursor: 'pointer',
-            fontSize: '16px',
-            fontWeight: '600',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            marginBottom: '24px',
-            transition: 'all 0.2s ease'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#16a34a';
-            e.currentTarget.style.transform = 'translateY(-1px)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#22c55e';
-            e.currentTarget.style.transform = 'translateY(0)';
-          }}
-        >
-          <Plus size={20} />
-          View All Event Types
-        </button>
-
-        {/* Event Form */}
-        {showActivityForm && (
-          <div style={{
-            padding: '20px',
-            backgroundColor: 'white',
-            border: '2px solid #22c55e',
-            borderRadius: '12px',
-            marginBottom: '20px'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h4 style={{ margin: '0', color: '#059669', fontSize: '18px', fontWeight: '700' }}>
-                {editingEvent ? '✏️ Edit Event' : '➕ New Event'}
-              </h4>
-              <button
-                onClick={() => setShowActivityForm(false)}
-                style={{
-                  padding: '4px 8px',
-                  backgroundColor: '#6b7280',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '12px'
-                }}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
-                  Event Type *
-                </label>
-                <select
-                  value={activityForm.activity_type}
-                  onChange={(e) => setActivityForm(prev => ({ ...prev, activity_type: e.target.value }))}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    backgroundColor: 'white',
-                    fontSize: '14px'
-                  }}
-                  required
-                >
-                  <option value="">Select event type...</option>
-                  {activityTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
-                  Date *
-                </label>
-                <input
-                  type="date"
-                  value={activityForm.start_date}
-                  onChange={(e) => setActivityForm(prev => ({ ...prev, start_date: e.target.value }))}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '14px'
-                  }}
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Spray Application Details */}
-            {activityForm.activity_type === 'Spray Application' && (
-              <div style={{
-                marginBottom: '16px',
-                padding: '16px',
-                backgroundColor: '#fef3c7',
-                border: '2px solid #fbbf24',
-                borderRadius: '8px'
-              }}>
-                <h5 style={{ margin: '0 0 12px 0', color: '#92400e', fontSize: '16px', fontWeight: '700' }}>
-                  🌿 Spray Details
-                </h5>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
-                      Product *
-                    </label>
-                    <select
-                      value={activityForm.spray_product}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, spray_product: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #f59e0b',
-                        borderRadius: '6px',
-                        backgroundColor: 'white',
-                        fontSize: '13px'
-                      }}
-                      required
-                    >
-                      <option value="">Select product...</option>
-                      <option value="Captan">Captan</option>
-                      <option value="Copper Sulfate">Copper Sulfate</option>
-                      <option value="Sulfur">Sulfur</option>
-                      <option value="Mancozeb">Mancozeb</option>
-                      <option value="Chlorothalonil">Chlorothalonil</option>
-                      <option value="Propiconazole">Propiconazole</option>
-                      <option value="Myclobutanil">Myclobutanil</option>
-                      <option value="Tebuconazole">Tebuconazole</option>
-                      <option value="Imidacloprid">Imidacloprid</option>
-                      <option value="Spinosad">Spinosad</option>
-                      <option value="Carbaryl">Carbaryl</option>
-                      <option value="Malathion">Malathion</option>
-                      <option value="Glyphosate">Glyphosate</option>
-                      <option value="2,4-D">2,4-D</option>
-                      <option value="Dicamba">Dicamba</option>
-                      <option value="Paraquat">Paraquat</option>
-                      <option value="Roundup">Roundup</option>
-                      <option value="Bt (Bacillus thuringiensis)">Bt (Bacillus thuringiensis)</option>
-                      <option value="Kaolin Clay">Kaolin Clay</option>
-                      <option value="Neem Oil">Neem Oil</option>
-                      <option value="Horticultural Oil">Horticultural Oil</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
-                      Quantity
-                    </label>
-                    <input
-                      type="text"
-                      value={activityForm.spray_quantity}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, spray_quantity: e.target.value }))}
-                      placeholder="e.g. 2.5"
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #f59e0b',
-                        borderRadius: '6px',
-                        fontSize: '13px'
-                      }}
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
-                      Unit
-                    </label>
-                    <select
-                      value={activityForm.spray_unit}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, spray_unit: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #f59e0b',
-                        borderRadius: '6px',
-                        backgroundColor: 'white',
-                        fontSize: '13px'
-                      }}
-                    >
-                      <option value="oz/acre">oz/acre</option>
-                      <option value="lb/acre">lb/acre</option>
-                      <option value="gal/acre">gal/acre</option>
-                      <option value="ml/100L">ml/100L</option>
-                      <option value="g/100L">g/100L</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
-                      Target
-                    </label>
-                    <input
-                      type="text"
-                      value={activityForm.spray_target}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, spray_target: e.target.value }))}
-                      placeholder="e.g. Powdery mildew"
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #f59e0b',
-                        borderRadius: '6px',
-                        fontSize: '13px'
-                      }}
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
-                      Equipment
-                    </label>
-                    <select
-                      value={activityForm.spray_equipment}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, spray_equipment: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #f59e0b',
-                        borderRadius: '6px',
-                        backgroundColor: 'white',
-                        fontSize: '13px'
-                      }}
-                    >
-                      <option value="">Select equipment...</option>
-                      <option value="Airblast Sprayer">Airblast Sprayer</option>
-                      <option value="Boom Sprayer">Boom Sprayer</option>
-                      <option value="Backpack Sprayer">Backpack Sprayer</option>
-                      <option value="ATV Sprayer">ATV Sprayer</option>
-                      <option value="Hand Sprayer">Hand Sprayer</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
-                      Conditions
-                    </label>
-                    <input
-                      type="text"
-                      value={activityForm.spray_conditions}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, spray_conditions: e.target.value }))}
-                      placeholder="Wind, temp, humidity"
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #f59e0b',
-                        borderRadius: '6px',
-                        fontSize: '13px'
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Irrigation Details */}
-            {activityForm.activity_type === 'Irrigation' && (
-              <div style={{
-                marginBottom: '16px',
-                padding: '16px',
-                backgroundColor: '#e0f7fa',
-                border: '2px solid #00acc1',
-                borderRadius: '8px'
-              }}>
-                <h5 style={{ margin: '0 0 12px 0', color: '#00695c', fontSize: '16px', fontWeight: '700' }}>
-                  💧 Irrigation Details
-                </h5>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#00695c' }}>
-                      Amount
-                    </label>
-                    <input
-                      type="text"
-                      value={activityForm.irrigation_amount}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, irrigation_amount: e.target.value }))}
-                      placeholder="e.g. 2.5"
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #00acc1',
-                        borderRadius: '6px',
-                        fontSize: '13px'
-                      }}
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#00695c' }}>
-                      Unit
-                    </label>
-                    <select
-                      value={activityForm.irrigation_unit}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, irrigation_unit: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #00acc1',
-                        borderRadius: '6px',
-                        backgroundColor: 'white',
-                        fontSize: '13px'
-                      }}
-                    >
-                      <option value="inches">inches</option>
-                      <option value="gallons">gallons</option>
-                      <option value="acre-feet">acre-feet</option>
-                      <option value="liters">liters</option>
-                      <option value="hours">hours</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#00695c' }}>
-                      Method
-                    </label>
-                    <select
-                      value={activityForm.irrigation_method}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, irrigation_method: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #00acc1',
-                        borderRadius: '6px',
-                        backgroundColor: 'white',
-                        fontSize: '13px'
-                      }}
-                    >
-                      <option value="">Select method...</option>
-                      <option value="Drip Irrigation">Drip Irrigation</option>
-                      <option value="Micro Sprinklers">Micro Sprinklers</option>
-                      <option value="Overhead Sprinklers">Overhead Sprinklers</option>
-                      <option value="Flood Irrigation">Flood Irrigation</option>
-                      <option value="Furrow Irrigation">Furrow Irrigation</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#00695c' }}>
-                      Duration
-                    </label>
-                    <input
-                      type="text"
-                      value={activityForm.irrigation_duration}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, irrigation_duration: e.target.value }))}
-                      placeholder="e.g. 4 hours"
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #00acc1',
-                        borderRadius: '6px',
-                        fontSize: '13px'
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Fertilization Details */}
-            {activityForm.activity_type === 'Fertilization' && (
-              <div style={{
-                marginBottom: '16px',
-                padding: '16px',
-                backgroundColor: '#f3e5f5',
-                border: '2px solid #ab47bc',
-                borderRadius: '8px'
-              }}>
-                <h5 style={{ margin: '0 0 12px 0', color: '#6a1b9a', fontSize: '16px', fontWeight: '700' }}>
-                  🌱 Fertilization Details
-                </h5>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#6a1b9a' }}>
-                      Fertilizer Type
-                    </label>
-                    <select
-                      value={activityForm.fertilizer_type}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, fertilizer_type: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #ab47bc',
-                        borderRadius: '6px',
-                        backgroundColor: 'white',
-                        fontSize: '13px'
-                      }}
-                    >
-                      <option value="">Select type...</option>
-                      <option value="Urea">Urea (46-0-0)</option>
-                      <option value="Ammonium Sulfate">Ammonium Sulfate (21-0-0)</option>
-                      <option value="Triple Superphosphate">Triple Superphosphate (0-46-0)</option>
-                      <option value="Muriate of Potash">Muriate of Potash (0-0-60)</option>
-                      <option value="10-10-10">Balanced NPK (10-10-10)</option>
-                      <option value="15-15-15">Balanced NPK (15-15-15)</option>
-                      <option value="Compost">Compost</option>
-                      <option value="Manure">Manure</option>
-                      <option value="Fish Emulsion">Fish Emulsion</option>
-                      <option value="Bone Meal">Bone Meal</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#6a1b9a' }}>
-                      NPK Analysis
-                    </label>
-                    <input
-                      type="text"
-                      value={activityForm.fertilizer_npk}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, fertilizer_npk: e.target.value }))}
-                      placeholder="e.g. 10-10-10"
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #ab47bc',
-                        borderRadius: '6px',
-                        fontSize: '13px'
-                      }}
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#6a1b9a' }}>
-                      Application Rate
-                    </label>
-                    <input
-                      type="text"
-                      value={activityForm.fertilizer_rate}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, fertilizer_rate: e.target.value }))}
-                      placeholder="e.g. 50"
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #ab47bc',
-                        borderRadius: '6px',
-                        fontSize: '13px'
-                      }}
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#6a1b9a' }}>
-                      Unit
-                    </label>
-                    <select
-                      value={activityForm.fertilizer_unit}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, fertilizer_unit: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #ab47bc',
-                        borderRadius: '6px',
-                        backgroundColor: 'white',
-                        fontSize: '13px'
-                      }}
-                    >
-                      <option value="lbs/acre">lbs/acre</option>
-                      <option value="kg/ha">kg/ha</option>
-                      <option value="tons/acre">tons/acre</option>
-                      <option value="oz/vine">oz/vine</option>
-                      <option value="gal/acre">gal/acre</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#6a1b9a' }}>
-                      Application Method
-                    </label>
-                    <select
-                      value={activityForm.fertilizer_method}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, fertilizer_method: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #ab47bc',
-                        borderRadius: '6px',
-                        backgroundColor: 'white',
-                        fontSize: '13px'
-                      }}
-                    >
-                      <option value="">Select method...</option>
-                      <option value="Broadcast">Broadcast</option>
-                      <option value="Band Application">Band Application</option>
-                      <option value="Foliar Spray">Foliar Spray</option>
-                      <option value="Fertigation">Fertigation</option>
-                      <option value="Soil Injection">Soil Injection</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Harvest Details */}
-            {activityForm.activity_type === 'Harvest' && (
-              <div style={{
-                marginBottom: '16px',
-                padding: '16px',
-                backgroundColor: '#fce4ec',
-                border: '2px solid #e91e63',
-                borderRadius: '8px'
-              }}>
-                <h5 style={{ margin: '0 0 12px 0', color: '#ad1457', fontSize: '16px', fontWeight: '700' }}>
-                  🍇 Harvest Details
-                </h5>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#ad1457' }}>
-                      Yield
-                    </label>
-                    <input
-                      type="text"
-                      value={activityForm.harvest_yield}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, harvest_yield: e.target.value }))}
-                      placeholder="e.g. 4.5"
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #e91e63',
-                        borderRadius: '6px',
-                        fontSize: '13px'
-                      }}
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#ad1457' }}>
-                      Unit
-                    </label>
-                    <select
-                      value={activityForm.harvest_unit}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, harvest_unit: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #e91e63',
-                        borderRadius: '6px',
-                        backgroundColor: 'white',
-                        fontSize: '13px'
-                      }}
-                    >
-                      <option value="tons/acre">tons/acre</option>
-                      <option value="lbs/vine">lbs/vine</option>
-                      <option value="kg/vine">kg/vine</option>
-                      <option value="lugs">lugs</option>
-                      <option value="bins">bins</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#ad1457' }}>
-                      Brix
-                    </label>
-                    <input
-                      type="text"
-                      value={activityForm.harvest_brix}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, harvest_brix: e.target.value }))}
-                      placeholder="e.g. 24.5"
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #e91e63',
-                        borderRadius: '6px',
-                        fontSize: '13px'
-                      }}
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#ad1457' }}>
-                      pH
-                    </label>
-                    <input
-                      type="text"
-                      value={activityForm.harvest_ph}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, harvest_ph: e.target.value }))}
-                      placeholder="e.g. 3.4"
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #e91e63',
-                        borderRadius: '6px',
-                        fontSize: '13px'
-                      }}
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#ad1457' }}>
-                      Titratable Acidity
-                    </label>
-                    <input
-                      type="text"
-                      value={activityForm.harvest_ta}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, harvest_ta: e.target.value }))}
-                      placeholder="e.g. 6.5 g/L"
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #e91e63',
-                        borderRadius: '6px',
-                        fontSize: '13px'
-                      }}
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#ad1457' }}>
-                      Block/Section
-                    </label>
-                    <input
-                      type="text"
-                      value={activityForm.harvest_block}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, harvest_block: e.target.value }))}
-                      placeholder="e.g. Block A"
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #e91e63',
-                        borderRadius: '6px',
-                        fontSize: '13px'
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Canopy Management Details */}
-            {activityForm.activity_type === 'Canopy Management' && (
-              <div style={{
-                marginBottom: '16px',
-                padding: '16px',
-                backgroundColor: '#e8f5e8',
-                border: '2px solid #4caf50',
-                borderRadius: '8px'
-              }}>
-                <h5 style={{ margin: '0 0 12px 0', color: '#2e7d32', fontSize: '16px', fontWeight: '700' }}>
-                  ✂️ Canopy Management Details
-                </h5>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#2e7d32' }}>
-                      Activity
-                    </label>
-                    <select
-                      value={activityForm.canopy_activity}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, canopy_activity: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #4caf50',
-                        borderRadius: '6px',
-                        backgroundColor: 'white',
-                        fontSize: '13px'
-                      }}
-                    >
-                      <option value="">Select activity...</option>
-                      <option value="Leaf Removal">Leaf Removal</option>
-                      <option value="Shoot Thinning">Shoot Thinning</option>
-                      <option value="Cluster Thinning">Cluster Thinning</option>
-                      <option value="Shoot Positioning">Shoot Positioning</option>
-                      <option value="Hedging">Hedging</option>
-                      <option value="Topping">Topping</option>
-                      <option value="Lateral Removal">Lateral Removal</option>
-                      <option value="Suckering">Suckering</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#2e7d32' }}>
-                      Intensity
-                    </label>
-                    <select
-                      value={activityForm.canopy_intensity}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, canopy_intensity: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #4caf50',
-                        borderRadius: '6px',
-                        backgroundColor: 'white',
-                        fontSize: '13px'
-                      }}
-                    >
-                      <option value="">Select intensity...</option>
-                      <option value="Light">Light</option>
-                      <option value="Moderate">Moderate</option>
-                      <option value="Heavy">Heavy</option>
-                      <option value="Selective">Selective</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#2e7d32' }}>
-                      Side/Zone
-                    </label>
-                    <select
-                      value={activityForm.canopy_side}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, canopy_side: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #4caf50',
-                        borderRadius: '6px',
-                        backgroundColor: 'white',
-                        fontSize: '13px'
-                      }}
-                    >
-                      <option value="">Select side...</option>
-                      <option value="East Side">East Side</option>
-                      <option value="West Side">West Side</option>
-                      <option value="Both Sides">Both Sides</option>
-                      <option value="Fruit Zone">Fruit Zone</option>
-                      <option value="Upper Canopy">Upper Canopy</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#2e7d32' }}>
-                      Growth Stage
-                    </label>
-                    <select
-                      value={activityForm.canopy_stage}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, canopy_stage: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #4caf50',
-                        borderRadius: '6px',
-                        backgroundColor: 'white',
-                        fontSize: '13px'
-                      }}
-                    >
-                      <option value="">Select stage...</option>
-                      <option value="Pre-Bloom">Pre-Bloom</option>
-                      <option value="Bloom">Bloom</option>
-                      <option value="Post-Bloom">Post-Bloom</option>
-                      <option value="Fruit Set">Fruit Set</option>
-                      <option value="Veraison">Veraison</option>
-                      <option value="Pre-Harvest">Pre-Harvest</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Scouting Details */}
-            {activityForm.activity_type === 'Scouting' && (
-              <div style={{
-                marginBottom: '16px',
-                padding: '16px',
-                backgroundColor: '#fff3e0',
-                border: '2px solid #ff9800',
-                borderRadius: '8px'
-              }}>
-                <h5 style={{ margin: '0 0 12px 0', color: '#ef6c00', fontSize: '16px', fontWeight: '700' }}>
-                  🔍 Scouting Details
-                </h5>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#ef6c00' }}>
-                      Focus Area
-                    </label>
-                    <select
-                      value={activityForm.scout_focus}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, scout_focus: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #ff9800',
-                        borderRadius: '6px',
-                        backgroundColor: 'white',
-                        fontSize: '13px'
-                      }}
-                    >
-                      <option value="">Select focus...</option>
-                      <option value="Pest Monitoring">Pest Monitoring</option>
-                      <option value="Disease Monitoring">Disease Monitoring</option>
-                      <option value="Nutrient Deficiency">Nutrient Deficiency</option>
-                      <option value="Water Stress">Water Stress</option>
-                      <option value="Phenology Stage">Phenology Stage</option>
-                      <option value="Canopy Assessment">Canopy Assessment</option>
-                      <option value="Fruit Quality">Fruit Quality</option>
-                      <option value="General Inspection">General Inspection</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#ef6c00' }}>
-                      Severity/Level
-                    </label>
-                    <select
-                      value={activityForm.scout_severity}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, scout_severity: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #ff9800',
-                        borderRadius: '6px',
-                        backgroundColor: 'white',
-                        fontSize: '13px'
-                      }}
-                    >
-                      <option value="">Select severity...</option>
-                      <option value="None">None</option>
-                      <option value="Trace">Trace (< 5%)</option>
-                      <option value="Light">Light (5-15%)</option>
-                      <option value="Moderate">Moderate (15-30%)</option>
-                      <option value="Heavy">Heavy (30-50%)</option>
-                      <option value="Severe">Severe (> 50%)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#ef6c00' }}>
-                      Distribution
-                    </label>
-                    <select
-                      value={activityForm.scout_distribution}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, scout_distribution: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #ff9800',
-                        borderRadius: '6px',
-                        backgroundColor: 'white',
-                        fontSize: '13px'
-                      }}
-                    >
-                      <option value="">Select distribution...</option>
-                      <option value="Isolated">Isolated</option>
-                      <option value="Scattered">Scattered</option>
-                      <option value="Clustered">Clustered</option>
-                      <option value="Uniform">Uniform</option>
-                      <option value="Edge Effect">Edge Effect</option>
-                      <option value="Hot Spots">Hot Spots</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#ef6c00' }}>
-                      Action Required
-                    </label>
-                    <select
-                      value={activityForm.scout_action}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, scout_action: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #ff9800',
-                        borderRadius: '6px',
-                        backgroundColor: 'white',
-                        fontSize: '13px'
-                      }}
-                    >
-                      <option value="">Select action...</option>
-                      <option value="No Action">No Action</option>
-                      <option value="Continue Monitoring">Continue Monitoring</option>
-                      <option value="Treatment Recommended">Treatment Recommended</option>
-                      <option value="Immediate Treatment">Immediate Treatment</option>
-                      <option value="Cultural Practice">Cultural Practice</option>
-                      <option value="Consultation Needed">Consultation Needed</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div style={{ marginBottom: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+            <div>
               <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
-                Notes
+                Event Type *
               </label>
-              <textarea
-                value={activityForm.notes}
-                onChange={(e) => setActivityForm(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder="Add details about this event..."
+              <select
+                value={activityForm.activity_type}
+                onChange={(e) => setActivityForm(prev => ({ ...prev, activity_type: e.target.value }))}
                 style={{
                   width: '100%',
                   padding: '12px',
                   border: '1px solid #d1d5db',
                   borderRadius: '8px',
-                  minHeight: '80px',
-                  resize: 'vertical',
+                  backgroundColor: 'white',
                   fontSize: '14px'
                 }}
-              />
+                required
+              >
+                <option value="">Select event type...</option>
+                {activityTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
             </div>
 
-            {/* Location Section */}
-            <div style={{ 
+            <div>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
+                Date *
+              </label>
+              <input
+                type="date"
+                value={activityForm.start_date}
+                onChange={(e) => setActivityForm(prev => ({ ...prev, start_date: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '14px'
+                }}
+                required
+              />
+            </div>
+          </div>
+
+          {/* Spray Application Details */}
+          {activityForm.activity_type === 'Spray Application' && (
+            <div style={{
               marginBottom: '16px',
-              padding: '12px',
-              backgroundColor: '#fefce8',
-              border: '1px solid #fde68a',
+              padding: '16px',
+              backgroundColor: '#fef3c7',
+              border: '2px solid #fbbf24',
               borderRadius: '8px'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <MapPin size={16} />
-                <label style={{ fontWeight: '600', fontSize: '14px', color: '#a16207' }}>
-                  Location (Optional)
-                </label>
-              </div>
+              <h5 style={{ margin: '0 0 12px 0', color: '#92400e', fontSize: '16px', fontWeight: '700' }}>
+                🌿 Spray Details
+              </h5>
 
-              {activityForm.location_lat && activityForm.location_lng ? (
-                <div style={{
-                  padding: '8px',
-                  backgroundColor: '#f0fdf4',
-                  border: '1px solid #bbf7d0',
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                    Product *
+                  </label>
+                  <select
+                    value={activityForm.spray_product}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, spray_product: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #f59e0b',
+                      borderRadius: '6px',
+                      backgroundColor: 'white',
+                      fontSize: '13px'
+                    }}
+                    required
+                  >
+                    <option value="">Select product...</option>
+                    <option value="Captan">Captan</option>
+                    <option value="Copper Sulfate">Copper Sulfate</option>
+                    <option value="Sulfur">Sulfur</option>
+                    <option value="Glyphosate">Glyphosate</option>
+                    <option value="Neem Oil">Neem Oil</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                    Quantity
+                  </label>
+                  <input
+                    type="text"
+                    value={activityForm.spray_quantity}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, spray_quantity: e.target.value }))}
+                    placeholder="e.g. 2.5"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #f59e0b',
+                      borderRadius: '6px',
+                      fontSize: '13px'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                    Target
+                  </label>
+                  <input
+                    type="text"
+                    value={activityForm.spray_target}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, spray_target: e.target.value }))}
+                    placeholder="e.g. Powdery mildew"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #f59e0b',
+                      borderRadius: '6px',
+                      fontSize: '13px'
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
+              Notes
+            </label>
+            <textarea
+              value={activityForm.notes}
+              onChange={(e) => setActivityForm(prev => ({ ...prev, notes: e.target.value }))}
+              placeholder="Add details about this event..."
+              style={{
+                width: '100%',
+                padding: '12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                minHeight: '80px',
+                resize: 'vertical',
+                fontSize: '14px'
+              }}
+            />
+          </div>
+
+          {/* Location Section */}
+          <div style={{ 
+            marginBottom: '16px',
+            padding: '12px',
+            backgroundColor: '#fefce8',
+            border: '1px solid #fde68a',
+            borderRadius: '8px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <MapPin size={16} />
+              <label style={{ fontWeight: '600', fontSize: '14px', color: '#a16207' }}>
+                Location (Optional)
+              </label>
+            </div>
+
+            {activityForm.location_lat && activityForm.location_lng ? (
+              <div style={{
+                padding: '8px',
+                backgroundColor: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                borderRadius: '6px',
+                marginBottom: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <div style={{ fontSize: '13px', color: '#065f46' }}>
+                  📍 {activityForm.location_name || 'Location set'}
+                </div>
+                <button
+                  onClick={() => setActivityForm(prev => ({
+                    ...prev,
+                    location_lat: null,
+                    location_lng: null,
+                    location_accuracy: null,
+                    location_name: ''
+                  }))}
+                  style={{
+                    padding: '4px 8px',
+                    backgroundColor: '#ef4444',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '11px'
+                  }}
+                >
+                  Clear
+                </button>
+              </div>
+            ) : null}
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={getCurrentLocation}
+                disabled={isGettingLocation}
+                style={{
+                  padding: '10px 12px',
+                  backgroundColor: isGettingLocation ? '#9ca3af' : '#10b981',
+                  color: 'white',
+                  border: 'none',
                   borderRadius: '6px',
-                  marginBottom: '8px',
+                  cursor: isGettingLocation ? 'not-allowed' : 'pointer',
+                  fontSize: '12px',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'space-between'
-                }}>
-                  <div style={{ fontSize: '13px', color: '#065f46' }}>
-                    📍 {activityForm.location_name || 'Location set'}
-                  </div>
-                  <button
-                    onClick={() => setActivityForm(prev => ({
-                      ...prev,
-                      location_lat: null,
-                      location_lng: null,
-                      location_accuracy: null,
-                      location_name: ''
-                    }))}
-                    style={{
-                      padding: '4px 8px',
-                      backgroundColor: '#ef4444',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '11px'
-                    }}
-                  >
-                    Clear
-                  </button>
-                </div>
-              ) : null}
+                  justifyContent: 'center',
+                  gap: '4px',
+                  fontWeight: '500'
+                }}
+              >
+                {isGettingLocation ? (
+                  <>
+                    <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} />
+                    Getting...
+                  </>
+                ) : (
+                  '📍 Current Location'
+                )}
+              </button>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              {currentVineyard && (
                 <button
                   type="button"
-                  onClick={getCurrentLocation}
-                  disabled={isGettingLocation}
+                  onClick={() => setActivityForm(prev => ({
+                    ...prev,
+                    location_lat: currentVineyard.latitude,
+                    location_lng: currentVineyard.longitude,
+                    location_accuracy: null,
+                    location_name: `🍇 ${currentVineyard.name}`
+                  }))}
                   style={{
                     padding: '10px 12px',
-                    backgroundColor: isGettingLocation ? '#9ca3af' : '#10b981',
+                    backgroundColor: '#3b82f6',
                     color: 'white',
                     border: 'none',
                     borderRadius: '6px',
-                    cursor: isGettingLocation ? 'not-allowed' : 'pointer',
+                    cursor: 'pointer',
                     fontSize: '12px',
                     display: 'flex',
                     alignItems: 'center',
@@ -2192,140 +1525,105 @@ const LogEventTab = () => {
                     fontWeight: '500'
                   }}
                 >
-                  {isGettingLocation ? (
-                    <>
-                      <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} />
-                      Getting...
-                    </>
-                  ) : (
-                    '📍 Current Location'
-                  )}
+                  🍇 Vineyard
                 </button>
-
-                {currentVineyard && (
-                  <button
-                    type="button"
-                    onClick={() => setActivityForm(prev => ({
-                      ...prev,
-                      location_lat: currentVineyard.latitude,
-                      location_lng: currentVineyard.longitude,
-                      location_accuracy: null,
-                      location_name: `🍇 ${currentVineyard.name}`
-                    }))}
-                    style={{
-                      padding: '10px 12px',
-                      backgroundColor: '#3b82f6',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '4px',
-                      fontWeight: '500'
-                    }}
-                  >
-                    🍇 Vineyard
-                  </button>
-                )}
-              </div>
+              )}
             </div>
+          </div>
 
-            <div style={{ display: 'flex', gap: '12px' }}>
-                {editingEvent && (
-                  <button
-                    onClick={() => {
-                      setEditingEvent(null);
-                      setActivityForm({
-                        activity_type: '',
-                        start_date: new Date().toISOString().split('T')[0],
-                        end_date: '',
-                        notes: '',
-                        location_lat: null,
-                        location_lng: null,
-                        location_name: '',
-                        location_accuracy: null,
-                        spray_product: '',
-                        spray_quantity: '',
-                        spray_unit: 'oz/acre',
-                        spray_target: '',
-                        spray_conditions: '',
-                        spray_equipment: '',
-                        irrigation_amount: '',
-                        irrigation_unit: 'inches',
-                        irrigation_method: '',
-                        irrigation_duration: '',
-                        fertilizer_type: '',
-                        fertilizer_npk: '',
-                        fertilizer_rate: '',
-                        fertilizer_unit: 'lbs/acre',
-                        fertilizer_method: '',
-                        harvest_yield: '',
-                        harvest_unit: 'tons/acre',
-                        harvest_brix: '',
-                        harvest_ph: '',
-                        harvest_ta: '',
-                        harvest_block: '',
-                        canopy_activity: '',
-                        canopy_intensity: '',
-                        canopy_side: '',
-                        canopy_stage: '',
-                        scout_focus: '',
-                        scout_severity: '',
-                        scout_distribution: '',
-                        scout_action: ''
-                      });
-                    }}
-                    style={{
-                      padding: '12px 24px',
-                      backgroundColor: '#6b7280',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '16px',
-                      fontWeight: '600'
-                    }}
-                  >
-                    Cancel Edit
-                  </button>
-                )}
-
+          <div style={{ display: 'flex', gap: '12px' }}>
+              {editingEvent && (
                 <button
-                  onClick={saveActivity}
-                  disabled={isSavingActivity || !activityForm.activity_type || !activityForm.start_date}
+                  onClick={() => {
+                    setEditingEvent(null);
+                    setActivityForm({
+                      activity_type: '',
+                      start_date: new Date().toISOString().split('T')[0],
+                      end_date: '',
+                      notes: '',
+                      location_lat: null,
+                      location_lng: null,
+                      location_name: '',
+                      location_accuracy: null,
+                      spray_product: '',
+                      spray_quantity: '',
+                      spray_unit: 'oz/acre',
+                      spray_target: '',
+                      spray_conditions: '',
+                      spray_equipment: '',
+                      irrigation_amount: '',
+                      irrigation_unit: 'inches',
+                      irrigation_method: '',
+                      irrigation_duration: '',
+                      fertilizer_type: '',
+                      fertilizer_npk: '',
+                      fertilizer_rate: '',
+                      fertilizer_unit: 'lbs/acre',
+                      fertilizer_method: '',
+                      harvest_yield: '',
+                      harvest_unit: 'tons/acre',
+                      harvest_brix: '',
+                      harvest_ph: '',
+                      harvest_ta: '',
+                      harvest_block: '',
+                      canopy_activity: '',
+                      canopy_intensity: '',
+                      canopy_side: '',
+                      canopy_stage: '',
+                      scout_focus: '',
+                      scout_severity: '',
+                      scout_distribution: '',
+                      scout_action: ''
+                    });
+                  }}
                   style={{
                     padding: '12px 24px',
-                    backgroundColor: (!activityForm.activity_type || !activityForm.start_date) ? '#d1d5db' : '#22c55e',
+                    backgroundColor: '#6b7280',
                     color: 'white',
                     border: 'none',
                     borderRadius: '8px',
-                    cursor: (!activityForm.activity_type || !activityForm.start_date) ? 'not-allowed' : 'pointer',
+                    cursor: 'pointer',
                     fontSize: '16px',
-                    fontWeight: '600',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    opacity: isSavingActivity ? 0.7 : 1
+                    fontWeight: '600'
                   }}
                 >
-                  {isSavingActivity && <div style={{
-                    width: '16px',
-                    height: '16px',
-                    border: '2px solid transparent',
-                    borderTop: '2px solid white',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite'
-                  }}></div>}
-                  {isSavingActivity ? 'Saving...' : (editingEvent ? 'Update Event' : 'Save Activity')}
+                  Cancel Edit
                 </button>
-              </div>
-          </div>
-        )}
-      </div>
-    );
+              )}
+
+              <button
+                onClick={saveActivity}
+                disabled={isSavingActivity || !activityForm.activity_type || !activityForm.start_date}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: (!activityForm.activity_type || !activityForm.start_date) ? '#d1d5db' : '#22c55e',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: (!activityForm.activity_type || !activityForm.start_date) ? 'not-allowed' : 'pointer',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  opacity: isSavingActivity ? 0.7 : 1
+                }}
+              >
+                {isSavingActivity && <div style={{
+                  width: '16px',
+                  height: '16px',
+                  border: '2px solid transparent',
+                  borderTop: '2px solid white',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }}></div>}
+                {isSavingActivity ? 'Saving...' : (editingEvent ? 'Update Event' : 'Save Activity')}
+              </button>
+            </div>
+        </div>
+      )}
+    </div>
+  );
   }
 
   const HistoryTab = () => {
