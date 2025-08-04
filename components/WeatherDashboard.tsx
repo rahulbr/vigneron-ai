@@ -1151,7 +1151,7 @@ export function WeatherDashboard({
 
   const LogEventTab = () => {
     return (
-    <div style={{ padding: '0 1rem 1rem 1rem' }}>
+      <div style={{ padding: '0 1rem 1rem 1rem' }}>
       <div style={{ marginBottom: '20px' }}>
         <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700', color: '#374151' }}>
           {editingEvent ? '✏️ Edit Event' : '📝 Log Event'}
