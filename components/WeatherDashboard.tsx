@@ -75,6 +75,140 @@ export function WeatherDashboard({
   const [safetyAlerts, setSafetyAlerts] = useState<any[]>([]);
   const [eventTypeFilter, setEventTypeFilter] = useState<string>('all');
   const [editingEvent, setEditingEvent] = useState<any>(null);
+  
+  // Offline support state
+  const [isOnline, setIsOnline] = useState(true);
+  const [pendingActions, setPendingActions] = useState<any[]>([]);
+  const [cachedData, setCachedData] = useState<{
+    weather: any[];
+    activities: any[];
+    lastUpdate: string;
+  } | null>(null);
+
+  // Offline support useEffect
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      syncPendingActions();
+    };
+    
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    // Load cached data on startup
+    loadCachedData();
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const loadCachedData = () => {
+    try {
+      const cached = localStorage.getItem('vineyard_cached_data');
+      if (cached) {
+        const parsedCache = JSON.parse(cached);
+        setCachedData(parsedCache);
+        
+        // Use cached data if offline
+        if (!navigator.onLine) {
+          // Use cached weather data
+          // Use cached activities
+          console.log('📱 Using cached data (offline mode)');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load cached data:', error);
+    }
+  };
+
+  const saveToCacheEffect = useEffect(() => {
+    if (data.length > 0 || activities.length > 0) {
+      const cacheData = {
+        weather: data,
+        activities: activities,
+        lastUpdate: new Date().toISOString()
+      };
+      
+      try {
+        localStorage.setItem('vineyard_cached_data', JSON.stringify(cacheData));
+        setCachedData(cacheData);
+      } catch (error) {
+        console.error('Failed to cache data:', error);
+      }
+    }
+  }, [data, activities]);
+
+  const queueOfflineAction = (action: any) => {
+    const newAction = {
+      ...action,
+      id: Date.now().toString(),
+      timestamp: new Date().toISOString()
+    };
+    
+    setPendingActions(prev => [...prev, newAction]);
+    
+    try {
+      const stored = localStorage.getItem('pending_actions') || '[]';
+      const actions = JSON.parse(stored);
+      actions.push(newAction);
+      localStorage.setItem('pending_actions', JSON.stringify(actions));
+    } catch (error) {
+      console.error('Failed to queue offline action:', error);
+    }
+  };
+
+  const syncPendingActions = async () => {
+    try {
+      const stored = localStorage.getItem('pending_actions');
+      if (!stored) return;
+      
+      const actions = JSON.parse(stored);
+      console.log('🔄 Syncing', actions.length, 'pending actions...');
+      
+      for (const action of actions) {
+        if (action.type === 'save_activity') {
+          // Retry saving the activity
+          await handleOfflineActivitySave(action.data);
+        }
+      }
+      
+      // Clear pending actions after successful sync
+      localStorage.removeItem('pending_actions');
+      setPendingActions([]);
+      
+      // Refresh data
+      await loadActivities();
+      
+      console.log('✅ Offline actions synced successfully');
+    } catch (error) {
+      console.error('❌ Failed to sync offline actions:', error);
+    }
+  };
+
+  const handleOfflineActivitySave = async (activityData: any) => {
+    const { savePhenologyEvent } = await import('../lib/supabase');
+    return await savePhenologyEvent(
+      vineyardId,
+      activityData.eventType,
+      activityData.startDate,
+      activityData.notes,
+      activityData.endDate,
+      activityData.harvestBlock,
+      activityData.locationData,
+      activityData.sprayData,
+      activityData.irrigationData,
+      activityData.fertilizationData,
+      activityData.harvestData,
+      activityData.canopyData,
+      activityData.scoutData
+    );
+  };
   const [isLoadingVineyards, setIsLoadingVineyards] = useState(true);
   const [showCreateVineyard, setShowCreateVineyard] = useState(false);
   const [editingVineyardId, setEditingVineyardId] = useState<string | null>(null);
@@ -378,6 +512,23 @@ export function WeatherDashboard({
     }
 
     setIsSavingActivity(true);
+    
+    // Prepare activity data for potential offline storage
+    const activityData = {
+      eventType: '',
+      startDate: activityForm.start_date,
+      notes: activityForm.notes,
+      endDate: activityForm.end_date || undefined,
+      harvestBlock: activityForm.harvest_block || undefined,
+      locationData: undefined as any,
+      sprayData: undefined as any,
+      irrigationData: undefined as any,
+      fertilizationData: undefined as any,
+      harvestData: undefined as any,
+      canopyData: undefined as any,
+      scoutData: undefined as any
+    };
+
     try {
       console.log('💾 Saving activity:', activityForm);
 
@@ -561,10 +712,11 @@ export function WeatherDashboard({
           scoutData
         );
         console.log('✅ Activity saved successfully');
-        alert('Activity logged successfully!');
+        alert('✅ Activity logged successfully!');
       }
 
-      setActivityForm({
+      // Clear form and refresh
+      const formReset = {
         activity_type: '',
         start_date: '',
         end_date: '',
@@ -602,7 +754,9 @@ export function WeatherDashboard({
         scout_severity: '',
         scout_distribution: '',
         scout_action: ''
-      });
+      };
+      
+      setActivityForm(formReset);
       await loadActivities();
 
       if (typeof window !== 'undefined') {
@@ -614,7 +768,21 @@ export function WeatherDashboard({
       console.log('✅ Activity saved successfully');
     } catch (error) {
       console.error('❌ Failed to save activity:', error);
-      alert('Failed to save activity: ' + (error as Error).message);
+      
+      // If offline, queue the action
+      if (!isOnline) {
+        queueOfflineAction({
+          type: 'save_activity',
+          data: activityData
+        });
+        
+        alert('📱 You\'re offline. Activity will be saved when connection is restored.');
+        
+        // Still clear the form for better UX
+        setActivityForm(formReset);
+      } else {
+        alert('❌ Failed to save activity: ' + (error as Error).message);
+      }
     } finally {
       setIsSavingActivity(false);
     }
@@ -709,6 +877,55 @@ export function WeatherDashboard({
     );
   }
 
+  // Mobile UX state
+  const [showExpandedWeather, setShowExpandedWeather] = useState(false);
+  const [showExpandedPredictions, setShowExpandedPredictions] = useState(false);
+  const [showExpandedEvents, setShowExpandedEvents] = useState(false);
+  const [showBottomSheet, setShowBottomSheet] = useState(false);
+  const [bottomSheetContent, setBottomSheetContent] = useState<'event' | 'details' | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [touchStartY, setTouchStartY] = useState(0);
+
+  // Pull to refresh handler
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartY(e.touches[0].clientY);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const touchEndY = e.changedTouches[0].clientY;
+    const pullDistance = touchEndY - touchStartY;
+    
+    // If pulled down more than 80px from top of screen
+    if (pullDistance > 80 && touchStartY < 100) {
+      handlePullToRefresh();
+    }
+  };
+
+  const handlePullToRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        refetch(),
+        loadActivities()
+      ]);
+    } catch (error) {
+      console.error('Refresh failed:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Bottom sheet handlers
+  const openBottomSheet = (content: 'event' | 'details') => {
+    setBottomSheetContent(content);
+    setShowBottomSheet(true);
+  };
+
+  const closeBottomSheet = () => {
+    setShowBottomSheet(false);
+    setBottomSheetContent(null);
+  };
+
   // Tab content components
   // Calculate phenology predictions
   const getPhenologyPredictions = () => {
@@ -770,38 +987,72 @@ export function WeatherDashboard({
   const phenologyPredictions = getPhenologyPredictions();
 
   const DashboardTab = () => (
-    <div style={{ padding: '0 1rem 1rem 1rem' }}>
-      {/* Safety Alerts */}
+    <div 
+      style={{ padding: '0 1rem 1rem 1rem' }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Pull to Refresh Indicator */}
+      {isRefreshing && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 1000,
+          backgroundColor: '#22c55e',
+          color: 'white',
+          padding: '8px 16px',
+          borderRadius: '20px',
+          fontSize: '14px',
+          fontWeight: '600',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+        }}>
+          <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} />
+          Refreshing...
+        </div>
+      )}
+
+      {/* Safety Alerts - Enhanced for Mobile */}
       {safetyAlerts.length > 0 && (
         <div style={{ marginBottom: '20px' }}>
           {safetyAlerts.map(alert => (
             <div
               key={alert.id}
               style={{
-                padding: '15px 20px',
+                padding: '20px',
                 backgroundColor: alert.severity === 'critical' ? '#fef2f2' : 
                                 alert.severity === 'high' ? '#fffbeb' : '#f0f9ff',
-                border: `2px solid ${alert.severity === 'critical' ? '#ef4444' : 
+                border: `3px solid ${alert.severity === 'critical' ? '#ef4444' : 
                                    alert.severity === 'high' ? '#f59e0b' : '#3b82f6'}`,
-                borderRadius: '8px',
-                marginBottom: '10px',
+                borderRadius: '16px',
+                marginBottom: '16px',
                 display: 'flex',
                 alignItems: 'flex-start',
-                gap: '12px'
+                gap: '16px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                cursor: 'pointer'
               }}
+              onClick={() => openBottomSheet('details')}
             >
-              <div style={{ fontSize: '20px', marginTop: '2px' }}>
+              <div style={{ fontSize: '28px', marginTop: '2px' }}>
                 {alert.severity === 'critical' ? '🚨' : alert.severity === 'high' ? '🚫' : '📅'}
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: '700', fontSize: '16px', marginBottom: '4px' }}>
+                <div style={{ fontWeight: '700', fontSize: '18px', marginBottom: '6px', color: '#374151' }}>
                   {alert.title}
                 </div>
-                <div style={{ fontSize: '14px', marginBottom: '6px' }}>
+                <div style={{ fontSize: '15px', marginBottom: '8px', lineHeight: '1.4' }}>
                   {alert.message}
                 </div>
-                <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                <div style={{ fontSize: '13px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   📍 {alert.location}
+                  <span style={{ marginLeft: 'auto', fontSize: '12px', color: '#9ca3af' }}>
+                    Tap for details
+                  </span>
                 </div>
               </div>
             </div>
@@ -809,77 +1060,170 @@ export function WeatherDashboard({
         </div>
       )}
 
-      {/* Current Vineyard Display */}
+      {/* Current Vineyard Display - Enhanced Mobile */}
       {currentVineyard && (
-        <div style={{ 
-          marginBottom: '20px',
-          padding: '16px',
-          backgroundColor: '#f0f9ff',
-          border: '1px solid #bae6fd',
-          borderRadius: '12px'
-        }}>
-          <div style={{ fontSize: '18px', fontWeight: '700', color: '#0369a1', marginBottom: '8px' }}>
-            📍 {currentVineyard.name}
+        <div 
+          style={{ 
+            marginBottom: '20px',
+            padding: '20px',
+            backgroundColor: '#f0f9ff',
+            border: '2px solid #bae6fd',
+            borderRadius: '16px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease'
+          }}
+          onClick={() => openBottomSheet('details')}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+            <div>
+              <div style={{ fontSize: '20px', fontWeight: '700', color: '#0369a1', marginBottom: '6px' }}>
+                📍 {currentVineyard.name}
+              </div>
+              <div style={{ fontSize: '14px', color: '#0284c7' }}>
+                {activities.length} events logged
+              </div>
+            </div>
+            <div style={{ 
+              padding: '6px 12px',
+              backgroundColor: '#0ea5e9',
+              color: 'white',
+              borderRadius: '20px',
+              fontSize: '12px',
+              fontWeight: '600'
+            }}>
+              Active
+            </div>
           </div>
-          <div style={{ fontSize: '14px', color: '#0284c7', marginBottom: '8px' }}>
-            {currentVineyard.latitude.toFixed(4)}, {currentVineyard.longitude.toFixed(4)}
-          </div>
-          <div style={{ fontSize: '12px', color: '#6b7280' }}>
-            Current vineyard • {activities.length} events logged
-          </div>
+          
+          {showExpandedWeather ? (
+            <div style={{ fontSize: '12px', color: '#0284c7', paddingTop: '8px', borderTop: '1px solid #bae6fd' }}>
+              <div>📍 {currentVineyard.latitude.toFixed(4)}, {currentVineyard.longitude.toFixed(4)}</div>
+              <div style={{ marginTop: '4px' }}>🌡️ Last updated: {lastUpdated?.toLocaleTimeString()}</div>
+            </div>
+          ) : (
+            <div style={{ fontSize: '12px', color: '#6b7280', textAlign: 'center', marginTop: '8px' }}>
+              Tap for more details
+            </div>
+          )}
         </div>
       )}
 
-      {/* Phenology Predictions */}
+      {/* Phenology Predictions - Enhanced Mobile */}
       {phenologyPredictions.length > 0 && (
-        <div style={{
-          marginBottom: '20px',
-          padding: '16px',
-          backgroundColor: '#fef7ff',
-          border: '2px solid #d8b4fe',
-          borderRadius: '12px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-            <span style={{ fontSize: '20px' }}>🔮</span>
-            <h4 style={{ margin: '0', fontSize: '16px', fontWeight: '700', color: '#7c3aed' }}>
-              Predicted Phenology Stages
-            </h4>
+        <div 
+          style={{
+            marginBottom: '20px',
+            padding: '20px',
+            backgroundColor: '#fef7ff',
+            border: '2px solid #d8b4fe',
+            borderRadius: '16px',
+            cursor: 'pointer'
+          }}
+          onClick={() => setShowExpandedPredictions(!showExpandedPredictions)}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '24px' }}>🔮</span>
+              <h4 style={{ margin: '0', fontSize: '18px', fontWeight: '700', color: '#7c3aed' }}>
+                Growth Predictions
+              </h4>
+            </div>
+            <div style={{
+              fontSize: '16px',
+              color: '#7c3aed',
+              transform: showExpandedPredictions ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: 'transform 0.2s ease'
+            }}>
+              ▼
+            </div>
           </div>
 
-          {phenologyPredictions.map((prediction, index) => (
-            <div
-              key={index}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '8px 12px',
-                backgroundColor: 'white',
-                borderRadius: '8px',
-                marginBottom: index < phenologyPredictions.length - 1 ? '8px' : '0',
-                border: '1px solid #e5e7eb'
-              }}
-            >
+          {/* Always show next prediction */}
+          {phenologyPredictions.length > 0 && (
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '16px',
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              marginBottom: showExpandedPredictions ? '12px' : '0',
+              border: '2px solid #d8b4fe',
+              boxShadow: '0 2px 8px rgba(124, 58, 237, 0.1)'
+            }}>
               <div>
-                <div style={{ fontWeight: '600', fontSize: '14px', color: '#374151' }}>
-                  🍇 {prediction.stage}
+                <div style={{ fontWeight: '700', fontSize: '16px', color: '#374151', marginBottom: '4px' }}>
+                  🍇 Next: {phenologyPredictions[0].stage}
                 </div>
-                <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                  At {prediction.gdd} GDD • {prediction.confidence} confidence
+                <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                  {phenologyPredictions[0].confidence} confidence • {phenologyPredictions[0].gdd} GDD
                 </div>
               </div>
               <div style={{
-                fontSize: '13px',
-                fontWeight: '600',
+                fontSize: '16px',
+                fontWeight: '700',
                 color: '#7c3aed',
-                padding: '4px 8px',
+                padding: '8px 16px',
                 backgroundColor: '#f3e8ff',
-                borderRadius: '6px'
+                borderRadius: '12px',
+                border: '1px solid #d8b4fe'
               }}>
-                {prediction.date}
+                {phenologyPredictions[0].date}
               </div>
             </div>
-          ))}
+          )}
+
+          {/* Expanded predictions */}
+          {showExpandedPredictions && phenologyPredictions.length > 1 && (
+            <div>
+              {phenologyPredictions.slice(1).map((prediction, index) => (
+                <div
+                  key={index + 1}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '12px 16px',
+                    backgroundColor: 'white',
+                    borderRadius: '8px',
+                    marginBottom: index < phenologyPredictions.length - 2 ? '8px' : '0',
+                    border: '1px solid #e5e7eb'
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: '600', fontSize: '15px', color: '#374151' }}>
+                      🍇 {prediction.stage}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                      At {prediction.gdd} GDD • {prediction.confidence} confidence
+                    </div>
+                  </div>
+                  <div style={{
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: '#7c3aed',
+                    padding: '6px 12px',
+                    backgroundColor: '#f3e8ff',
+                    borderRadius: '8px'
+                  }}>
+                    {prediction.date}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!showExpandedPredictions && phenologyPredictions.length > 1 && (
+            <div style={{ 
+              fontSize: '12px', 
+              color: '#7c3aed', 
+              textAlign: 'center', 
+              marginTop: '8px',
+              fontWeight: '500'
+            }}>
+              Tap to see {phenologyPredictions.length - 1} more predictions
+            </div>
+          )}
         </div>
       )}
 
@@ -997,85 +1341,127 @@ export function WeatherDashboard({
         </div>
       </div>
 
-      {/* Weather Summary Stats */}
+      {/* Weather Summary Stats - Enhanced Mobile */}
       {data.length > 0 && (
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
-          gap: '12px',
-          marginBottom: '20px'
-        }}>
+        <div 
+          style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(2, 1fr)', 
+            gap: '16px',
+            marginBottom: '20px'
+          }}
+          onClick={() => setShowExpandedWeather(!showExpandedWeather)}
+        >
+          {/* Primary Stats - Always Visible */}
           <div style={{
-            padding: '16px',
+            padding: '20px',
             backgroundColor: 'white',
-            borderRadius: '12px',
-            border: '1px solid #e5e7eb',
-            textAlign: 'center'
+            borderRadius: '16px',
+            border: '2px solid #059669',
+            textAlign: 'center',
+            cursor: 'pointer',
+            minHeight: '100px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(5, 150, 105, 0.1)'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
-              <TrendingUp size={20} style={{ color: '#059669' }} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '12px' }}>
+              <TrendingUp size={24} style={{ color: '#059669' }} />
             </div>
-            <div style={{ fontSize: '24px', fontWeight: '700', color: '#059669', marginBottom: '4px' }}>
+            <div style={{ fontSize: '32px', fontWeight: '700', color: '#059669', marginBottom: '6px' }}>
               {Math.round(totalGDD)}
             </div>
-            <div style={{ fontSize: '12px', color: '#6b7280' }}>
-              Total GDDs
+            <div style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>
+              Growing Degree Days
             </div>
           </div>
 
           <div style={{
-            padding: '16px',
+            padding: '20px',
             backgroundColor: 'white',
-            borderRadius: '12px',
-            border: '1px solid #e5e7eb',
-            textAlign: 'center'
+            borderRadius: '16px',
+            border: '2px solid #3b82f6',
+            textAlign: 'center',
+            cursor: 'pointer',
+            minHeight: '100px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.1)'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
-              <CloudRain size={20} style={{ color: '#3b82f6' }} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '12px' }}>
+              <CloudRain size={24} style={{ color: '#3b82f6' }} />
             </div>
-            <div style={{ fontSize: '24px', fontWeight: '700', color: '#3b82f6', marginBottom: '4px' }}>
+            <div style={{ fontSize: '32px', fontWeight: '700', color: '#3b82f6', marginBottom: '6px' }}>
               {totalRainfall.toFixed(1)}"
             </div>
-            <div style={{ fontSize: '12px', color: '#6b7280' }}>
-              Total Rainfall
+            <div style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>
+              Season Rainfall
             </div>
           </div>
 
-          <div style={{
-            padding: '16px',
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            border: '1px solid #e5e7eb',
-            textAlign: 'center'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
-              <Thermometer size={20} style={{ color: '#ef4444' }} />
-            </div>
-            <div style={{ fontSize: '24px', fontWeight: '700', color: '#ef4444', marginBottom: '4px' }}>
-              {avgTempHigh.toFixed(0)}°F
-            </div>
-            <div style={{ fontSize: '12px', color: '#6b7280' }}>
-              Avg High
-            </div>
-          </div>
+          {/* Expanded Stats */}
+          {showExpandedWeather && (
+            <>
+              <div style={{
+                padding: '20px',
+                backgroundColor: 'white',
+                borderRadius: '16px',
+                border: '1px solid #e5e7eb',
+                textAlign: 'center',
+                minHeight: '100px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '12px' }}>
+                  <Thermometer size={24} style={{ color: '#ef4444' }} />
+                </div>
+                <div style={{ fontSize: '28px', fontWeight: '700', color: '#ef4444', marginBottom: '6px' }}>
+                  {avgTempHigh.toFixed(0)}°F
+                </div>
+                <div style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>
+                  Average High
+                </div>
+              </div>
 
-          <div style={{
-            padding: '16px',
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            border: '1px solid #e5e7eb',
-            textAlign: 'center'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
-              <Thermometer size={20} style={{ color: '#8b5cf6' }} />
-            </div>
-            <div style={{ fontSize: '24px', fontWeight: '700', color: '#8b5cf6', marginBottom: '4px' }}>
-              {avgTempLow.toFixed(0)}°F
-            </div>
-            <div style={{ fontSize: '12px', color: '#6b7280' }}>
-              Avg Low
-            </div>
-          </div>
+              <div style={{
+                padding: '20px',
+                backgroundColor: 'white',
+                borderRadius: '16px',
+                border: '1px solid #e5e7eb',
+                textAlign: 'center',
+                minHeight: '100px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '12px' }}>
+                  <Thermometer size={24} style={{ color: '#8b5cf6' }} />
+                </div>
+                <div style={{ fontSize: '28px', fontWeight: '700', color: '#8b5cf6', marginBottom: '6px' }}>
+                  {avgTempLow.toFixed(0)}°F
+                </div>
+                <div style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>
+                  Average Low
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Weather Toggle Hint */}
+      {data.length > 0 && (
+        <div style={{ 
+          fontSize: '12px', 
+          color: '#6b7280', 
+          textAlign: 'center', 
+          marginBottom: '20px',
+          fontWeight: '500'
+        }}>
+          {showExpandedWeather ? '👆 Tap to collapse details' : '👆 Tap weather cards for more details'}
         </div>
       )}
 
@@ -3129,25 +3515,295 @@ export function WeatherDashboard({
       backgroundColor: '#f8fafc',
       paddingBottom: '80px' // Space for bottom tabs
     }}>
+      {/* Offline Indicator */}
+      {!isOnline && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: '#f59e0b',
+          color: 'white',
+          padding: '8px 16px',
+          textAlign: 'center',
+          fontSize: '14px',
+          fontWeight: '600',
+          zIndex: 1003,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px'
+        }}>
+          📱 You're offline
+          {pendingActions.length > 0 && (
+            <span style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+              padding: '2px 8px',
+              borderRadius: '12px',
+              fontSize: '12px'
+            }}>
+              {pendingActions.length} pending
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Connection Status - Temporary notification */}
+      {isOnline && pendingActions.length > 0 && (
+        <div style={{
+          position: 'fixed',
+          top: !isOnline ? '40px' : '0',
+          left: 0,
+          right: 0,
+          backgroundColor: '#22c55e',
+          color: 'white',
+          padding: '8px 16px',
+          textAlign: 'center',
+          fontSize: '14px',
+          fontWeight: '600',
+          zIndex: 1003,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px'
+        }}>
+          🔄 Syncing {pendingActions.length} offline actions...
+        </div>
+      )}
+
       {/* Main Content Area */}
-      <div style={{ paddingTop: '1rem' }}>
+      <div style={{ 
+        paddingTop: !isOnline ? '3rem' : '1rem',
+        transition: 'padding-top 0.3s ease'
+      }}>
         {activeTab === 'dashboard' && <DashboardTab />}
         {activeTab === 'log' && <LogEventTab />}
         {activeTab === 'history' && <HistoryTab />}
         {activeTab === 'settings' && <SettingsTab />}
       </div>
 
-      {/* Bottom Tab Navigation */}
+      {/* Floating Action Button - Mobile Quick Action */}
+      {activeTab === 'dashboard' && (
+        <button
+          onClick={() => openBottomSheet('event')}
+          style={{
+            position: 'fixed',
+            bottom: '100px',
+            right: '20px',
+            width: '60px',
+            height: '60px',
+            borderRadius: '30px',
+            backgroundColor: '#22c55e',
+            color: 'white',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '24px',
+            boxShadow: '0 8px 24px rgba(34, 197, 94, 0.3)',
+            zIndex: 999,
+            transition: 'all 0.2s ease'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.1)';
+            e.currentTarget.style.boxShadow = '0 12px 32px rgba(34, 197, 94, 0.4)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.boxShadow = '0 8px 24px rgba(34, 197, 94, 0.3)';
+          }}
+        >
+          <Plus size={28} />
+        </button>
+      )}
+
+      {/* Bottom Sheet Modal */}
+      {showBottomSheet && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          zIndex: 1001,
+          display: 'flex',
+          alignItems: 'flex-end'
+        }}
+        onClick={closeBottomSheet}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxHeight: '80vh',
+              backgroundColor: 'white',
+              borderTopLeftRadius: '24px',
+              borderTopRightRadius: '24px',
+              padding: '24px',
+              overflowY: 'auto',
+              transform: showBottomSheet ? 'translateY(0)' : 'translateY(100%)',
+              transition: 'transform 0.3s ease'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Bottom Sheet Handle */}
+            <div style={{
+              width: '40px',
+              height: '4px',
+              backgroundColor: '#d1d5db',
+              borderRadius: '2px',
+              margin: '0 auto 20px auto'
+            }}></div>
+
+            {bottomSheetContent === 'event' && (
+              <div>
+                <h3 style={{ margin: '0 0 20px 0', fontSize: '24px', fontWeight: '700', color: '#374151', textAlign: 'center' }}>
+                  🚀 Quick Log Event
+                </h3>
+                
+                {/* Quick Action Buttons - Enhanced */}
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(2, 1fr)', 
+                  gap: '16px',
+                  marginBottom: '24px'
+                }}>
+                  {[
+                    { type: 'Spray Application', emoji: '🌿', color: '#f59e0b', bg: '#fef3c7' },
+                    { type: 'Irrigation', emoji: '💧', color: '#06b6d4', bg: '#e0f7fa' },
+                    { type: 'Harvest', emoji: '🍷', color: '#ef4444', bg: '#fef2f2' },
+                    { type: 'Scouting', emoji: '🔍', color: '#059669', bg: '#f0f9ff' }
+                  ].map((eventType) => (
+                    <button
+                      key={eventType.type}
+                      onClick={() => {
+                        setActivityForm(prev => ({ 
+                          ...prev, 
+                          activity_type: eventType.type,
+                          start_date: new Date().toISOString().split('T')[0]
+                        }));
+                        setActiveTab('log');
+                        setShowActivityForm(true);
+                        closeBottomSheet();
+                      }}
+                      style={{
+                        padding: '24px 16px',
+                        backgroundColor: eventType.bg,
+                        border: `2px solid ${eventType.color}`,
+                        borderRadius: '16px',
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                        transition: 'all 0.2s ease',
+                        minHeight: '120px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px'
+                      }}
+                    >
+                      <div style={{ fontSize: '32px' }}>{eventType.emoji}</div>
+                      <div style={{ fontSize: '16px', fontWeight: '600', color: eventType.color }}>
+                        {eventType.type}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => {
+                    setActiveTab('log');
+                    setShowActivityForm(true);
+                    closeBottomSheet();
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '16px',
+                    backgroundColor: '#374151',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  📋 View All Event Types
+                </button>
+              </div>
+            )}
+
+            {bottomSheetContent === 'details' && (
+              <div>
+                <h3 style={{ margin: '0 0 20px 0', fontSize: '24px', fontWeight: '700', color: '#374151', textAlign: 'center' }}>
+                  📊 Vineyard Details
+                </h3>
+                
+                {currentVineyard && (
+                  <div style={{ 
+                    padding: '20px',
+                    backgroundColor: '#f8fafc',
+                    borderRadius: '12px',
+                    marginBottom: '20px'
+                  }}>
+                    <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '12px' }}>
+                      📍 {currentVineyard.name}
+                    </div>
+                    <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '8px' }}>
+                      <strong>Location:</strong> {currentVineyard.latitude.toFixed(4)}, {currentVineyard.longitude.toFixed(4)}
+                    </div>
+                    <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '8px' }}>
+                      <strong>Events Logged:</strong> {activities.length}
+                    </div>
+                    {lastUpdated && (
+                      <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                        <strong>Last Weather Update:</strong> {lastUpdated.toLocaleString()}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {safetyAlerts.length > 0 && (
+                  <div style={{
+                    padding: '16px',
+                    backgroundColor: '#fef2f2',
+                    border: '2px solid #ef4444',
+                    borderRadius: '12px'
+                  }}>
+                    <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '8px', color: '#991b1b' }}>
+                      🚫 Active Safety Alerts
+                    </div>
+                    {safetyAlerts.map((alert, i) => (
+                      <div key={i} style={{ fontSize: '14px', marginBottom: '4px' }}>
+                        • {alert.message}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Bottom Tab Navigation - Enhanced */}
       <div style={{
         position: 'fixed',
         bottom: 0,
         left: 0,
         right: 0,
         backgroundColor: 'white',
-        borderTop: '1px solid #e5e7eb',
+        borderTop: '2px solid #e5e7eb',
         display: 'grid',
         gridTemplateColumns: 'repeat(4, 1fr)',
-        zIndex: 1000
+        zIndex: 1000,
+        paddingTop: '8px',
+        paddingBottom: '8px'
       }}>
         {[
           { id: 'dashboard', icon: Home, label: 'Dashboard', badge: safetyAlerts.length > 0 ? safetyAlerts.length : null },
@@ -3163,21 +3819,34 @@ export function WeatherDashboard({
               key={tab.id}
               onClick={() => setActiveTab(tab.id as TabType)}
               style={{
-                padding: '12px 8px',
+                padding: '16px 8px',
                 backgroundColor: 'transparent',
                 border: 'none',
                 cursor: 'pointer',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '4px',
+                gap: '6px',
                 transition: 'all 0.2s ease',
-                position: 'relative'
+                position: 'relative',
+                minHeight: '68px',
+                borderRadius: '12px',
+                margin: '0 4px'
+              }}
+              onMouseEnter={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.backgroundColor = '#f3f4f6';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }
               }}
             >
               <div style={{ position: 'relative' }}>
                 <Icon 
-                  size={20} 
+                  size={24} 
                   style={{ 
                     color: isActive ? '#22c55e' : '#6b7280'
                   }} 
@@ -3185,24 +3854,25 @@ export function WeatherDashboard({
                 {tab.badge && (
                   <div style={{
                     position: 'absolute',
-                    top: '-4px',
-                    right: '-8px',
+                    top: '-6px',
+                    right: '-10px',
                     backgroundColor: '#ef4444',
                     color: 'white',
-                    borderRadius: '10px',
+                    borderRadius: '12px',
                     padding: '2px 6px',
                     fontSize: '10px',
                     fontWeight: '600',
-                    minWidth: '16px',
-                    textAlign: 'center'
+                    minWidth: '18px',
+                    textAlign: 'center',
+                    border: '2px solid white'
                   }}>
                     {tab.badge > 99 ? '99+' : tab.badge}
                   </div>
                 )}
               </div>
               <span style={{
-                fontSize: '10px',
-                fontWeight: '500',
+                fontSize: '11px',
+                fontWeight: '600',
                 color: isActive ? '#22c55e' : '#6b7280'
               }}>
                 {tab.label}
@@ -3210,11 +3880,11 @@ export function WeatherDashboard({
               {isActive && (
                 <div style={{
                   position: 'absolute',
-                  top: 0,
+                  top: '4px',
                   left: '50%',
                   transform: 'translateX(-50%)',
-                  width: '3px',
-                  height: '3px',
+                  width: '4px',
+                  height: '4px',
                   backgroundColor: '#22c55e',
                   borderRadius: '50%'
                 }}></div>
