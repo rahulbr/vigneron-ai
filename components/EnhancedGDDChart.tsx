@@ -350,8 +350,8 @@ export function EnhancedGDDChart({
 
           // Dispatch custom event with the clicked date
           if (clickedDate && typeof window !== 'undefined') {
-            const dateEvent = new CustomEvent('chartDateClicked', { 
-              detail: { date: clickedDate } 
+            const dateEvent = new CustomEvent('chartDateClicked', {
+              detail: { date: clickedDate }
             });
             window.dispatchEvent(dateEvent);
           }
@@ -599,39 +599,6 @@ export function EnhancedGDDChart({
             )}
           </div>
 
-          <button
-            onClick={() => {
-              console.log('📊 Add Event button clicked - opening Add Event form');
-              // Scroll to Event Log section
-              const eventLogSection = document.querySelector('[data-event-log-section]');
-              if (eventLogSection) {
-                eventLogSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }
-
-              // Directly click the Add Event button to open the form
-              setTimeout(() => {
-                const addEventButton = document.querySelector('[data-event-log-add-button]') as HTMLButtonElement;
-                if (addEventButton) {
-                  console.log('📊 Clicking Add Event button to open form');
-                  addEventButton.click();
-                } else {
-                  console.warn('📊 Could not find Add Event button');
-                }
-              }, 300);
-            }}
-            disabled={loading}
-            style={{
-              padding: "8px 16px",
-              backgroundColor: loading ? "#ccc" : "#22c55e",
-              color: "white",
-              border: "none",
-              borderRadius: "6px",
-              cursor: loading ? "not-allowed" : "pointer",
-              fontSize: "14px",
-            }}
-          >
-            Add Event
-          </button>
           <button
             onClick={loadPhenologyEvents}
             disabled={loading}
@@ -928,11 +895,11 @@ export function EnhancedGDDChart({
 
                 {/* Future projection line (dashed) */}
                 {futurePathData && (
-                  <path 
-                    d={futurePathData} 
-                    fill="none" 
-                    stroke="#94a3b8" 
-                    strokeWidth="2" 
+                  <path
+                    d={futurePathData}
+                    fill="none"
+                    stroke="#94a3b8"
+                    strokeWidth="2"
                     strokeDasharray="5,5"
                     opacity="0.7"
                   />
