@@ -1327,10 +1327,10 @@ export function WeatherDashboard({
               borderRadius: '8px'
             }}>
               <h5 style={{ margin: '0 0 12px 0', color: '#92400e', fontSize: '16px', fontWeight: '700' }}>
-                🌿 Spray Details
+                🌿 Spray Application Details
               </h5>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '12px' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
                     Product *
@@ -1352,8 +1352,24 @@ export function WeatherDashboard({
                     <option value="Captan">Captan</option>
                     <option value="Copper Sulfate">Copper Sulfate</option>
                     <option value="Sulfur">Sulfur</option>
+                    <option value="Mancozeb">Mancozeb</option>
+                    <option value="Chlorothalonil">Chlorothalonil</option>
+                    <option value="Propiconazole">Propiconazole</option>
+                    <option value="Myclobutanil">Myclobutanil</option>
+                    <option value="Tebuconazole">Tebuconazole</option>
+                    <option value="Imidacloprid">Imidacloprid</option>
+                    <option value="Spinosad">Spinosad</option>
+                    <option value="Carbaryl">Carbaryl</option>
+                    <option value="Malathion">Malathion</option>
                     <option value="Glyphosate">Glyphosate</option>
+                    <option value="2,4-D">2,4-D</option>
+                    <option value="Dicamba">Dicamba</option>
+                    <option value="Paraquat">Paraquat</option>
+                    <option value="Roundup">Roundup</option>
+                    <option value="Bt (Bacillus thuringiensis)">Bt (Bacillus thuringiensis)</option>
+                    <option value="Kaolin Clay">Kaolin Clay</option>
                     <option value="Neem Oil">Neem Oil</option>
+                    <option value="Horticultural Oil">Horticultural Oil</option>
                   </select>
                 </div>
 
@@ -1378,13 +1394,40 @@ export function WeatherDashboard({
 
                 <div>
                   <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
-                    Target
+                    Unit
+                  </label>
+                  <select
+                    value={activityForm.spray_unit}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, spray_unit: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #f59e0b',
+                      borderRadius: '6px',
+                      fontSize: '13px'
+                    }}
+                  >
+                    <option value="oz/acre">oz/acre</option>
+                    <option value="lbs/acre">lbs/acre</option>
+                    <option value="gal/acre">gal/acre</option>
+                    <option value="ml/L">ml/L</option>
+                    <option value="ppm">ppm</option>
+                    <option value="kg/ha">kg/ha</option>
+                    <option value="L/ha">L/ha</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                    Target Pest/Disease
                   </label>
                   <input
                     type="text"
                     value={activityForm.spray_target}
                     onChange={(e) => setActivityForm(prev => ({ ...prev, spray_target: e.target.value }))}
-                    placeholder="e.g. Powdery mildew"
+                    placeholder="e.g. Powdery mildew, aphids"
                     style={{
                       width: '100%',
                       padding: '8px 12px',
@@ -1394,6 +1437,53 @@ export function WeatherDashboard({
                     }}
                   />
                 </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                    Equipment Used
+                  </label>
+                  <select
+                    value={activityForm.spray_equipment}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, spray_equipment: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #f59e0b',
+                      borderRadius: '6px',
+                      fontSize: '13px'
+                    }}
+                  >
+                    <option value="">Select equipment...</option>
+                    <option value="Airblast Sprayer">Airblast Sprayer</option>
+                    <option value="Boom Sprayer">Boom Sprayer</option>
+                    <option value="Backpack Sprayer">Backpack Sprayer</option>
+                    <option value="Handheld Sprayer">Handheld Sprayer</option>
+                    <option value="Helicopter">Helicopter</option>
+                    <option value="Drone">Drone</option>
+                    <option value="Mist Blower">Mist Blower</option>
+                    <option value="Electrostatic Sprayer">Electrostatic Sprayer</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                  Weather Conditions
+                </label>
+                <textarea
+                  value={activityForm.spray_conditions}
+                  onChange={(e) => setActivityForm(prev => ({ ...prev, spray_conditions: e.target.value }))}
+                  placeholder="e.g. Temp: 68°F, Wind: 3mph N, Humidity: 45%, Clear skies"
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '1px solid #f59e0b',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    minHeight: '60px',
+                    resize: 'vertical'
+                  }}
+                />
               </div>
             </div>
           )}
@@ -1411,10 +1501,10 @@ export function WeatherDashboard({
                 💧 Irrigation Details
               </h5>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '12px' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#0e7490' }}>
-                    Amount
+                    Amount *
                   </label>
                   <input
                     type="text"
@@ -1448,13 +1538,17 @@ export function WeatherDashboard({
                   >
                     <option value="inches">inches</option>
                     <option value="gallons">gallons</option>
+                    <option value="gal/acre">gal/acre</option>
                     <option value="acre-feet">acre-feet</option>
+                    <option value="liters">liters</option>
+                    <option value="L/ha">L/ha</option>
+                    <option value="mm">mm</option>
                   </select>
                 </div>
 
                 <div>
                   <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#0e7490' }}>
-                    Method
+                    Method *
                   </label>
                   <select
                     value={activityForm.irrigation_method}
@@ -1468,11 +1562,34 @@ export function WeatherDashboard({
                     }}
                   >
                     <option value="">Select method...</option>
-                    <option value="Drip">Drip</option>
-                    <option value="Sprinkler">Sprinkler</option>
-                    <option value="Furrow">Furrow</option>
-                    <option value="Micro-spray">Micro-spray</option>
+                    <option value="Drip">Drip Irrigation</option>
+                    <option value="Micro Sprinkler">Micro Sprinkler</option>
+                    <option value="Overhead Sprinkler">Overhead Sprinkler</option>
+                    <option value="Furrow">Furrow Irrigation</option>
+                    <option value="Flood">Flood Irrigation</option>
+                    <option value="Subsurface Drip">Subsurface Drip</option>
+                    <option value="Micro-jet">Micro-jet</option>
+                    <option value="Hand Watering">Hand Watering</option>
                   </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#0e7490' }}>
+                    Duration
+                  </label>
+                  <input
+                    type="text"
+                    value={activityForm.irrigation_duration}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, irrigation_duration: e.target.value }))}
+                    placeholder="e.g. 4 hours, 30 minutes"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #06b6d4',
+                      borderRadius: '6px',
+                      fontSize: '13px'
+                    }}
+                  />
                 </div>
               </div>
             </div>
@@ -1488,13 +1605,13 @@ export function WeatherDashboard({
               borderRadius: '8px'
             }}>
               <h5 style={{ margin: '0 0 12px 0', color: '#1e40af', fontSize: '16px', fontWeight: '700' }}>
-                🌱 Fertilizer Details
+                🌱 Fertilization Details
               </h5>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '12px' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#1e40af' }}>
-                    Type *
+                    Fertilizer Type *
                   </label>
                   <select
                     value={activityForm.fertilizer_type}
@@ -1509,12 +1626,20 @@ export function WeatherDashboard({
                   >
                     <option value="">Select fertilizer...</option>
                     <option value="Organic Compost">Organic Compost</option>
+                    <option value="Well-rotted Manure">Well-rotted Manure</option>
                     <option value="Nitrogen (N)">Nitrogen (N)</option>
                     <option value="Phosphorus (P)">Phosphorus (P)</option>
                     <option value="Potassium (K)">Potassium (K)</option>
                     <option value="NPK Blend">NPK Blend</option>
-                    <option value="Calcium">Calcium</option>
-                    <option value="Magnesium">Magnesium</option>
+                    <option value="Calcium Carbonate">Calcium Carbonate</option>
+                    <option value="Magnesium Sulfate">Magnesium Sulfate</option>
+                    <option value="Ammonium Sulfate">Ammonium Sulfate</option>
+                    <option value="Urea">Urea</option>
+                    <option value="Triple Superphosphate">Triple Superphosphate</option>
+                    <option value="Muriate of Potash">Muriate of Potash</option>
+                    <option value="Bone Meal">Bone Meal</option>
+                    <option value="Fish Emulsion">Fish Emulsion</option>
+                    <option value="Kelp Meal">Kelp Meal</option>
                   </select>
                 </div>
 
@@ -1526,7 +1651,7 @@ export function WeatherDashboard({
                     type="text"
                     value={activityForm.fertilizer_npk}
                     onChange={(e) => setActivityForm(prev => ({ ...prev, fertilizer_npk: e.target.value }))}
-                    placeholder="e.g. 20-10-10"
+                    placeholder="e.g. 20-10-10, 0-0-60"
                     style={{
                       width: '100%',
                       padding: '8px 12px',
@@ -1555,6 +1680,58 @@ export function WeatherDashboard({
                     }}
                   />
                 </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#1e40af' }}>
+                    Unit
+                  </label>
+                  <select
+                    value={activityForm.fertilizer_unit}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, fertilizer_unit: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #3b82f6',
+                      borderRadius: '6px',
+                      fontSize: '13px'
+                    }}
+                  >
+                    <option value="lbs/acre">lbs/acre</option>
+                    <option value="kg/ha">kg/ha</option>
+                    <option value="tons/acre">tons/acre</option>
+                    <option value="oz/vine">oz/vine</option>
+                    <option value="g/vine">g/vine</option>
+                    <option value="gal/acre">gal/acre</option>
+                    <option value="L/ha">L/ha</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#1e40af' }}>
+                  Application Method
+                </label>
+                <select
+                  value={activityForm.fertilizer_method}
+                  onChange={(e) => setActivityForm(prev => ({ ...prev, fertilizer_method: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '1px solid #3b82f6',
+                    borderRadius: '6px',
+                    fontSize: '13px'
+                  }}
+                >
+                  <option value="">Select application method...</option>
+                  <option value="Broadcast">Broadcast</option>
+                  <option value="Banded">Banded</option>
+                  <option value="Foliar Spray">Foliar Spray</option>
+                  <option value="Fertigation">Fertigation (through irrigation)</option>
+                  <option value="Soil Injection">Soil Injection</option>
+                  <option value="Sidedress">Sidedress</option>
+                  <option value="Topdress">Topdress</option>
+                  <option value="Incorporation">Incorporation</option>
+                </select>
               </div>
             </div>
           )}
@@ -1642,6 +1819,181 @@ export function WeatherDashboard({
                     <option value="North">North</option>
                     <option value="South">South</option>
                   </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Pruning Details */}
+          {activityForm.activity_type === 'Pruning' && (
+            <div style={{
+              marginBottom: '16px',
+              padding: '16px',
+              backgroundColor: '#fff7ed',
+              border: '2px solid #ea580c',
+              borderRadius: '8px'
+            }}>
+              <h5 style={{ margin: '0 0 12px 0', color: '#c2410c', fontSize: '16px', fontWeight: '700' }}>
+                ✂️ Pruning Details
+              </h5>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#c2410c' }}>
+                    Pruning Type *
+                  </label>
+                  <select
+                    value={activityForm.canopy_activity}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, canopy_activity: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #ea580c',
+                      borderRadius: '6px',
+                      fontSize: '13px'
+                    }}
+                  >
+                    <option value="">Select pruning type...</option>
+                    <option value="Dormant Pruning">Dormant Pruning</option>
+                    <option value="Summer Pruning">Summer Pruning</option>
+                    <option value="Cane Pruning">Cane Pruning</option>
+                    <option value="Spur Pruning">Spur Pruning</option>
+                    <option value="Sucker Removal">Sucker Removal</option>
+                    <option value="Shoot Positioning">Shoot Positioning</option>
+                    <option value="Renewal Pruning">Renewal Pruning</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#c2410c' }}>
+                    Intensity
+                  </label>
+                  <select
+                    value={activityForm.canopy_intensity}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, canopy_intensity: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #ea580c',
+                      borderRadius: '6px',
+                      fontSize: '13px'
+                    }}
+                  >
+                    <option value="">Select intensity...</option>
+                    <option value="Light">Light</option>
+                    <option value="Moderate">Moderate</option>
+                    <option value="Heavy">Heavy</option>
+                    <option value="Severe">Severe</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#c2410c' }}>
+                    Growth Stage
+                  </label>
+                  <select
+                    value={activityForm.canopy_stage}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, canopy_stage: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #ea580c',
+                      borderRadius: '6px',
+                      fontSize: '13px'
+                    }}
+                  >
+                    <option value="">Select stage...</option>
+                    <option value="Dormant">Dormant</option>
+                    <option value="Bud Swell">Bud Swell</option>
+                    <option value="Bud Break">Bud Break</option>
+                    <option value="Early Shoot Growth">Early Shoot Growth</option>
+                    <option value="Pre-Bloom">Pre-Bloom</option>
+                    <option value="Post-Harvest">Post-Harvest</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Soil Work Details */}
+          {activityForm.activity_type === 'Soil Work' && (
+            <div style={{
+              marginBottom: '16px',
+              padding: '16px',
+              backgroundColor: '#fefce8',
+              border: '2px solid #ca8a04',
+              borderRadius: '8px'
+            }}>
+              <h5 style={{ margin: '0 0 12px 0', color: '#a16207', fontSize: '16px', fontWeight: '700' }}>
+                🌍 Soil Work Details
+              </h5>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#a16207' }}>
+                    Activity Type *
+                  </label>
+                  <select
+                    value={activityForm.canopy_activity}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, canopy_activity: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #ca8a04',
+                      borderRadius: '6px',
+                      fontSize: '13px'
+                    }}
+                  >
+                    <option value="">Select soil work...</option>
+                    <option value="Tillage">Tillage</option>
+                    <option value="Cultivation">Cultivation</option>
+                    <option value="Discing">Discing</option>
+                    <option value="Subsoiling">Subsoiling</option>
+                    <option value="Cover Crop Planting">Cover Crop Planting</option>
+                    <option value="Cover Crop Termination">Cover Crop Termination</option>
+                    <option value="Weed Control">Weed Control</option>
+                    <option value="Soil Amendment">Soil Amendment</option>
+                    <option value="Mulching">Mulching</option>
+                    <option value="Erosion Control">Erosion Control</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#a16207' }}>
+                    Equipment Used
+                  </label>
+                  <input
+                    type="text"
+                    value={activityForm.spray_equipment}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, spray_equipment: e.target.value }))}
+                    placeholder="e.g. Disc harrow, Cultivator"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #ca8a04',
+                      borderRadius: '6px',
+                      fontSize: '13px'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#a16207' }}>
+                    Depth/Intensity
+                  </label>
+                  <input
+                    type="text"
+                    value={activityForm.canopy_intensity}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, canopy_intensity: e.target.value }))}
+                    placeholder="e.g. 6 inches, Light"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #ca8a04',
+                      borderRadius: '6px',
+                      fontSize: '13px'
+                    }}
+                  />
                 </div>
               </div>
             </div>
@@ -1750,7 +2102,7 @@ export function WeatherDashboard({
                 🍇 Harvest Details
               </h5>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '12px' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#991b1b' }}>
                     Yield
@@ -1772,7 +2124,33 @@ export function WeatherDashboard({
 
                 <div>
                   <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#991b1b' }}>
-                    Brix
+                    Unit
+                  </label>
+                  <select
+                    value={activityForm.harvest_unit}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, harvest_unit: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #dc2626',
+                      borderRadius: '6px',
+                      fontSize: '13px'
+                    }}
+                  >
+                    <option value="tons/acre">tons/acre</option>
+                    <option value="lbs/acre">lbs/acre</option>
+                    <option value="kg/ha">kg/ha</option>
+                    <option value="tons/ha">tons/ha</option>
+                    <option value="lugs">lugs</option>
+                    <option value="bins">bins</option>
+                    <option value="pounds">pounds</option>
+                    <option value="kilograms">kilograms</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#991b1b' }}>
+                    Brix (°Bx)
                   </label>
                   <input
                     type="text"
@@ -1807,16 +2185,37 @@ export function WeatherDashboard({
                     }}
                   />
                 </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#991b1b' }}>
+                    Titratable Acidity (TA)
+                  </label>
+                  <input
+                    type="text"
+                    value={activityForm.harvest_ta}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, harvest_ta: e.target.value }))}
+                    placeholder="e.g. 6.5 g/L"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #dc2626',
+                      borderRadius: '6px',
+                      fontSize: '13px'
+                    }}
+                  />
+                </div>
 
                 <div>
                   <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#991b1b' }}>
-                    Block
+                    Block/Section
                   </label>
                   <input
                     type="text"
                     value={activityForm.harvest_block}
                     onChange={(e) => setActivityForm(prev => ({ ...prev, harvest_block: e.target.value }))}
-                    placeholder="e.g. Block A"
+                    placeholder="e.g. Block A, North Section"
                     style={{
                       width: '100%',
                       padding: '8px 12px',
