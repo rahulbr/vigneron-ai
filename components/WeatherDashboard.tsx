@@ -127,22 +127,7 @@ export function WeatherDashboard({
     }
   };
 
-  const saveToCacheEffect = useEffect(() => {
-    if (data.length > 0 || activities.length > 0) {
-      const cacheData = {
-        weather: data,
-        activities: activities,
-        lastUpdate: new Date().toISOString()
-      };
-      
-      try {
-        localStorage.setItem('vineyard_cached_data', JSON.stringify(cacheData));
-        setCachedData(cacheData);
-      } catch (error) {
-        console.error('Failed to cache data:', error);
-      }
-    }
-  }, [data, activities]);
+  
 
   const queueOfflineAction = (action: any) => {
     const newAction = {
@@ -321,6 +306,24 @@ export function WeatherDashboard({
   };
 
   const { data, loading, error, lastUpdated, refetch, retry, clearError } = useWeather(weatherOptions);
+
+  // Cache data effect - moved after data initialization
+  useEffect(() => {
+    if (data && data.length > 0 || activities.length > 0) {
+      const cacheData = {
+        weather: data || [],
+        activities: activities,
+        lastUpdate: new Date().toISOString()
+      };
+      
+      try {
+        localStorage.setItem('vineyard_cached_data', JSON.stringify(cacheData));
+        setCachedData(cacheData);
+      } catch (error) {
+        console.error('Failed to cache data:', error);
+      }
+    }
+  }, [data, activities]);
 
   // All your existing useEffect hooks and functions (unchanged - keeping all the business logic)
   useEffect(() => {
