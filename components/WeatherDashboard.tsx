@@ -600,7 +600,7 @@ export function WeatherDashboard({
         const updates: any = {
           event_type: eventTypeMap[activityForm.activity_type] || activityForm.activity_type.toLowerCase().replace(/ /g, '_'),
           event_date: activityForm.start_date,
-          notes: enhancedNotes
+          notes: enhancedNotes // Use enhancedNotes for consistency
         };
 
         if (activityForm.end_date) updates.end_date = activityForm.end_date;
@@ -690,7 +690,16 @@ export function WeatherDashboard({
         setEditingEvent(null);
         alert('Activity updated successfully!');
       } else {
-        // Create new event
+        // Create new event - include phenology data for specific phenology events
+        let actualPhenologyData = undefined;
+        if (['Bud Break', 'Bloom', 'Fruit Set', 'Veraison'].includes(activityForm.activity_type)) {
+          actualPhenologyData = {
+            stage: activityForm.activity_type, // Use the selected activity type as the stage
+            percent_complete: activityForm.phenology_percent_complete,
+            location_estimate: activityForm.phenology_location
+          };
+        }
+
         await savePhenologyEvent(
           vineyardId,
           eventTypeMap[activityForm.activity_type] || activityForm.activity_type.toLowerCase().replace(/ /g, '_'),
@@ -705,7 +714,7 @@ export function WeatherDashboard({
           harvestData,
           canopyData,
           scoutData,
-          phenologyData, // Pass phenology data
+          actualPhenologyData, // Pass phenology data for specific events
           ripenessData // Pass ripeness data
         );
         console.log('✅ Activity saved successfully');
@@ -732,7 +741,7 @@ export function WeatherDashboard({
         irrigation_method: '',
         irrigation_duration: '',
         irrigation_measurement_method: '',
-        irrigation_measurement_value: '', // Added for user feedback
+        irrigation_measurement_value: '',
         fertilizer_type: '',
         fertilizer_npk: '',
         fertilizer_rate: '',
@@ -2692,7 +2701,7 @@ export function WeatherDashboard({
               {activityForm.location_lat && activityForm.location_lng ? (
                 <div style={{
                   padding: '8px',
-                  backgroundColor: '#f0fdf4',
+                  backgroundColor: '#f0f9f4',
                   border: '1px solid #bbf7d0',
                   borderRadius: '6px',
                   marginBottom: '8px',
