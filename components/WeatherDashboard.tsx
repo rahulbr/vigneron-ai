@@ -107,6 +107,7 @@ export function WeatherDashboard({
     irrigation_method: '',
     irrigation_duration: '',
     irrigation_measurement_method: '', // Added for user feedback
+    irrigation_measurement_value: '', // Added for user feedback
     fertilizer_type: '',
     fertilizer_npk: '',
     fertilizer_rate: '',
@@ -162,6 +163,7 @@ export function WeatherDashboard({
     irrigation_method: '',
     irrigation_duration: '',
     irrigation_measurement_method: '',
+    irrigation_measurement_value: '',
     fertilizer_type: '',
     fertilizer_npk: '',
     fertilizer_rate: '',
@@ -459,7 +461,8 @@ export function WeatherDashboard({
           unit: activityForm.irrigation_unit,
           method: activityForm.irrigation_method,
           duration: activityForm.irrigation_duration,
-          measurement_method: activityForm.irrigation_measurement_method // Added for user feedback
+          measurement_method: activityForm.irrigation_measurement_method, // Added for user feedback
+          measurement_value: activityForm.irrigation_measurement_value // Added for user feedback
         };
       }
 
@@ -634,6 +637,7 @@ export function WeatherDashboard({
           if (irrigationData.method) updates.irrigation_method = irrigationData.method;
           if (irrigationData.duration) updates.irrigation_duration = irrigationData.duration;
           if (irrigationData.measurement_method) updates.irrigation_measurement_method = irrigationData.measurement_method;
+          if (irrigationData.measurement_value) updates.irrigation_measurement_value = irrigationData.measurement_value;
         }
 
         if (fertilizationData) {
@@ -728,6 +732,7 @@ export function WeatherDashboard({
         irrigation_method: '',
         irrigation_duration: '',
         irrigation_measurement_method: '',
+        irrigation_measurement_value: '', // Added for user feedback
         fertilizer_type: '',
         fertilizer_npk: '',
         fertilizer_rate: '',
@@ -1444,7 +1449,7 @@ export function WeatherDashboard({
                       activity_type: selectedType,
                       // Reset other fields if needed when type changes, or set defaults
                       spray_product: '', spray_quantity: '', spray_unit: 'oz/acre', spray_target: '', spray_conditions: '', spray_equipment: '',
-                      irrigation_amount: '', irrigation_unit: 'inches', irrigation_method: '', irrigation_duration: '', irrigation_measurement_method: '',
+                      irrigation_amount: '', irrigation_unit: 'inches', irrigation_method: '', irrigation_duration: '', irrigation_measurement_method: '', irrigation_measurement_value: '',
                       fertilizer_type: '', fertilizer_npk: '', fertilizer_rate: '', fertilizer_unit: 'lbs/acre', fertilizer_method: '',
                       harvest_yield: '', harvest_unit: 'tons/acre', harvest_brix: '', harvest_ph: '', harvest_ta: '', harvest_block: '',
                       phenology_stage: '', phenology_percent_complete: '', phenology_location: '',
@@ -2807,6 +2812,7 @@ export function WeatherDashboard({
                       irrigation_method: '',
                       irrigation_duration: '',
                       irrigation_measurement_method: '',
+                      irrigation_measurement_value: '',
                       fertilizer_type: '',
                       fertilizer_npk: '',
                       fertilizer_rate: '',
@@ -2869,15 +2875,18 @@ export function WeatherDashboard({
                   opacity: isSavingActivity ? 0.7 : 1
                 }}
               >
-                {isSavingActivity && <div style={{
-                  width: '16px',
-                  height: '16px',
-                  border: '2px solid transparent',
-                  borderTop: '2px solid white',
-                  borderRadius: '50%',
-                  animation: 'spin 1s linear infinite'
-                }}></div>}
-                {isSavingActivity ? 'Saving...' : (editingEvent ? 'Update Event' : 'Save Activity')}
+                {isSavingActivity ? (
+                  <div style={{
+                    width: '16px',
+                    height: '16px',
+                    border: '2px solid transparent',
+                    borderTop: '2px solid white',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite'
+                  }}></div>
+                ) : (
+                  isSavingActivity ? 'Saving...' : (editingEvent ? 'Update Event' : 'Save Activity')
+                )}
               </button>
             </div>
           </div>
@@ -2990,6 +2999,7 @@ export function WeatherDashboard({
         details.push(`Amount: ${activity.irrigation_amount} ${activity.irrigation_unit || ''}`);
         if (activity.irrigation_method) details.push(`Method: ${activity.irrigation_method}`);
         if (activity.irrigation_measurement_method) details.push(`Measurement: ${activity.irrigation_measurement_method}`);
+        if (activity.irrigation_measurement_value) details.push(`Value: ${activity.irrigation_measurement_value}`);
       }
 
       if (activity.ripeness_brix || activity.ripeness_ph || activity.ripeness_ta || activity.ripeness_seed_brownness || activity.ripeness_block_estimates) {
@@ -3050,6 +3060,7 @@ export function WeatherDashboard({
         irrigation_method: activity.irrigation_method || '',
         irrigation_duration: activity.irrigation_duration || '',
         irrigation_measurement_method: activity.irrigation_measurement_method || '',
+        irrigation_measurement_value: activity.irrigation_measurement_value || '',
         fertilizer_type: activity.fertilizer_type || '',
         fertilizer_npk: activity.fertilizer_npk || '',
         fertilizer_rate: activity.fertilizer_rate || '',
