@@ -2663,6 +2663,84 @@ export function WeatherDashboard({
               </div>
             )}
 
+            {/* Phenology Details for Bud Break, Bloom, Fruit Set, and Veraison */}
+            {['Bud Break', 'Bloom', 'Fruit Set', 'Veraison'].includes(activityForm.activity_type) && (
+              <div style={{
+                marginBottom: '16px',
+                padding: '16px',
+                backgroundColor: '#f0f9ff',
+                border: '2px solid #3b82f6',
+                borderRadius: '8px'
+              }}>
+                <h5 style={{ margin: '0 0 12px 0', color: '#1e40af', fontSize: '16px', fontWeight: '600' }}>
+                  🌱 {activityForm.activity_type} Details
+                </h5>
+
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#1e40af' }}>
+                    % Complete *
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="5"
+                      value={activityForm.phenology_percent_complete || ''}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, phenology_percent_complete: e.target.value }))}
+                      placeholder="0-100%"
+                      required
+                      style={{
+                        width: '80px',
+                        padding: '8px 12px',
+                        border: '2px solid #3b82f6',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    />
+                    <span style={{ fontSize: '13px', color: '#1e40af', fontWeight: '600' }}>%</span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="5"
+                      value={activityForm.phenology_percent_complete || '0'}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, phenology_percent_complete: e.target.value }))}
+                      style={{ 
+                        flex: 1,
+                        accentColor: '#3b82f6'
+                      }}
+                    />
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
+                    Estimate the percentage of {activityForm.activity_type.toLowerCase()} completion across the vineyard
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#1e40af' }}>
+                    Block/Location Estimate (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={activityForm.phenology_location || ''}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, phenology_location: e.target.value }))}
+                    placeholder="e.g. Block A: 75%, Block B: 60%, East vineyard: 80%"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #3b82f6',
+                      borderRadius: '6px',
+                      fontSize: '13px'
+                    }}
+                  />
+                  <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
+                    Optional: Break down completion by specific blocks or vineyard sections
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
                 Notes
@@ -2868,14 +2946,27 @@ export function WeatherDashboard({
 
               <button
                 onClick={saveActivity}
-                disabled={isSavingActivity || !activityForm.activity_type || !activityForm.start_date}
+                disabled={
+                  isSavingActivity || 
+                  !activityForm.activity_type || 
+                  !activityForm.start_date ||
+                  (['Bud Break', 'Bloom', 'Fruit Set', 'Veraison'].includes(activityForm.activity_type) && !activityForm.phenology_percent_complete)
+                }
                 style={{
                   padding: '12px 24px',
-                  backgroundColor: (!activityForm.activity_type || !activityForm.start_date) ? '#d1d5db' : '#22c55e',
+                  backgroundColor: (
+                    !activityForm.activity_type || 
+                    !activityForm.start_date ||
+                    (['Bud Break', 'Bloom', 'Fruit Set', 'Veraison'].includes(activityForm.activity_type) && !activityForm.phenology_percent_complete)
+                  ) ? '#d1d5db' : '#22c55e',
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
-                  cursor: (!activityForm.activity_type || !activityForm.start_date) ? 'not-allowed' : 'pointer',
+                  cursor: (
+                    !activityForm.activity_type || 
+                    !activityForm.start_date ||
+                    (['Bud Break', 'Bloom', 'Fruit Set', 'Veraison'].includes(activityForm.activity_type) && !activityForm.phenology_percent_complete)
+                  ) ? 'not-allowed' : 'pointer',
                   fontSize: '16px',
                   fontWeight: '600',
                   display: 'flex',
