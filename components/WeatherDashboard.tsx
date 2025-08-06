@@ -531,24 +531,20 @@ export function WeatherDashboard({
         };
       }
 
+      // Event type mapping for database storage - updated to match database constraints
       const eventTypeMap: { [key: string]: string } = {
-        'Spray Application': 'spray_application',
-        'Irrigation': 'irrigation',
-        'Fertilization': 'fertilization',
-        'Harvest': 'harvest',
-        'Canopy Management': 'canopy_management',
-        'Scouting': 'scouting',
-        'Phenology Tracking': 'phenology',
-        'Ripeness Tracking': 'ripeness',
-        'Bud Break': 'budbreak',
-        'Bloom': 'bloom',
+        'Bud Break': 'bud_break',
+        'Bloom': 'bloom', 
         'Fruit Set': 'fruit_set',
         'Veraison': 'veraison',
-        'Pruning': 'pruning',
-        'Soil Work': 'soil_work',
-        'Equipment Maintenance': 'equipment_maintenance',
-        'Pest': 'pest',
-        'Other': 'other'
+        'Harvest': 'harvest',
+        'Spray Application': 'spray_application',
+        'Fertilization': 'fertilization',
+        'Irrigation': 'irrigation',
+        'Canopy Management': 'canopy_management',
+        'Scouting': 'scouting',
+        'Phenology Tracking': 'phenology_tracking',
+        'Ripeness Tracking': 'ripeness_tracking'
       };
 
       // Add any additional activity-specific data to notes
@@ -2659,6 +2655,9 @@ export function WeatherDashboard({
                       fontSize: '13px'
                     }}
                   />
+                  <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
+                    Optional: Break down completion by specific blocks or vineyard sections
+                  </div>
                 </div>
               </div>
             )}
@@ -3076,9 +3075,6 @@ export function WeatherDashboard({
       'Pest': 'Pest Observation',
       'Other': 'Other'
     };
-
-    // Get unique event types from activities for dynamic filter
-    const uniqueEventTypes = [...new Set(activities.map(a => a.event_type))].sort();
 
     const getEventDetails = (activity: any) => {
       let details = [];
