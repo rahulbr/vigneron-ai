@@ -1,83 +1,15 @@
+
 // components/AuthWrapper.tsx
-import React, { useState, useEffect } from 'react'
-import { supabase, signInWithEmail, signUpWithEmail, signOut } from '../lib/supabase'
-import { User } from '@supabase/supabase-js'
-
-interface AuthWrapperProps {
-  children: React.ReactNode
-}
-
-const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [isSignUp, setIsSignUp] = useState(false)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    // Get initial session
-    const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
-      setLoading(false)
-    }
-
-    getInitialSession()
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null)
-        setLoading(false)
-      }
-    )
-
-    return () => subscription.unsubscribe()
-  }, [])
-
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
-
-    try {
-      if (isSignUp) {
-        const { error } = await signUpWithEmail(email, password)
-        if (error) throw error
-        alert('Check your email for verification link!')
-      } else {
-        const { error } = await signInWithEmail(email, password)
-        if (error) throw error
-      }
-    } catch (error: any) {
-      setError(error.message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleSignOut = async () => {
-    await signOut()
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">Loading...</div>
-      </div>
-    )
-  }
-
-  import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { User } from '@supabase/supabase-js';
 
 interface AuthWrapperProps {
   children: React.ReactNode;
 }
 
 export const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
@@ -127,6 +59,10 @@ export const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
   };
 
   if (loading) {
@@ -189,7 +125,7 @@ export const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
                   marginBottom: '0.5rem',
                   color: '#374151'
                 }}>
-                  Email
+                  Email Address
                 </label>
                 <input
                   type="email"
@@ -201,9 +137,11 @@ export const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
                     width: '100%',
                     padding: '0.75rem',
                     border: '1px solid #d1d5db',
-                    borderRadius: '0.5rem',
-                    fontSize: '1rem'
+                    borderRadius: '8px',
+                    fontSize: '1rem',
+                    transition: 'all 0.2s ease'
                   }}
+                  placeholder="Enter your email"
                 />
               </div>
               
@@ -227,119 +165,10 @@ export const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
                     width: '100%',
                     padding: '0.75rem',
                     border: '1px solid #d1d5db',
-                    borderRadius: '0.5rem',
-                    fontSize: '1rem'
-                  }}
-                />
-              </div>
-            </div>
-
-            {error && (
-              <div style={{
-                padding: '0.75rem',
-                backgroundColor: '#fef2f2',
-                border: '1px solid #fecaca',
-                borderRadius: '0.5rem',
-                color: '#991b1b',
-                fontSize: '0.875rem'
-              }}>
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                backgroundColor: loading ? '#9ca3af' : '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '0.5rem',
-                fontSize: '1rem',
-                fontWeight: '600',
-                cursor: loading ? 'not-allowed' : 'pointer'
-              }}
-            >
-              {loading ? 'Loading...' : (isSignUp ? 'Sign Up' : 'Sign In')}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsSignUp(!isSignUp)}
-              style={{
-                width: '100%',
-                padding: '0.5rem',
-                backgroundColor: 'transparent',
-                color: '#3b82f6',
-                border: 'none',
-                fontSize: '0.875rem',
-                cursor: 'pointer',
-                textDecoration: 'underline'
-              }}
-            >
-              {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
-  return <>{children}</>;
-};
-
-export default AuthWrapper;0', 
-                  color: '#374151',
-                  marginBottom: '0.5rem'
-                }}>
-                  Email Address
-                </label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  style={{ 
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid #d1d5db',
                     borderRadius: '8px',
                     fontSize: '1rem',
                     transition: 'all 0.2s ease'
                   }}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="password" style={{ 
-                  display: 'block', 
-                  fontSize: '0.875rem', 
-                  fontWeight: '600', 
-                  color: '#374151',
-                  marginBottom: '0.5rem'
-                }}>
-                  Password
-                </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  style={{ 
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '1rem',
-                    transition: 'all 0.2s ease'
-                  }}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                 />
               </div>
@@ -409,14 +238,26 @@ export default AuthWrapper;0',
           </form>
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div>
       {/* Professional header with navigation */}
-      <div className="app-header">
-        <div className="nav-container">
+      <div className="app-header" style={{
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        padding: '1rem 0',
+        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)'
+      }}>
+        <div className="nav-container" style={{
+          maxWidth: '1200px',
+          margin: '0 auto',
+          padding: '0 1rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          color: 'white'
+        }}>
           <div className="nav-brand">
             <h1 style={{ margin: '0', fontSize: '1.5rem', fontWeight: '700' }}>
               🍇 Vigneron.AI
@@ -425,7 +266,7 @@ export default AuthWrapper;0',
               Professional Vineyard Management
             </p>
           </div>
-          <div className="nav-actions">
+          <div className="nav-actions" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <span style={{ fontSize: '0.875rem', opacity: '0.9' }}>
               {user.email}
             </span>
@@ -455,7 +296,7 @@ export default AuthWrapper;0',
         {children}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default AuthWrapper
+export default AuthWrapper;
