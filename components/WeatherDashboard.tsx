@@ -1,6 +1,6 @@
 // components/WeatherDashboard.tsx - Phase 1: Tab-Based Navigation Implementation
 
-import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWeather, useWeatherConnection } from '../hooks/useWeather';
 import { EnhancedGDDChart } from './EnhancedGDDChart';
 import { googleGeocodingService, GeocodeResult } from '../lib/googleGeocodingService';
@@ -8,1739 +8,6 @@ import { openaiService, VineyardContext, AIInsight } from '../lib/openaiService'
 import { supabase } from '../lib/supabase';
 import { AlertCircle, RefreshCw, MapPin, Calendar, Thermometer, CloudRain, TrendingUp, Search, Brain, Lightbulb, AlertTriangle, CheckCircle, Info, FileText, Home, Plus, BarChart3, Settings } from 'lucide-react';
 import { ReportsModal } from './ReportsModal';
-
-// Memoized Activity Form Component to prevent unnecessary re-renders
-const ActivityFormComponent = memo(({
-  formData,
-  onFormChange,
-  onSave,
-  onCancel,
-  isSaving,
-  isEditing,
-  currentVineyard,
-  onGetLocation,
-  isGettingLocation,
-  generateWeatherNotes
-}: any) => {
-
-  const activityTypes = [
-    'Pruning', 'Bud Break', 'Bloom', 'Fruit Set', 'Veraison', 'Harvest',
-    'Irrigation', 'Spray Application', 'Fertilization', 'Canopy Management',
-    'Soil Work', 'Equipment Maintenance', 'Pest', 'Scouting', 'Other',
-    'Phenology Tracking', 'Ripeness Tracking'
-  ];
-
-  const eventTypeMap: { [key: string]: string } = {
-    'Bud Break': 'bud_break',
-    'Bloom': 'bloom',
-    'Fruit Set': 'fruit_set',
-    'Veraison': 'veraison',
-    'Harvest': 'harvest',
-    'Spray Application': 'spray_application',
-    'Fertilization': 'fertilization',
-    'Irrigation': 'irrigation',
-    'Canopy Management': 'canopy_management',
-    'Scouting': 'scouting',
-    'Phenology Tracking': 'phenology_tracking',
-    'Ripeness Tracking': 'ripeness_tracking',
-    'Pruning': 'pruning',
-    'Soil Work': 'soil_work',
-    'Equipment Maintenance': 'equipment_maintenance',
-    'Pest': 'pest_observation',
-    'Other': 'other'
-  };
-
-  const sprayDatabase = {
-    'Captan': { reentryHours: 48, preharvestDays: 14, category: 'Fungicide', signal: 'CAUTION' },
-    'Copper Sulfate': { reentryHours: 24, preharvestDays: 0, category: 'Fungicide', signal: 'CAUTION' },
-    'Sulfur': { reentryHours: 24, preharvestDays: 0, category: 'Fungicide', signal: 'CAUTION' },
-    'Mancozeb': { reentryHours: 24, preharvestDays: 66, category: 'Fungicide', signal: 'CAUTION' },
-    'Chlorothalonil': { reentryHours: 12, preharvestDays: 42, category: 'Fungicide', signal: 'WARNING' },
-    'Propiconazole': { reentryHours: 24, preharvestDays: 30, category: 'Fungicide', signal: 'CAUTION' },
-    'Myclobutanil': { reentryHours: 12, preharvestDays: 21, category: 'Fungicide', signal: 'CAUTION' },
-    'Tebuconazole': { reentryHours: 12, preharvestDays: 45, category: 'Fungicide', signal: 'CAUTION' },
-    'Imidacloprid': { reentryHours: 12, preharvestDays: 7, category: 'Insecticide', signal: 'CAUTION' },
-    'Spinosad': { reentryHours: 4, preharvestDays: 7, category: 'Insecticide', signal: 'CAUTION' },
-    'Carbaryl': { reentryHours: 12, preharvestDays: 7, category: 'Insecticide', signal: 'CAUTION' },
-    'Malathion': { reentryHours: 12, preharvestDays: 1, category: 'Insecticide', signal: 'WARNING' },
-    'Glyphosate': { reentryHours: 4, preharvestDays: 14, category: 'Herbicide', signal: 'CAUTION' },
-    '2,4-D': { reentryHours: 48, preharvestDays: 60, category: 'Herbicide', signal: 'DANGER' },
-    'Dicamba': { reentryHours: 24, preharvestDays: 21, category: 'Herbicide', signal: 'WARNING' },
-    'Paraquat': { reentryHours: 12, preharvestDays: 21, category: 'Herbicide', signal: 'DANGER' },
-    'Roundup': { reentryHours: 4, preharvestDays: 14, category: 'Herbicide', signal: 'CAUTION' },
-    'Bt (Bacillus thuringiensis)': { reentryHours: 4, preharvestDays: 0, category: 'Biological', signal: 'CAUTION' },
-    'Kaolin Clay': { reentryHours: 4, preharvestDays: 0, category: 'Protectant', signal: 'CAUTION' },
-    'Neem Oil': { reentryHours: 4, preharvestDays: 0, category: 'Botanical', signal: 'CAUTION' },
-    'Horticultural Oil': { reentryHours: 4, preharvestDays: 0, category: 'Oil', signal: 'CAUTION' }
-  };
-
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    onFormChange({ ...formData, [name]: value });
-  }, [formData, onFormChange]);
-
-  const handleNumberInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    onFormChange({ ...formData, [name]: value === '' ? '' : parseFloat(value) });
-  }, [formData, onFormChange]);
-
-  const handleNumericOrEmptyChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    const numericValue = value === '' ? '' : parseFloat(value);
-    onFormChange({ ...formData, [name]: isNaN(numericValue as number) ? '' : numericValue });
-  }, [formData, onFormChange]);
-
-  const handleDateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    onFormChange({ ...formData, [name]: value });
-  }, [formData, onFormChange]);
-
-  const handleSelectChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    onFormChange({ ...formData, [name]: value });
-  }, [formData, onFormChange]);
-
-  const handleTextareaChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    onFormChange({ ...formData, [name]: value });
-  }, [formData, onFormChange]);
-
-  const handleRangeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    onFormChange({ ...formData, [name]: value });
-  }, [formData, onFormChange]);
-
-  // Memoize calculations that depend on formData
-  const sprayConditions = useMemo(() => {
-    if (formData.activity_type === 'Spray Application') {
-      return generateWeatherNotes('Spray Application');
-    }
-    return formData.spray_conditions;
-  }, [formData.activity_type, formData.spray_conditions, generateWeatherNotes]);
-
-  const irrigationNotes = useMemo(() => {
-    if (formData.activity_type === 'Irrigation') {
-      return generateWeatherNotes('Irrigation');
-    }
-    return formData.notes;
-  }, [formData.activity_type, formData.notes, generateWeatherNotes]);
-
-  const enhancedNotes = useMemo(() => {
-    let notes = formData.notes || '';
-    if (formData.activity_type === 'Phenology Tracking' && formData.phenology_stage) {
-      const phenologyDetails = [];
-      phenologyDetails.push(`Growth Stage: ${formData.phenology_stage}`);
-      if (formData.phenology_percent_complete) {
-        phenologyDetails.push(`${formData.phenology_percent_complete}% Complete`);
-      }
-      if (formData.phenology_location) {
-        phenologyDetails.push(`Block Estimates: ${formData.phenology_location}`);
-      }
-      notes = `${phenologyDetails.join(' | ')}\n${notes}`.trim();
-    }
-    if (formData.activity_type === 'Ripeness Tracking') {
-      const ripenessDetails = [];
-      if (formData.ripeness_brix) ripenessDetails.push(`Brix: ${formData.ripeness_brix}`);
-      if (formData.ripeness_ph) ripenessDetails.push(`pH: ${formData.ripeness_ph}`);
-      if (formData.ripeness_ta) ripenessDetails.push(`TA: ${formData.ripeness_ta}`);
-      if (formData.ripeness_seed_brownness) ripenessDetails.push(`Seed Brownness: ${formData.ripeness_seed_brownness}`);
-      if (formData.ripeness_block_estimates) ripenessDetails.push(`Block Estimates: ${formData.ripeness_block_estimates}`);
-      notes = `${ripenessDetails.join(' | ')}\n${notes}`.trim();
-    }
-    return notes;
-  }, [formData.notes, formData.activity_type, formData.phenology_stage, formData.phenology_percent_complete, formData.phenology_location, formData.ripeness_block_estimates, formData.ripeness_brix, formData.ripeness_ph, formData.ripeness_ta, formData.ripeness_seed_brownness]);
-
-
-  const isSaveDisabled = useMemo(() => {
-    if (!formData.activity_type || !formData.start_date) return true;
-    if (['Bud Break', 'Bloom', 'Fruit Set', 'Veraison'].includes(formData.activity_type) && !formData.phenology_percent_complete) return true;
-    return false;
-  }, [formData.activity_type, formData.start_date, formData.phenology_percent_complete]);
-
-  return (
-    <div style={{
-      padding: '20px',
-      backgroundColor: 'white',
-      border: '2px solid #22c55e',
-      borderRadius: '12px',
-      marginBottom: '20px'
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <h4 style={{ margin: '0', color: '#059669', fontSize: '18px', fontWeight: '700' }}>
-          {isEditing ? '✏️ Edit Event' : '➕ New Event'}
-        </h4>
-        <button
-          onClick={onCancel}
-          style={{
-            padding: '4px 8px',
-            backgroundColor: '#6b7280',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '12px'
-          }}
-        >
-          ✕
-        </button>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-        <div>
-          <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
-            Event Type *
-          </label>
-          <select
-            name="activity_type"
-            value={formData.activity_type}
-            onChange={handleSelectChange}
-            style={{
-              width: '100%',
-              padding: '12px',
-              border: '1px solid #d1d5db',
-              borderRadius: '8px',
-              backgroundColor: 'white',
-              fontSize: '14px'
-            }}
-            required
-          >
-            <option value="">Select event type...</option>
-            {activityTypes.map(type => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
-            Date *
-          </label>
-          <input
-            type="date"
-            name="start_date"
-            value={formData.start_date}
-            onChange={handleDateChange}
-            style={{
-              width: '100%',
-              padding: '12px',
-              border: '1px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px'
-            }}
-            required
-          />
-        </div>
-      </div>
-
-      {/* Spray Application Details */}
-      {formData.activity_type === 'Spray Application' && (
-        <div style={{
-          marginBottom: '16px',
-          padding: '16px',
-          backgroundColor: '#fef3c7',
-          border: '2px solid #fbbf24',
-          borderRadius: '8px'
-        }}>
-          <h5 style={{ margin: '0 0 12px 0', color: '#92400e', fontSize: '16px', fontWeight: '700' }}>
-            🌿 Spray Application Details
-          </h5>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '12px' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
-                Product *
-              </label>
-              <select
-                name="spray_product"
-                value={formData.spray_product}
-                onChange={handleSelectChange}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #f59e0b',
-                  borderRadius: '6px',
-                  backgroundColor: 'white',
-                  fontSize: '13px'
-                }}
-                required
-              >
-                <option value="">Select product...</option>
-                {Object.keys(sprayDatabase).map(product => (
-                  <option key={product} value={product}>{product}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
-                Quantity
-              </label>
-              <input
-                type="text"
-                name="spray_quantity"
-                value={formData.spray_quantity}
-                onChange={handleInputChange}
-                placeholder="e.g. 2.5"
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #f59e0b',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
-                Unit
-              </label>
-              <select
-                name="spray_unit"
-                value={formData.spray_unit}
-                onChange={handleSelectChange}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #f59e0b',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              >
-                <option value="oz/acre">oz/acre</option>
-                <option value="lbs/acre">lbs/acre</option>
-                <option value="gal/acre">gal/acre</option>
-                <option value="ml/L">ml/L</option>
-                <option value="ppm">ppm</option>
-                <option value="kg/ha">kg/ha</option>
-                <option value="L/ha">L/ha</option>
-              </select>
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '12px' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
-                Target Pest/Disease
-              </label>
-              <input
-                type="text"
-                name="spray_target"
-                value={formData.spray_target}
-                onChange={handleInputChange}
-                placeholder="e.g. Powdery mildew, aphids"
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #f59e0b',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
-                Equipment Used
-              </label>
-              <select
-                name="spray_equipment"
-                value={formData.spray_equipment}
-                onChange={handleSelectChange}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #f59e0b',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              >
-                <option value="">Select equipment...</option>
-                <option value="Airblast Sprayer">Airblast Sprayer</option>
-                <option value="Boom Sprayer">Boom Sprayer</option>
-                <option value="Backpack Sprayer">Backpack Sprayer</option>
-                <option value="Handheld Sprayer">Handheld Sprayer</option>
-                <option value="Helicopter">Helicopter</option>
-                <option value="Drone">Drone</option>
-                <option value="Mist Blower">Mist Blower</option>
-                <option value="Electrostatic Sprayer">Electrostatic Sprayer</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
-              Weather Conditions
-            </label>
-            <textarea
-              name="spray_conditions"
-              value={sprayConditions}
-              onChange={handleTextareaChange}
-              placeholder="e.g. Temp: 68°F, Wind: 3mph N, Humidity: 45%, Clear skies"
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid #f59e0b',
-                borderRadius: '6px',
-                fontSize: '13px',
-                minHeight: '60px',
-                resize: 'vertical'
-              }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Irrigation Details */}
-      {formData.activity_type === 'Irrigation' && (
-        <div style={{
-          marginBottom: '16px',
-          padding: '16px',
-          backgroundColor: '#e0f7fa',
-          border: '2px solid #06b6d4',
-          borderRadius: '8px'
-        }}>
-          <h5 style={{ margin: '0 0 12px 0', color: '#0e7490', fontSize: '16px', fontWeight: '700' }}>
-            💧 Irrigation Details
-          </h5>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '12px' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#0e7490' }}>
-                Amount *
-              </label>
-              <input
-                type="text"
-                name="irrigation_amount"
-                value={formData.irrigation_amount}
-                onChange={handleInputChange}
-                placeholder="e.g. 1.5"
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #06b6d4',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#0e7490' }}>
-                Unit
-              </label>
-              <select
-                name="irrigation_unit"
-                value={formData.irrigation_unit}
-                onChange={handleSelectChange}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #06b6d4',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              >
-                <option value="inches">inches</option>
-                <option value="gallons">gallons</option>
-                <option value="gallons/vine">gallons/vine</option>
-                <option value="gal/acre">gal/acre</option>
-                <option value="acre-feet">acre-feet</option>
-                <option value="liters">liters</option>
-                <option value="mm">mm</option>
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#0e7490' }}>
-                Method *
-              </label>
-              <select
-                name="irrigation_method"
-                value={formData.irrigation_method}
-                onChange={handleSelectChange}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #06b6d4',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              >
-                <option value="">Select method...</option>
-                <option value="Drip">Drip Irrigation</option>
-                <option value="Micro Sprinkler">Micro Sprinkler</option>
-                <option value="Overhead Sprinkler">Overhead Sprinkler</option>
-                <option value="Furrow">Furrow Irrigation</option>
-                <option value="Flood">Flood Irrigation</option>
-                <option value="Subsurface Drip">Subsurface Drip</option>
-                <option value="Micro-jet">Micro-jet</option>
-                <option value="Hand Watering">Hand Watering</option>
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#0e7490' }}>
-                Duration (optional)
-              </label>
-              <input
-                type="text"
-                name="irrigation_duration"
-                value={formData.irrigation_duration}
-                onChange={handleInputChange}
-                placeholder="e.g. 2 hours, 30 minutes"
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #06b6d4',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#0e7490' }}>
-              Measurement Method (optional)
-            </label>
-            <select
-              name="irrigation_measurement_method"
-              value={formData.irrigation_measurement_method || ''}
-              onChange={handleSelectChange}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid #06b6d4',
-                borderRadius: '6px',
-                fontSize: '13px'
-              }}
-            >
-              <option value="">Select method...</option>
-              <option value="Leaf Water Potential">Leaf Water Potential (LWP)</option>
-              <option value="Soil Moisture Probe">Soil Moisture Probe</option>
-              <option value="Visual Inspection">Visual Inspection</option>
-              <option value="Stem Water Potential">Stem Water Potential (SWP)</option>
-              <option value="Neutron Probe">Neutron Probe</option>
-              <option value="Tensiometer">Tensiometer</option>
-              <option value="Capacitance Sensor">Capacitance Sensor</option>
-              <option value="Time Domain Reflectometry">Time Domain Reflectometry (TDR)</option>
-              <option value="Infrared Thermometry">Infrared Thermometry</option>
-              <option value="Scheduled/Calendar">Scheduled/Calendar Based</option>
-            </select>
-          </div>
-        </div>
-      )}
-
-      {/* Fertilization Details */}
-      {formData.activity_type === 'Fertilization' && (
-        <div style={{
-          marginBottom: '16px',
-          padding: '16px',
-          backgroundColor: '#f0f9ff',
-          border: '2px solid #3b82f6',
-          borderRadius: '8px'
-        }}>
-          <h5 style={{ margin: '0 0 12px 0', color: '#1e40af', fontSize: '16px', fontWeight: '700' }}>
-            🌱 Fertilization Details
-          </h5>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '12px' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#1e40af' }}>
-                Fertilizer Type *
-              </label>
-              <select
-                name="fertilizer_type"
-                value={formData.fertilizer_type}
-                onChange={handleSelectChange}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #3b82f6',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              >
-                <option value="">Select fertilizer...</option>
-                <option value="Organic Compost">Organic Compost</option>
-                <option value="Well-rotted Manure">Well-rotted Manure</option>
-                <option value="Nitrogen (N)">Nitrogen (N)</option>
-                <option value="Phosphorus (P)">Phosphorus (P)</option>
-                <option value="Potassium (K)">Potassium (K)</option>
-                <option value="NPK Blend">NPK Blend</option>
-                <option value="Calcium Carbonate">Calcium Carbonate</option>
-                <option value="Magnesium Sulfate">Magnesium Sulfate</option>
-                <option value="Ammonium Sulfate">Ammonium Sulfate</option>
-                <option value="Urea">Urea</option>
-                <option value="Triple Superphosphate">Triple Superphosphate</option>
-                <option value="Muriate of Potash">Muriate of Potash</option>
-                <option value="Bone Meal">Bone Meal</option>
-                <option value="Fish Emulsion">Fish Emulsion</option>
-                <option value="Kelp Meal">Kelp Meal</option>
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#1e40af' }}>
-                NPK Analysis
-              </label>
-              <input
-                type="text"
-                name="fertilizer_npk"
-                value={formData.fertilizer_npk}
-                onChange={handleInputChange}
-                placeholder="e.g. 20-10-10, 0-0-60"
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #3b82f6',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#1e40af' }}>
-                Application Rate
-              </label>
-              <input
-                type="text"
-                name="fertilizer_rate"
-                value={formData.fertilizer_rate}
-                onChange={handleInputChange}
-                placeholder="e.g. 50"
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #3b82f6',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#1e40af' }}>
-                Unit
-              </label>
-              <select
-                name="fertilizer_unit"
-                value={formData.fertilizer_unit}
-                onChange={handleSelectChange}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #3b82f6',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              >
-                <option value="lbs/acre">lbs/acre</option>
-                <option value="kg/ha">kg/ha</option>
-                <option value="tons/acre">tons/acre</option>
-                <option value="oz/vine">oz/vine</option>
-                <option value="g/vine">g/vine</option>
-                <option value="gal/acre">gal/acre</option>
-                <option value="L/ha">L/ha</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#1e40af' }}>
-              Application Method
-            </label>
-            <select
-              name="fertilizer_method"
-              value={formData.fertilizer_method}
-              onChange={handleSelectChange}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid #3b82f6',
-                borderRadius: '6px',
-                fontSize: '13px'
-              }}
-            >
-              <option value="">Select application method...</option>
-              <option value="Broadcast">Broadcast</option>
-              <option value="Banded">Banded</option>
-              <option value="Foliar Spray">Foliar Spray</option>
-              <option value="Fertigation">Fertigation (through irrigation)</option>
-              <option value="Soil Injection">Soil Injection</option>
-              <option value="Sidedress">Sidedress</option>
-              <option value="Topdress">Topdress</option>
-              <option value="Incorporation">Incorporation</option>
-            </select>
-          </div>
-        </div>
-      )}
-
-      {/* Canopy Management Details */}
-      {formData.activity_type === 'Canopy Management' && (
-        <div style={{
-          marginBottom: '16px',
-          padding: '16px',
-          backgroundColor: '#f0fdf4',
-          border: '2px solid #059669',
-          borderRadius: '8px'
-        }}>
-          <h5 style={{ margin: '0 0 12px 0', color: '#059669', fontSize: '16px', fontWeight: '700' }}>
-            ✂️ Canopy Management Details
-          </h5>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#059669' }}>
-                Activity *
-              </label>
-              <select
-                name="canopy_activity"
-                value={formData.canopy_activity}
-                onChange={handleSelectChange}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #059669',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              >
-                <option value="">Select activity...</option>
-                <option value="Shoot Thinning">Shoot Thinning</option>
-                <option value="Leaf Removal">Leaf Removal</option>
-                <option value="Hedging">Hedging</option>
-                <option value="Suckering">Suckering</option>
-                <option value="Cluster Thinning">Cluster Thinning</option>
-                <option value="Topping">Topping</option>
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#059669' }}>
-                Intensity
-              </label>
-              <select
-                name="canopy_intensity"
-                value={formData.canopy_intensity}
-                onChange={handleSelectChange}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #059669',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              >
-                <option value="">Select intensity...</option>
-                <option value="Light">Light</option>
-                <option value="Moderate">Moderate</option>
-                <option value="Heavy">Heavy</option>
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#059669' }}>
-                Side
-              </label>
-              <select
-                name="canopy_side"
-                value={formData.canopy_side}
-                onChange={handleSelectChange}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #059669',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              >
-                <option value="">Select side...</option>
-                <option value="East">East</option>
-                <option value="West">West</option>
-                <option value="Both">Both</option>
-                <option value="North">North</option>
-                <option value="South">South</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Pruning Details */}
-      {formData.activity_type === 'Pruning' && (
-        <div style={{
-          marginBottom: '16px',
-          padding: '16px',
-          backgroundColor: '#fff7ed',
-          border: '2px solid #ea580c',
-          borderRadius: '8px'
-        }}>
-          <h5 style={{ margin: '0 0 12px 0', color: '#c2410c', fontSize: '16px', fontWeight: '700' }}>
-            ✂️ Pruning Details
-          </h5>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '12px' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#c2410c' }}>
-                Pruning Type *
-              </label>
-              <select
-                name="canopy_activity"
-                value={formData.canopy_activity}
-                onChange={handleSelectChange}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #ea580c',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              >
-                <option value="">Select pruning type...</option>
-                <option value="Dormant Pruning">Dormant Pruning</option>
-                <option value="Summer Pruning">Summer Pruning</option>
-                <option value="Cane Pruning">Cane Pruning</option>
-                <option value="Spur Pruning">Spur Pruning</option>
-                <option value="Sucker Removal">Sucker Removal</option>
-                <option value="Shoot Positioning">Shoot Positioning</option>
-                <option value="Renewal Pruning">Renewal Pruning</option>
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#c2410c' }}>
-                Intensity
-              </label>
-              <select
-                name="canopy_intensity"
-                value={formData.canopy_intensity}
-                onChange={handleSelectChange}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #ea580c',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              >
-                <option value="">Select intensity...</option>
-                <option value="Light">Light</option>
-                <option value="Moderate">Moderate</option>
-                <option value="Heavy">Heavy</option>
-                <option value="Severe">Severe</option>
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#c2410c' }}>
-                Growth Stage
-              </label>
-              <select
-                name="canopy_stage"
-                value={formData.canopy_stage}
-                onChange={handleSelectChange}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #ea580c',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              >
-                <option value="">Select stage...</option>
-                <option value="Dormant">Dormant</option>
-                <option value="Bud Swell">Bud Swell</option>
-                <option value="Bud Break">Bud Break</option>
-                <option value="Early Shoot Growth">Early Shoot Growth</option>
-                <option value="Pre-Bloom">Pre-Bloom</option>
-                <option value="Post-Harvest">Post-Harvest</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Soil Work Details */}
-      {formData.activity_type === 'Soil Work' && (
-        <div style={{
-          marginBottom: '16px',
-          padding: '16px',
-          backgroundColor: '#fefce8',
-          border: '2px solid #ca8a04',
-          borderRadius: '8px'
-        }}>
-          <h5 style={{ margin: '0 0 12px 0', color: '#a16207', fontSize: '16px', fontWeight: '700' }}>
-            🌍 Soil Work Details
-          </h5>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '12px' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#a16207' }}>
-                Activity Type *
-              </label>
-              <select
-                name="canopy_activity"
-                value={formData.canopy_activity}
-                onChange={handleSelectChange}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #ca8a04',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              >
-                <option value="">Select soil work...</option>
-                <option value="Tillage">Tillage</option>
-                <option value="Cultivation">Cultivation</option>
-                <option value="Discing">Discing</option>
-                <option value="Subsoiling">Subsoiling</option>
-                <option value="Cover Crop Planting">Cover Crop Planting</option>
-                <option value="Cover Crop Termination">Cover Crop Termination</option>
-                <option value="Weed Control">Weed Control</option>
-                <option value="Soil Amendment">Soil Amendment</option>
-                <option value="Mulching">Mulching</option>
-                <option value="Erosion Control">Erosion Control</option>
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#a16207' }}>
-                Equipment Used
-              </label>
-              <input
-                type="text"
-                name="spray_equipment"
-                value={formData.spray_equipment}
-                onChange={handleInputChange}
-                placeholder="e.g. Disc harrow, Cultivator"
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #ca8a04',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#a16207' }}>
-                Depth/Intensity
-              </label>
-              <input
-                type="text"
-                name="canopy_intensity"
-                value={formData.canopy_intensity}
-                onChange={handleInputChange}
-                placeholder="e.g. 6 inches, Light"
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #ca8a04',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Scouting Details */}
-      {formData.activity_type === 'Scouting' && (
-        <div style={{
-          marginBottom: '16px',
-          padding: '16px',
-          backgroundColor: '#fffbeb',
-          border: '2px solid #f59e0b',
-          borderRadius: '8px'
-        }}>
-          <h5 style={{ margin: '0 0 12px 0', color: '#92400e', fontSize: '16px', fontWeight: '700' }}>
-            🔍 Scouting Details
-          </h5>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
-                Focus *
-              </label>
-              <select
-                name="scout_focus"
-                value={formData.scout_focus}
-                onChange={handleSelectChange}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #f59e0b',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              >
-                <option value="">Select focus...</option>
-                <option value="Pest Monitoring">Pest Monitoring</option>
-                <option value="Disease Check">Disease Check</option>
-                <option value="Nutrient Deficiency">Nutrient Deficiency</option>
-                <option value="Phenology Stage">Phenology Stage</option>
-                <option value="Fruit Quality">Fruit Quality</option>
-                <option value="General Health">General Health</option>
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
-                Severity
-              </label>
-              <select
-                name="scout_severity"
-                value={formData.scout_severity}
-                onChange={handleSelectChange}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #f59e0b',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              >
-                <option value="">Select severity...</option>
-                <option value="None">None</option>
-                <option value="Low">Low</option>
-                <option value="Moderate">Moderate</option>
-                <option value="High">High</option>
-                <option value="Severe">Severe</option>
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
-                Distribution
-              </label>
-              <select
-                name="scout_distribution"
-                value={formData.scout_distribution}
-                onChange={handleSelectChange}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #f59e0b',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              >
-                <option value="">Select distribution...</option>
-                <option value="Isolated">Isolated</option>
-                <option value="Scattered">Scattered</option>
-                <option value="Clustered">Clustered</option>
-                <option value="Widespread">Widespread</option>
-                <option value="Uniform">Uniform</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Ripeness Tracking */}
-      {formData.activity_type === 'Ripeness Tracking' && (
-        <div style={{
-          marginBottom: '16px',
-          padding: '16px',
-          backgroundColor: '#fdf2f8',
-          border: '2px solid #ec4899',
-          borderRadius: '8px'
-        }}>
-          <h5 style={{ margin: '0 0 12px 0', color: '#be185d', fontSize: '16px', fontWeight: '600' }}>
-            🍇 Ripeness Assessment
-          </h5>
-
-          <div style={{ marginBottom: '12px' }}>
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#be185d' }}>
-              Block Estimates (% Complete)
-            </label>
-            <textarea
-              name="ripeness_block_estimates"
-              value={formData.ripeness_block_estimates || ''}
-              onChange={handleTextareaChange}
-              placeholder="e.g. Block A: 85% ready, Block B: 70% ready, Block C: 90% ready"
-              rows={2}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid #ec4899',
-                borderRadius: '6px',
-                fontSize: '13px',
-                resize: 'vertical'
-              }}
-            />
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#be185d' }}>
-                Brix *
-              </label>
-              <input
-                type="number"
-                step="0.1"
-                name="ripeness_brix"
-                value={formData.ripeness_brix || ''}
-                onChange={handleNumericOrEmptyChange}
-                placeholder="e.g. 24.5"
-                required
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '2px solid #ec4899',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#be185d' }}>
-                pH *
-              </label>
-              <input
-                type="number"
-                step="0.1"
-                name="ripeness_ph"
-                value={formData.ripeness_ph || ''}
-                onChange={handleNumericOrEmptyChange}
-                placeholder="e.g. 3.4"
-                required
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '2px solid #ec4899',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              />
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#be185d' }}>
-                TA (optional)
-              </label>
-              <input
-                type="number"
-                step="0.1"
-                name="ripeness_ta"
-                value={formData.ripeness_ta || ''}
-                onChange={handleNumericOrEmptyChange}
-                placeholder="e.g. 6.5 g/L"
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #ec4899',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#be185d' }}>
-                Seed Brownness (optional)
-              </label>
-              <select
-                name="ripeness_seed_brownness"
-                value={formData.ripeness_seed_brownness || ''}
-                onChange={handleSelectChange}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #ec4899',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              >
-                <option value="">Select...</option>
-                <option value="Green">Green (0%)</option>
-                <option value="Light Brown">Light Brown (25%)</option>
-                <option value="Medium Brown">Medium Brown (50%)</option>
-                <option value="Dark Brown">Dark Brown (75%)</option>
-                <option value="Fully Brown">Fully Brown (100%)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Harvest Details */}
-      {formData.activity_type === 'Harvest' && (
-        <div style={{
-          marginBottom: '16px',
-          padding: '16px',
-          backgroundColor: '#fef7e6',
-          border: '2px solid #f59e0b',
-          borderRadius: '8px'
-        }}>
-          <h5 style={{ margin: '0 0 12px 0', color: '#92400e', fontSize: '16px', fontWeight: '700' }}>
-            🍇 Harvest Details
-          </h5>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
-                Yield Amount
-              </label>
-              <input
-                type="text"
-                name="harvest_yield"
-                value={formData.harvest_yield}
-                onChange={handleInputChange}
-                placeholder="e.g. 4.5"
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #f59e0b',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
-                Unit
-              </label>
-              <select
-                name="harvest_unit"
-                value={formData.harvest_unit}
-                onChange={handleSelectChange}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #f59e0b',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              >
-                <option value="tons">tons</option>
-                <option value="tons/acre">tons/acre</option>
-                <option value="pounds">pounds</option>
-                <option value="kg">kg</option>
-                <option value="bins">bins</option>
-                <option value="lugs">lugs</option>
-              </select>
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
-                Brix
-              </label>
-              <input
-                type="text"
-                name="harvest_brix"
-                value={formData.harvest_brix}
-                onChange={handleInputChange}
-                placeholder="e.g. 24.5"
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #f59e0b',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
-                pH
-              </label>
-              <input
-                type="text"
-                name="harvest_ph"
-                value={formData.harvest_ph}
-                onChange={handleInputChange}
-                placeholder="e.g. 3.4"
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #f59e0b',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
-                TA (optional)
-              </label>
-              <input
-                type="text"
-                name="harvest_ta"
-                value={formData.harvest_ta}
-                onChange={handleInputChange}
-                placeholder="e.g. 6.5"
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #f59e0b',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Phenology Tracking */}
-      {formData.activity_type === 'Phenology Tracking' && (
-        <div style={{
-          marginBottom: '16px',
-          padding: '16px',
-          backgroundColor: '#f0f9ff',
-          border: '2px solid #3b82f6',
-          borderRadius: '8px'
-        }}>
-          <h5 style={{ margin: '0 0 12px 0', color: '#1e40af', fontSize: '16px', fontWeight: '600' }}>
-            🌱 Phenology Details
-          </h5>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#1e40af' }}>
-                Growth Stage *
-              </label>
-              <select
-                name="phenology_stage"
-                value={formData.phenology_stage}
-                onChange={handleSelectChange}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #3b82f6',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              >
-                <option value="">Select stage...</option>
-                <option value="Budbreak">Budbreak</option>
-                <option value="Leaf Development">Leaf Development</option>
-                <option value="Flowering">Flowering</option>
-                <option value="Fruit Set">Fruit Set</option>
-                <option value="Berry Development">Berry Development</option>
-                <option value="Veraison">Veraison</option>
-                <option value="Harvest Maturity">Harvest Maturity</option>
-                <option value="Leaf Fall">Leaf Fall</option>
-                <option value="Dormant">Dormant</option>
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#1e40af' }}>
-                % Complete *
-              </label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="5"
-                  name="phenology_percent_complete"
-                  value={formData.phenology_percent_complete || ''}
-                  onChange={handleNumericOrEmptyChange}
-                  placeholder="0-100%"
-                  required
-                  style={{
-                    width: '80px',
-                    padding: '8px 12px',
-                    border: '1px solid #3b82f6',
-                    borderRadius: '6px',
-                    fontSize: '13px'
-                  }}
-                />
-                <span style={{ fontSize: '13px', color: '#1e40af' }}>%</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="5"
-                  name="phenology_percent_complete"
-                  value={formData.phenology_percent_complete || '0'}
-                  onChange={handleRangeChange}
-                  style={{ flex: 1, accentColor: '#3b82f6' }}
-                />
-              </div>
-              <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
-                Optional: Break down completion by specific blocks or vineyard sections
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#1e40af' }}>
-              Block/Location Estimate
-            </label>
-            <input
-              type="text"
-              name="phenology_location"
-              value={formData.phenology_location || ''}
-              onChange={handleInputChange}
-              placeholder="e.g. Block A: 75%, Block B: 60%, Main vineyard average"
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid #3b82f6',
-                borderRadius: '6px',
-                fontSize: '13px'
-              }}
-            />
-            <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
-              Optional: Break down completion by specific blocks or vineyard sections
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Phenology Details for Bud Break, Bloom, Fruit Set, and Veraison */}
-      {['Bud Break', 'Bloom', 'Fruit Set', 'Veraison'].includes(formData.activity_type) && (
-        <div style={{
-          marginBottom: '16px',
-          padding: '16px',
-          backgroundColor: '#f0f9ff',
-          border: '2px solid #3b82f6',
-          borderRadius: '8px'
-        }}>
-          <h5 style={{ margin: '0 0 12px 0', color: '#1e40af', fontSize: '16px', fontWeight: '600' }}>
-            🌱 {formData.activity_type} Details
-          </h5>
-
-          <div style={{ marginBottom: '12px' }}>
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#1e40af' }}>
-              % Complete *
-            </label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                step="5"
-                name="phenology_percent_complete"
-                value={formData.phenology_percent_complete || ''}
-                onChange={handleNumericOrEmptyChange}
-                placeholder="0-100%"
-                required
-                style={{
-                  width: '80px',
-                  padding: '8px 12px',
-                  border: '2px solid #3b82f6',
-                  borderRadius: '6px',
-                  fontSize: '13px'
-                }}
-              />
-              <span style={{ fontSize: '13px', color: '#1e40af', fontWeight: '600' }}>%</span>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="5"
-                name="phenology_percent_complete"
-                value={formData.phenology_percent_complete || '0'}
-                onChange={handleRangeChange}
-                style={{
-                  flex: 1,
-                  accentColor: '#3b82f6'
-                }}
-              />
-            </div>
-            <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
-              Estimate the percentage of {formData.activity_type.toLowerCase()} completion across the vineyard
-            </div>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#1e40af' }}>
-              Block/Location Estimate (optional)
-            </label>
-            <input
-              type="text"
-              name="phenology_location"
-              value={formData.phenology_location || ''}
-              onChange={handleInputChange}
-              placeholder="e.g. Block A: 75%, Block B: 60%, East vineyard: 80%"
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid #3b82f6',
-                borderRadius: '6px',
-                fontSize: '13px'
-              }}
-            />
-            <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
-              Optional: Break down completion by specific blocks or vineyard sections
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div style={{ marginBottom: '16px' }}>
-        <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
-          Notes
-        </label>
-        <textarea
-          name="notes"
-          value={enhancedNotes}
-          onChange={handleTextareaChange}
-          placeholder="Add details about this event..."
-          style={{
-            width: '100%',
-            padding: '12px',
-            border: '1px solid #d1d5db',
-            borderRadius: '8px',
-            minHeight: '80px',
-            resize: 'vertical',
-            fontSize: '14px'
-          }}
-        />
-      </div>
-
-      {/* Location Section */}
-      <div style={{
-        marginBottom: '16px',
-        padding: '12px',
-        backgroundColor: '#fefce8',
-        border: '1px solid #fde68a',
-        borderRadius: '8px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-          <MapPin size={16} />
-          <label style={{ fontWeight: '600', fontSize: '14px', color: '#a16207' }}>
-            Location (Optional)
-          </label>
-        </div>
-
-        {formData.location_lat && formData.location_lng ? (
-          <div style={{
-            padding: '8px',
-            backgroundColor: '#f0f9f4',
-            border: '1px solid #bbf7d0',
-            borderRadius: '6px',
-            marginBottom: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}>
-            <div style={{ fontSize: '13px', color: '#065f46' }}>
-              📍 {formData.location_name || 'Location set'}
-            </div>
-            <button
-              onClick={() => onFormChange({
-                ...formData,
-                location_lat: null,
-                location_lng: null,
-                location_accuracy: null,
-                location_name: ''
-              })}
-              style={{
-                padding: '4px 8px',
-                backgroundColor: '#ef4444',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '11px'
-              }}
-            >
-              Clear
-            </button>
-          </div>
-        ) : null}
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-          <button
-            type="button"
-            onClick={onGetLocation}
-            disabled={isGettingLocation}
-            style={{
-              padding: '10px 12px',
-              backgroundColor: isGettingLocation ? '#9ca3af' : '#10b981',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: isGettingLocation ? 'not-allowed' : 'pointer',
-              fontSize: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '4px',
-              fontWeight: '500'
-            }}
-          >
-            {isGettingLocation ? (
-              <>
-                <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} />
-                Getting...
-              </>
-            ) : (
-              '📍 Current Location'
-            )}
-          </button>
-
-          {currentVineyard && (
-            <button
-              type="button"
-              onClick={() => onFormChange({
-                ...formData,
-                location_lat: currentVineyard.latitude,
-                location_lng: currentVineyard.longitude,
-                location_accuracy: null,
-                location_name: `🍇 ${currentVineyard.name}`
-              })}
-              style={{
-                padding: '10px 12px',
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '4px',
-                fontWeight: '500'
-              }}
-            >
-              🍇 Vineyard
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', gap: '12px' }}>
-        {isEditing && (
-          <button
-            onClick={onCancel}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: '#6b7280',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '16px',
-              fontWeight: '600'
-            }}
-          >
-            Cancel Edit
-          </button>
-        )}
-
-        <button
-          onClick={onSave}
-          disabled={isSaveDisabled || isSaving}
-          style={{
-            padding: '12px 24px',
-            backgroundColor: isSaveDisabled || isSaving ? '#d1d5db' : '#22c55e',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: isSaveDisabled || isSaving ? 'not-allowed' : 'pointer',
-            fontSize: '16px',
-            fontWeight: '600',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            opacity: isSaving ? 0.7 : 1
-          }}
-        >
-          {isSaving ? (
-            <div style={{
-              width: '16px',
-              height: '16px',
-              border: '2px solid transparent',
-              borderTop: '2px solid white',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite'
-            }}></div>
-          ) : (
-            isEditing ? 'Update Event' : 'Save Activity'
-          )}
-        </button>
-      </div>
-    </div>
-  );
-});
-
-
-// components/WeatherDashboard.tsx - Phase 1: Tab-Based Navigation Implementation
-
-import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import { useWeather, useWeatherConnection } from '../hooks/useWeather';
-import { EnhancedGDDChart } from './EnhancedGDDChart';
-import { googleGeocodingService, GeocodeResult } from '../lib/googleGeocodingService';
-import { openaiService, VineyardContext, AIInsight } from '../lib/openaiService';
-import { supabase } from '../lib/supabase';
-import { AlertCircle, RefreshCw, MapPin, Calendar, Thermometer, CloudRain, TrendingUp, Search, Brain, Lightbulb, AlertTriangle, CheckCircle, Info, FileText, Home, Plus, BarChart3, Settings } from 'lucide-react';
-import { ReportsModal } from './ReportsModal';
-
-// Initial state for the activity form
-const initialActivityFormState = {
-  activity_type: '',
-  start_date: new Date().toISOString().split('T')[0],
-  end_date: '',
-  notes: '',
-  location_lat: null as number | null,
-  location_lng: null as number | null,
-  location_name: '',
-  location_accuracy: null as number | null,
-  spray_product: '',
-  spray_quantity: '',
-  spray_unit: 'oz/acre',
-  spray_target: '',
-  spray_conditions: '',
-  spray_equipment: '',
-  irrigation_amount: '',
-  irrigation_unit: 'inches',
-  irrigation_method: '',
-  irrigation_duration: '',
-  irrigation_measurement_method: '', // Added for user feedback
-  irrigation_measurement_value: '', // Added for user feedback
-  fertilizer_type: '',
-  fertilizer_npk: '',
-  fertilizer_rate: '',
-  fertilizer_unit: 'lbs/acre',
-  fertilizer_method: '',
-  harvest_yield: '',
-  harvest_unit: 'tons/acre',
-  harvest_brix: '',
-  harvest_ph: '',
-  harvest_ta: '',
-  harvest_block: '',
-  canopy_activity: '',
-  canopy_intensity: '',
-  canopy_side: '',
-  canopy_stage: '',
-  scout_focus: '',
-  scout_severity: '',
-  scout_distribution: '',
-  scout_action: '',
-  // Phenology tracking
-  phenology_stage: '',
-  phenology_percent_complete: '',
-  phenology_location: '',
-  // Ripeness tracking
-  ripeness_block_estimates: '',
-  ripeness_brix: '',
-  ripeness_ph: '',
-  ripeness_ta: '',
-  ripeness_seed_brownness: '',
-};
-
 
 interface WeatherDashboardProps {
   vineyardId?: string;
@@ -1820,7 +87,57 @@ export function WeatherDashboard({
   const [showAIPanel, setShowAIPanel] = useState(false);
   const [activities, setActivities] = useState<any[]>([]);
   const [showActivityForm, setShowActivityForm] = useState(false);
-  const [activityForm, setActivityForm] = useState(initialActivityFormState);
+  const [activityForm, setActivityForm] = useState({
+    activity_type: '',
+    start_date: new Date().toISOString().split('T')[0],
+    end_date: '',
+    notes: '',
+    location_lat: null as number | null,
+    location_lng: null as number | null,
+    location_name: '',
+    location_accuracy: null as number | null,
+    spray_product: '',
+    spray_quantity: '',
+    spray_unit: 'oz/acre',
+    spray_target: '',
+    spray_conditions: '',
+    spray_equipment: '',
+    irrigation_amount: '',
+    irrigation_unit: 'inches',
+    irrigation_method: '',
+    irrigation_duration: '',
+    irrigation_measurement_method: '', // Added for user feedback
+    irrigation_measurement_value: '', // Added for user feedback
+    fertilizer_type: '',
+    fertilizer_npk: '',
+    fertilizer_rate: '',
+    fertilizer_unit: 'lbs/acre',
+    fertilizer_method: '',
+    harvest_yield: '',
+    harvest_unit: 'tons/acre',
+    harvest_brix: '',
+    harvest_ph: '',
+    harvest_ta: '',
+    harvest_block: '',
+    canopy_activity: '',
+    canopy_intensity: '',
+    canopy_side: '',
+    canopy_stage: '',
+    scout_focus: '',
+    scout_severity: '',
+    scout_distribution: '',
+    scout_action: '',
+    // Phenology tracking
+    phenology_stage: '',
+    phenology_percent_complete: '',
+    phenology_location: '',
+    // Ripeness tracking
+    ripeness_block_estimates: '',
+    ripeness_brix: '',
+    ripeness_ph: '',
+    ripeness_ta: '',
+    ripeness_seed_brownness: '',
+  });
   const [isLoadingActivities, setIsLoadingActivities] = useState(false);
   const [isSavingActivity, setIsSavingActivity] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
@@ -1887,7 +204,7 @@ export function WeatherDashboard({
   const currentWeather = weatherData; // Alias for clarity
 
   // Function to generate auto weather notes
-  const generateAutoWeatherNotes = useCallback((activityType?: string) => {
+  const generateAutoWeatherNotes = (activityType?: string) => {
     if (!currentWeather || !currentWeather.length) return '';
 
     const today = new Date().toISOString().split('T')[0];
@@ -1921,7 +238,7 @@ export function WeatherDashboard({
     }
 
     return notes;
-  }, [currentWeather]);
+  };
 
   // All your existing useEffect hooks and functions (unchanged - keeping all the business logic)
   useEffect(() => {
@@ -2022,7 +339,7 @@ export function WeatherDashboard({
     }
   }, [isInitialized, dateRange.start, dateRange.end, latitude, longitude, refetch]);
 
-  const loadActivities = useCallback(async () => {
+  const loadActivities = async () => {
     if (!vineyardId) return;
 
     setIsLoadingActivities(true);
@@ -2047,19 +364,19 @@ export function WeatherDashboard({
     } finally {
       setIsLoadingActivities(false);
     }
-  }, [vineyardId]);
+  };
 
   useEffect(() => {
     if (vineyardId) {
       loadActivities();
     }
-  }, [vineyardId, loadActivities]);
+  }, [vineyardId]);
 
   useEffect(() => {
     calculateSafetyAlerts();
   }, [activities]);
 
-  const calculateSafetyAlerts = useCallback(() => {
+  const calculateSafetyAlerts = () => {
     const alerts: any[] = [];
     const today = new Date();
 
@@ -2094,15 +411,15 @@ export function WeatherDashboard({
     });
 
     setSafetyAlerts(alerts);
-  }, [activities, sprayDatabase]);
+  };
 
-  const openReportsModal = useCallback(() => {
+  const openReportsModal = () => {
     if (!currentVineyard) {
       alert('Please select a vineyard first to generate reports.');
       return;
     }
     setShowReportsModal(true);
-  }, [currentVineyard]);
+  };
 
   const saveActivity = async () => {
     if (!vineyardId || !activityForm.activity_type || !activityForm.start_date) {
@@ -2214,18 +531,70 @@ export function WeatherDashboard({
         };
       }
 
-
       // Event type mapping for database storage - updated to match database constraints
-      const eventTypeMapped = eventTypeMap[activityForm.activity_type] || activityForm.activity_type.toLowerCase().replace(/ /g, '_');
+      const eventTypeMap: { [key: string]: string } = {
+        'Bud Break': 'bud_break',
+        'Bloom': 'bloom', 
+        'Fruit Set': 'fruit_set',
+        'Veraison': 'veraison',
+        'Harvest': 'harvest',
+        'Spray Application': 'spray_application',
+        'Fertilization': 'fertilization',
+        'Irrigation': 'irrigation',
+        'Canopy Management': 'canopy_management',
+        'Scouting': 'scouting',
+        'Phenology Tracking': 'phenology_tracking',
+        'Ripeness Tracking': 'ripeness_tracking'
+      };
 
       // Add any additional activity-specific data to notes
-      const enhancedNotes = activityForm.notes || '';
+      let enhancedNotes = activityForm.notes || '';
 
+      if (activityForm.activity_type === 'Phenology Tracking' && activityForm.phenology_stage) {
+        const phenologyDetails = [];
+        phenologyDetails.push(`Growth Stage: ${activityForm.phenology_stage}`);
+
+        if (activityForm.phenology_percent_complete) {
+          phenologyDetails.push(`${activityForm.phenology_percent_complete}% Complete`);
+        }
+
+        if (activityForm.phenology_location) {
+          phenologyDetails.push(`Block Estimates: ${activityForm.phenology_location}`);
+        }
+
+        enhancedNotes = `${phenologyDetails.join(' | ')}\n${enhancedNotes}`.trim();
+      }
+
+      if (activityForm.activity_type === 'Ripeness Tracking') {
+        const ripenessDetails = [];
+
+        if (activityForm.ripeness_brix) {
+          ripenessDetails.push(`Brix: ${activityForm.ripeness_brix}`);
+        }
+
+        if (activityForm.ripeness_ph) {
+          ripenessDetails.push(`pH: ${activityForm.ripeness_ph}`);
+        }
+
+        if (activityForm.ripeness_ta) {
+          ripenessDetails.push(`TA: ${activityForm.ripeness_ta}`);
+        }
+
+        if (activityForm.ripeness_seed_brownness) {
+          ripenessDetails.push(`Seed Brownness: ${activityForm.ripeness_seed_brownness}`);
+        }
+
+        if (activityForm.ripeness_block_estimates) {
+          ripenessDetails.push(`Block Estimates: ${activityForm.ripeness_block_estimates}`);
+        }
+
+        enhancedNotes = `${ripenessDetails.join(' | ')}\n${enhancedNotes}`.trim();
+      }
 
       if (editingEvent) {
         // Update existing event
         const updates: any = {
-          event_type: eventTypeMapped,
+          event_type: eventTypeMap[activityForm.activity_type] || activityForm.activity_type.toLowerCase().replace(/ /g, '_'),
           event_date: activityForm.start_date,
           notes: enhancedNotes // Use enhancedNotes for consistency
         };
@@ -2329,7 +698,7 @@ export function WeatherDashboard({
 
         await savePhenologyEvent(
           vineyardId,
-          eventTypeMapped,
+          eventTypeMap[activityForm.activity_type] || activityForm.activity_type.toLowerCase().replace(/ /g, '_'),
           activityForm.start_date,
           enhancedNotes, // Use enhancedNotes here
           activityForm.end_date || undefined,
@@ -2348,7 +717,55 @@ export function WeatherDashboard({
         alert('Activity logged successfully!');
       }
 
-      setActivityForm(initialActivityFormState);
+      setActivityForm({
+        activity_type: '',
+        start_date: '',
+        end_date: '',
+        notes: '',
+        location_lat: null,
+        location_lng: null,
+        location_name: '',
+        location_accuracy: null,
+        spray_product: '',
+        spray_quantity: '',
+        spray_unit: 'oz/acre',
+        spray_target: '',
+        spray_conditions: '',
+        spray_equipment: '',
+        irrigation_amount: '',
+        irrigation_unit: 'inches',
+        irrigation_method: '',
+        irrigation_duration: '',
+        irrigation_measurement_method: '',
+        irrigation_measurement_value: '',
+        fertilizer_type: '',
+        fertilizer_npk: '',
+        fertilizer_rate: '',
+        fertilizer_unit: 'lbs/acre',
+        fertilizer_method: '',
+        harvest_yield: '',
+        harvest_unit: 'tons/acre',
+        harvest_brix: '',
+        harvest_ph: '',
+        harvest_ta: '',
+        harvest_block: '',
+        canopy_activity: '',
+        canopy_intensity: '',
+        canopy_side: '',
+        canopy_stage: '',
+        scout_focus: '',
+        scout_severity: '',
+        scout_distribution: '',
+        scout_action: '',
+        phenology_stage: '',
+        phenology_percent_complete: '',
+        phenology_location: '',
+        ripeness_block_estimates: '',
+        ripeness_brix: '',
+        ripeness_ph: '',
+        ripeness_ta: '',
+        ripeness_seed_brownness: '',
+      });
       await loadActivities();
 
       if (typeof window !== 'undefined') {
@@ -2363,11 +780,10 @@ export function WeatherDashboard({
       alert('Failed to save activity: ' + (error as Error).message);
     } finally {
       setIsSavingActivity(false);
-      setShowActivityForm(false); // Close form after saving
     }
   };
 
-  const getCurrentLocation = useCallback(async () => {
+  const getCurrentLocation = async () => {
     setIsGettingLocation(true);
     setLocationError('');
 
@@ -2418,30 +834,20 @@ export function WeatherDashboard({
     } finally {
       setIsGettingLocation(false);
     }
-  }, []);
-
-  // Handle form changes within the parent component to keep state management centralized
-  const handleFormChange = useCallback((newFormData: any) => {
-    setActivityForm(newFormData);
-  }, []);
+  };
 
   // Calculate summary statistics
-  const totalGDD = useMemo(() => weatherData.reduce((sum, day) => sum + day.gdd, 0), [weatherData]);
-  const totalRainfall = useMemo(() => weatherData.reduce((sum, day) => sum + day.rainfall, 0), [weatherData]);
-  const avgTempHigh = useMemo(() => weatherData.length > 0 ? weatherData.reduce((sum, day) => sum + day.temp_high, 0) / weatherData.length : 0, [weatherData]);
-  const avgTempLow = useMemo(() => weatherData.length > 0 ? weatherData.reduce((sum, day) => sum + day.temp_low, 0) / weatherData.length : 0, [weatherData]);
+  const totalGDD = weatherData.reduce((sum, day) => sum + day.gdd, 0);
+  const totalRainfall = weatherData.reduce((sum, day) => sum + day.rainfall, 0);
+  const avgTempHigh = weatherData.length > 0 ? weatherData.reduce((sum, day) => sum + day.temp_high, 0) / weatherData.length : 0;
+  const avgTempLow = weatherData.length > 0 ? weatherData.reduce((sum, day) => sum + day.temp_low, 0) / weatherData.length : 0;
 
-  const uniqueEventTypes = useMemo(() => {
-    const types = new Set<string>();
-    activities.forEach(activity => {
-      // Ensure we are using the mapped event types for consistency
-      const mappedType = (Object.keys(eventTypeMap).find(key => eventTypeMap[key] === activity.event_type) ||
-                          Object.keys(eventTypeMap).find(key => key.toLowerCase().replace(/ /g, '_') === activity.event_type) ||
-                          activity.event_type);
-      types.add(mappedType);
-    });
-    return Array.from(types);
-  }, [activities, eventTypeMap]);
+  const activityTypes = [
+    'Pruning', 'Bud Break', 'Bloom', 'Fruit Set', 'Veraison', 'Harvest',
+    'Irrigation', 'Spray Application', 'Fertilization', 'Canopy Management',
+    'Soil Work', 'Equipment Maintenance', 'Pest', 'Scouting', 'Other',
+    'Phenology Tracking', 'Ripeness Tracking'
+  ];
 
   // Don't render until initialized
   if (!isInitialized) {
@@ -2468,7 +874,7 @@ export function WeatherDashboard({
   }
 
   // Calculate phenology predictions
-  const getPhenologyPredictions = useCallback(() => {
+  const getPhenologyPredictions = () => {
     if (!weatherData.length || !activities.length) return [];
 
     const currentGDD = totalGDD;
@@ -2484,9 +890,9 @@ export function WeatherDashboard({
 
     // Find recorded events
     const recordedEvents = {
-      bud_break: activities.find(e => e.event_type === 'phenology_tracking' && e.phenology_stage === 'Budbreak'),
-      bloom: activities.find(e => e.event_type === 'phenology_tracking' && e.phenology_stage === 'Flowering'),
-      veraison: activities.find(e => e.event_type === 'phenology_tracking' && e.phenology_stage === 'Veraison'),
+      bud_break: activities.find(e => e.event_type === 'phenology' && e.phenology_stage === 'Budbreak'),
+      bloom: activities.find(e => e.event_type === 'phenology' && e.phenology_stage === 'Flowering'),
+      veraison: activities.find(e => e.event_type === 'phenology' && e.phenology_stage === 'Veraison'),
       harvest: activities.find(e => e.event_type === 'harvest' || e.event_type === 'Harvest')
     };
 
@@ -2522,7 +928,7 @@ export function WeatherDashboard({
     }
 
     return predictions;
-  }, [weatherData, activities, totalGDD, phenologyRequirements, recordedEvents]);
+  };
 
   const phenologyPredictions = getPhenologyPredictions();
 
@@ -3004,22 +1410,1585 @@ export function WeatherDashboard({
 
         {/* Event Form */}
         {showActivityForm && (
-          <ActivityFormComponent
-            formData={activityForm}
-            onFormChange={handleFormChange}
-            onSave={saveActivity}
-            onCancel={() => {
-              setShowActivityForm(false);
-              setEditingEvent(null);
-              setActivityForm(initialActivityFormState);
-            }}
-            isSaving={isSavingActivity}
-            isEditing={!!editingEvent}
-            currentVineyard={currentVineyard}
-            onGetLocation={getCurrentLocation}
-            isGettingLocation={isGettingLocation}
-            generateWeatherNotes={generateAutoWeatherNotes}
-          />
+          <div style={{
+            padding: '20px',
+            backgroundColor: 'white',
+            border: '2px solid #22c55e',
+            borderRadius: '12px',
+            marginBottom: '20px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h4 style={{ margin: '0', color: '#059669', fontSize: '18px', fontWeight: '700' }}>
+                {editingEvent ? '✏️ Edit Event' : '➕ New Event'}
+              </h4>
+              <button
+                onClick={() => {
+                  setShowActivityForm(false);
+                  setEditingEvent(null); // Clear editing state when closing form
+                }}
+                style={{
+                  padding: '4px 8px',
+                  backgroundColor: '#6b7280',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '12px'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
+                  Event Type *
+                </label>
+                <select
+                  value={activityForm.activity_type}
+                  onChange={(e) => {
+                    const selectedType = e.target.value;
+                    setActivityForm(prev => ({
+                      ...prev,
+                      activity_type: selectedType,
+                      // Reset other fields if needed when type changes, or set defaults
+                      spray_product: '', spray_quantity: '', spray_unit: 'oz/acre', spray_target: '', spray_conditions: '', spray_equipment: '',
+                      irrigation_amount: '', irrigation_unit: 'inches', irrigation_method: '', irrigation_duration: '', irrigation_measurement_method: '', irrigation_measurement_value: '',
+                      fertilizer_type: '', fertilizer_npk: '', fertilizer_rate: '', fertilizer_unit: 'lbs/acre', fertilizer_method: '',
+                      harvest_yield: '', harvest_unit: 'tons/acre', harvest_brix: '', harvest_ph: '', harvest_ta: '', harvest_block: '',
+                      phenology_stage: '', phenology_percent_complete: '', phenology_location: '',
+                      ripeness_block_estimates: '', ripeness_brix: '', ripeness_ph: '', ripeness_ta: '', ripeness_seed_brownness: '',
+                      // Auto-populate weather notes based on the new type
+                      spray_conditions: selectedType === 'Spray Application' ? generateAutoWeatherNotes('Spray Application') : prev.spray_conditions,
+                      notes: selectedType === 'Irrigation' ? generateAutoWeatherNotes('Irrigation') : prev.notes,
+                    }));
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    backgroundColor: 'white',
+                    fontSize: '14px'
+                  }}
+                  required
+                >
+                  <option value="">Select event type...</option>
+                  {activityTypes.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
+                  Date *
+                </label>
+                <input
+                  type="date"
+                  value={activityForm.start_date}
+                  onChange={(e) => {
+                    const newDate = e.target.value;
+                    setActivityForm(prev => {
+                      const updated = { ...prev, start_date: newDate };
+
+                      // Auto-update weather conditions for spray applications and irrigation
+                      if (updated.activity_type === 'Spray Application') {
+                        updated.spray_conditions = generateAutoWeatherNotes('Spray Application');
+                      }
+                      if (updated.activity_type === 'Irrigation') {
+                        updated.notes = generateAutoWeatherNotes('Irrigation');
+                      }
+
+                      return updated;
+                    });
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '14px'
+                  }}
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Spray Application Details */}
+            {activityForm.activity_type === 'Spray Application' && (
+              <div style={{
+                marginBottom: '16px',
+                padding: '16px',
+                backgroundColor: '#fef3c7',
+                border: '2px solid #fbbf24',
+                borderRadius: '8px'
+              }}>
+                <h5 style={{ margin: '0 0 12px 0', color: '#92400e', fontSize: '16px', fontWeight: '700' }}>
+                  🌿 Spray Application Details
+                </h5>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                      Product *
+                    </label>
+                    <select
+                      value={activityForm.spray_product}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, spray_product: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #f59e0b',
+                        borderRadius: '6px',
+                        backgroundColor: 'white',
+                        fontSize: '13px'
+                      }}
+                      required
+                    >
+                      <option value="">Select product...</option>
+                      <option value="Captan">Captan</option>
+                      <option value="Copper Sulfate">Copper Sulfate</option>
+                      <option value="Sulfur">Sulfur</option>
+                      <option value="Mancozeb">Mancozeb</option>
+                      <option value="Chlorothalonil">Chlorothalonil</option>
+                      <option value="Propiconazole">Propiconazole</option>
+                      <option value="Myclobutanil">Myclobutanil</option>
+                      <option value="Tebuconazole">Tebuconazole</option>
+                      <option value="Imidacloprid">Imidacloprid</option>
+                      <option value="Spinosad">Spinosad</option>
+                      <option value="Carbaryl">Carbaryl</option>
+                      <option value="Malathion">Malathion</option>
+                      <option value="Glyphosate">Glyphosate</option>
+                      <option value="2,4-D">2,4-D</option>
+                      <option value="Dicamba">Dicamba</option>
+                      <option value="Paraquat">Paraquat</option>
+                      <option value="Roundup">Roundup</option>
+                      <option value="Bt (Bacillus thuringiensis)">Bt (Bacillus thuringiensis)</option>
+                      <option value="Kaolin Clay">Kaolin Clay</option>
+                      <option value="Neem Oil">Neem Oil</option>
+                      <option value="Horticultural Oil">Horticultural Oil</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                      Quantity
+                    </label>
+                    <input
+                      type="text"
+                      value={activityForm.spray_quantity}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, spray_quantity: e.target.value }))}
+                      placeholder="e.g. 2.5"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #f59e0b',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                      Unit
+                    </label>
+                    <select
+                      value={activityForm.spray_unit}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, spray_unit: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #f59e0b',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <option value="oz/acre">oz/acre</option>
+                      <option value="lbs/acre">lbs/acre</option>
+                      <option value="gal/acre">gal/acre</option>
+                      <option value="ml/L">ml/L</option>
+                      <option value="ppm">ppm</option>
+                      <option value="kg/ha">kg/ha</option>
+                      <option value="L/ha">L/ha</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                      Target Pest/Disease
+                    </label>
+                    <input
+                      type="text"
+                      value={activityForm.spray_target}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, spray_target: e.target.value }))}
+                      placeholder="e.g. Powdery mildew, aphids"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #f59e0b',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                      Equipment Used
+                    </label>
+                    <select
+                      value={activityForm.spray_equipment}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, spray_equipment: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #f59e0b',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <option value="">Select equipment...</option>
+                      <option value="Airblast Sprayer">Airblast Sprayer</option>
+                      <option value="Boom Sprayer">Boom Sprayer</option>
+                      <option value="Backpack Sprayer">Backpack Sprayer</option>
+                      <option value="Handheld Sprayer">Handheld Sprayer</option>
+                      <option value="Helicopter">Helicopter</option>
+                      <option value="Drone">Drone</option>
+                      <option value="Mist Blower">Mist Blower</option>
+                      <option value="Electrostatic Sprayer">Electrostatic Sprayer</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                    Weather Conditions
+                  </label>
+                  <textarea
+                    value={activityForm.spray_conditions}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, spray_conditions: e.target.value }))}
+                    placeholder="e.g. Temp: 68°F, Wind: 3mph N, Humidity: 45%, Clear skies"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #f59e0b',
+                      borderRadius: '6px',
+                      fontSize: '13px',
+                      minHeight: '60px',
+                      resize: 'vertical'
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Irrigation Details */}
+            {activityForm.activity_type === 'Irrigation' && (
+              <div style={{
+                marginBottom: '16px',
+                padding: '16px',
+                backgroundColor: '#e0f7fa',
+                border: '2px solid #06b6d4',
+                borderRadius: '8px'
+              }}>
+                <h5 style={{ margin: '0 0 12px 0', color: '#0e7490', fontSize: '16px', fontWeight: '700' }}>
+                  💧 Irrigation Details
+                </h5>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#0e7490' }}>
+                      Amount *
+                    </label>
+                    <input
+                      type="text"
+                      value={activityForm.irrigation_amount}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, irrigation_amount: e.target.value }))}
+                      placeholder="e.g. 1.5"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #06b6d4',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#0e7490' }}>
+                      Unit
+                    </label>
+                    <select
+                      value={activityForm.irrigation_unit}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, irrigation_unit: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #06b6d4',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <option value="inches">inches</option>
+                      <option value="gallons">gallons</option>
+                      <option value="gallons/vine">gallons/vine</option>
+                      <option value="gal/acre">gal/acre</option>
+                      <option value="acre-feet">acre-feet</option>
+                      <option value="liters">liters</option>
+                      <option value="mm">mm</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#0e7490' }}>
+                      Method *
+                    </label>
+                    <select
+                      value={activityForm.irrigation_method}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, irrigation_method: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #06b6d4',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <option value="">Select method...</option>
+                      <option value="Drip">Drip Irrigation</option>
+                      <option value="Micro Sprinkler">Micro Sprinkler</option>
+                      <option value="Overhead Sprinkler">Overhead Sprinkler</option>
+                      <option value="Furrow">Furrow Irrigation</option>
+                      <option value="Flood">Flood Irrigation</option>
+                      <option value="Subsurface Drip">Subsurface Drip</option>
+                      <option value="Micro-jet">Micro-jet</option>
+                      <option value="Hand Watering">Hand Watering</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#0e7490' }}>
+                      Duration (optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={activityForm.irrigation_duration}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, irrigation_duration: e.target.value }))}
+                      placeholder="e.g. 2 hours, 30 minutes"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #06b6d4',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#0e7490' }}>
+                    Measurement Method (optional)
+                  </label>
+                  <select
+                    value={activityForm.irrigation_measurement_method || ''}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, irrigation_measurement_method: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #06b6d4',
+                      borderRadius: '6px',
+                      fontSize: '13px'
+                    }}
+                  >
+                    <option value="">Select method...</option>
+                    <option value="Leaf Water Potential">Leaf Water Potential (LWP)</option>
+                    <option value="Soil Moisture Probe">Soil Moisture Probe</option>
+                    <option value="Visual Inspection">Visual Inspection</option>
+                    <option value="Stem Water Potential">Stem Water Potential (SWP)</option>
+                    <option value="Neutron Probe">Neutron Probe</option>
+                    <option value="Tensiometer">Tensiometer</option>
+                    <option value="Capacitance Sensor">Capacitance Sensor</option>
+                    <option value="Time Domain Reflectometry">Time Domain Reflectometry (TDR)</option>
+                    <option value="Infrared Thermometry">Infrared Thermometry</option>
+                    <option value="Scheduled/Calendar">Scheduled/Calendar Based</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* Fertilization Details */}
+            {activityForm.activity_type === 'Fertilization' && (
+              <div style={{
+                marginBottom: '16px',
+                padding: '16px',
+                backgroundColor: '#f0f9ff',
+                border: '2px solid #3b82f6',
+                borderRadius: '8px'
+              }}>
+                <h5 style={{ margin: '0 0 12px 0', color: '#1e40af', fontSize: '16px', fontWeight: '700' }}>
+                  🌱 Fertilization Details
+                </h5>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#1e40af' }}>
+                      Fertilizer Type *
+                    </label>
+                    <select
+                      value={activityForm.fertilizer_type}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, fertilizer_type: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #3b82f6',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <option value="">Select fertilizer...</option>
+                      <option value="Organic Compost">Organic Compost</option>
+                      <option value="Well-rotted Manure">Well-rotted Manure</option>
+                      <option value="Nitrogen (N)">Nitrogen (N)</option>
+                      <option value="Phosphorus (P)">Phosphorus (P)</option>
+                      <option value="Potassium (K)">Potassium (K)</option>
+                      <option value="NPK Blend">NPK Blend</option>
+                      <option value="Calcium Carbonate">Calcium Carbonate</option>
+                      <option value="Magnesium Sulfate">Magnesium Sulfate</option>
+                      <option value="Ammonium Sulfate">Ammonium Sulfate</option>
+                      <option value="Urea">Urea</option>
+                      <option value="Triple Superphosphate">Triple Superphosphate</option>
+                      <option value="Muriate of Potash">Muriate of Potash</option>
+                      <option value="Bone Meal">Bone Meal</option>
+                      <option value="Fish Emulsion">Fish Emulsion</option>
+                      <option value="Kelp Meal">Kelp Meal</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#1e40af' }}>
+                      NPK Analysis
+                    </label>
+                    <input
+                      type="text"
+                      value={activityForm.fertilizer_npk}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, fertilizer_npk: e.target.value }))}
+                      placeholder="e.g. 20-10-10, 0-0-60"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #3b82f6',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#1e40af' }}>
+                      Application Rate
+                    </label>
+                    <input
+                      type="text"
+                      value={activityForm.fertilizer_rate}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, fertilizer_rate: e.target.value }))}
+                      placeholder="e.g. 50"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #3b82f6',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#1e40af' }}>
+                      Unit
+                    </label>
+                    <select
+                      value={activityForm.fertilizer_unit}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, fertilizer_unit: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #3b82f6',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <option value="lbs/acre">lbs/acre</option>
+                      <option value="kg/ha">kg/ha</option>
+                      <option value="tons/acre">tons/acre</option>
+                      <option value="oz/vine">oz/vine</option>
+                      <option value="g/vine">g/vine</option>
+                      <option value="gal/acre">gal/acre</option>
+                      <option value="L/ha">L/ha</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#1e40af' }}>
+                    Application Method
+                  </label>
+                  <select
+                    value={activityForm.fertilizer_method}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, fertilizer_method: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #3b82f6',
+                      borderRadius: '6px',
+                      fontSize: '13px'
+                    }}
+                  >
+                    <option value="">Select application method...</option>
+                    <option value="Broadcast">Broadcast</option>
+                    <option value="Banded">Banded</option>
+                    <option value="Foliar Spray">Foliar Spray</option>
+                    <option value="Fertigation">Fertigation (through irrigation)</option>
+                    <option value="Soil Injection">Soil Injection</option>
+                    <option value="Sidedress">Sidedress</option>
+                    <option value="Topdress">Topdress</option>
+                    <option value="Incorporation">Incorporation</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* Canopy Management Details */}
+            {activityForm.activity_type === 'Canopy Management' && (
+              <div style={{
+                marginBottom: '16px',
+                padding: '16px',
+                backgroundColor: '#f0fdf4',
+                border: '2px solid #059669',
+                borderRadius: '8px'
+              }}>
+                <h5 style={{ margin: '0 0 12px 0', color: '#059669', fontSize: '16px', fontWeight: '700' }}>
+                  ✂️ Canopy Management Details
+                </h5>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#059669' }}>
+                      Activity *
+                    </label>
+                    <select
+                      value={activityForm.canopy_activity}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, canopy_activity: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #059669',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <option value="">Select activity...</option>
+                      <option value="Shoot Thinning">Shoot Thinning</option>
+                      <option value="Leaf Removal">Leaf Removal</option>
+                      <option value="Hedging">Hedging</option>
+                      <option value="Suckering">Suckering</option>
+                      <option value="Cluster Thinning">Cluster Thinning</option>
+                      <option value="Topping">Topping</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#059669' }}>
+                      Intensity
+                    </label>
+                    <select
+                      value={activityForm.canopy_intensity}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, canopy_intensity: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #059669',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <option value="">Select intensity...</option>
+                      <option value="Light">Light</option>
+                      <option value="Moderate">Moderate</option>
+                      <option value="Heavy">Heavy</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#059669' }}>
+                      Side
+                    </label>
+                    <select
+                      value={activityForm.canopy_side}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, canopy_side: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #059669',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <option value="">Select side...</option>
+                      <option value="East">East</option>
+                      <option value="West">West</option>
+                      <option value="Both">Both</option>
+                      <option value="North">North</option>
+                      <option value="South">South</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Pruning Details */}
+            {activityForm.activity_type === 'Pruning' && (
+              <div style={{
+                marginBottom: '16px',
+                padding: '16px',
+                backgroundColor: '#fff7ed',
+                border: '2px solid #ea580c',
+                borderRadius: '8px'
+              }}>
+                <h5 style={{ margin: '0 0 12px 0', color: '#c2410c', fontSize: '16px', fontWeight: '700' }}>
+                  ✂️ Pruning Details
+                </h5>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#c2410c' }}>
+                      Pruning Type *
+                    </label>
+                    <select
+                      value={activityForm.canopy_activity}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, canopy_activity: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #ea580c',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <option value="">Select pruning type...</option>
+                      <option value="Dormant Pruning">Dormant Pruning</option>
+                      <option value="Summer Pruning">Summer Pruning</option>
+                      <option value="Cane Pruning">Cane Pruning</option>
+                      <option value="Spur Pruning">Spur Pruning</option>
+                      <option value="Sucker Removal">Sucker Removal</option>
+                      <option value="Shoot Positioning">Shoot Positioning</option>
+                      <option value="Renewal Pruning">Renewal Pruning</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#c2410c' }}>
+                      Intensity
+                    </label>
+                    <select
+                      value={activityForm.canopy_intensity}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, canopy_intensity: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #ea580c',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <option value="">Select intensity...</option>
+                      <option value="Light">Light</option>
+                      <option value="Moderate">Moderate</option>
+                      <option value="Heavy">Heavy</option>
+                      <option value="Severe">Severe</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#c2410c' }}>
+                      Growth Stage
+                    </label>
+                    <select
+                      value={activityForm.canopy_stage}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, canopy_stage: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #ea580c',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <option value="">Select stage...</option>
+                      <option value="Dormant">Dormant</option>
+                      <option value="Bud Swell">Bud Swell</option>
+                      <option value="Bud Break">Bud Break</option>
+                      <option value="Early Shoot Growth">Early Shoot Growth</option>
+                      <option value="Pre-Bloom">Pre-Bloom</option>
+                      <option value="Post-Harvest">Post-Harvest</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Soil Work Details */}
+            {activityForm.activity_type === 'Soil Work' && (
+              <div style={{
+                marginBottom: '16px',
+                padding: '16px',
+                backgroundColor: '#fefce8',
+                border: '2px solid #ca8a04',
+                borderRadius: '8px'
+              }}>
+                <h5 style={{ margin: '0 0 12px 0', color: '#a16207', fontSize: '16px', fontWeight: '700' }}>
+                  🌍 Soil Work Details
+                </h5>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#a16207' }}>
+                      Activity Type *
+                    </label>
+                    <select
+                      value={activityForm.canopy_activity}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, canopy_activity: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #ca8a04',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <option value="">Select soil work...</option>
+                      <option value="Tillage">Tillage</option>
+                      <option value="Cultivation">Cultivation</option>
+                      <option value="Discing">Discing</option>
+                      <option value="Subsoiling">Subsoiling</option>
+                      <option value="Cover Crop Planting">Cover Crop Planting</option>
+                      <option value="Cover Crop Termination">Cover Crop Termination</option>
+                      <option value="Weed Control">Weed Control</option>
+                      <option value="Soil Amendment">Soil Amendment</option>
+                      <option value="Mulching">Mulching</option>
+                      <option value="Erosion Control">Erosion Control</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#a16207' }}>
+                      Equipment Used
+                    </label>
+                    <input
+                      type="text"
+                      value={activityForm.spray_equipment}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, spray_equipment: e.target.value }))}
+                      placeholder="e.g. Disc harrow, Cultivator"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #ca8a04',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#a16207' }}>
+                      Depth/Intensity
+                    </label>
+                    <input
+                      type="text"
+                      value={activityForm.canopy_intensity}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, canopy_intensity: e.target.value }))}
+                      placeholder="e.g. 6 inches, Light"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #ca8a04',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Scouting Details */}
+            {activityForm.activity_type === 'Scouting' && (
+              <div style={{
+                marginBottom: '16px',
+                padding: '16px',
+                backgroundColor: '#fffbeb',
+                border: '2px solid #f59e0b',
+                borderRadius: '8px'
+              }}>
+                <h5 style={{ margin: '0 0 12px 0', color: '#92400e', fontSize: '16px', fontWeight: '700' }}>
+                  🔍 Scouting Details
+                </h5>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                      Focus *
+                    </label>
+                    <select
+                      value={activityForm.scout_focus}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, scout_focus: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #f59e0b',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <option value="">Select focus...</option>
+                      <option value="Pest Monitoring">Pest Monitoring</option>
+                      <option value="Disease Check">Disease Check</option>
+                      <option value="Nutrient Deficiency">Nutrient Deficiency</option>
+                      <option value="Phenology Stage">Phenology Stage</option>
+                      <option value="Fruit Quality">Fruit Quality</option>
+                      <option value="General Health">General Health</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                      Severity
+                    </label>
+                    <select
+                      value={activityForm.scout_severity}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, scout_severity: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #f59e0b',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <option value="">Select severity...</option>
+                      <option value="None">None</option>
+                      <option value="Low">Low</option>
+                      <option value="Moderate">Moderate</option>
+                      <option value="High">High</option>
+                      <option value="Severe">Severe</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                      Distribution
+                    </label>
+                    <select
+                      value={activityForm.scout_distribution}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, scout_distribution: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #f59e0b',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <option value="">Select distribution...</option>
+                      <option value="Isolated">Isolated</option>
+                      <option value="Scattered">Scattered</option>
+                      <option value="Clustered">Clustered</option>
+                      <option value="Widespread">Widespread</option>
+                      <option value="Uniform">Uniform</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Ripeness Tracking */}
+            {activityForm.activity_type === 'Ripeness Tracking' && (
+              <div style={{
+                marginBottom: '16px',
+                padding: '16px',
+                backgroundColor: '#fdf2f8',
+                border: '2px solid #ec4899',
+                borderRadius: '8px'
+              }}>
+                <h5 style={{ margin: '0 0 12px 0', color: '#be185d', fontSize: '16px', fontWeight: '600' }}>
+                  🍇 Ripeness Assessment
+                </h5>
+
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#be185d' }}>
+                    Block Estimates (% Complete)
+                  </label>
+                  <textarea
+                    value={activityForm.ripeness_block_estimates || ''}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, ripeness_block_estimates: e.target.value }))}
+                    placeholder="e.g. Block A: 85% ready, Block B: 70% ready, Block C: 90% ready"
+                    rows={2}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #ec4899',
+                      borderRadius: '6px',
+                      fontSize: '13px',
+                      resize: 'vertical'
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#be185d' }}>
+                      Brix *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={activityForm.ripeness_brix || ''}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, ripeness_brix: e.target.value }))}
+                      placeholder="e.g. 24.5"
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '2px solid #ec4899',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#be185d' }}>
+                      pH *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={activityForm.ripeness_ph || ''}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, ripeness_ph: e.target.value }))}
+                      placeholder="e.g. 3.4"
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '2px solid #ec4899',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#be185d' }}>
+                      TA (optional)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={activityForm.ripeness_ta || ''}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, ripeness_ta: e.target.value }))}
+                      placeholder="e.g. 6.5 g/L"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #ec4899',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#be185d' }}>
+                      Seed Brownness (optional)
+                    </label>
+                    <select
+                      value={activityForm.ripeness_seed_brownness || ''}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, ripeness_seed_brownness: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #ec4899',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <option value="">Select...</option>
+                      <option value="Green">Green (0%)</option>
+                      <option value="Light Brown">Light Brown (25%)</option>
+                      <option value="Medium Brown">Medium Brown (50%)</option>
+                      <option value="Dark Brown">Dark Brown (75%)</option>
+                      <option value="Fully Brown">Fully Brown (100%)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Harvest Details */}
+            {activityForm.activity_type === 'Harvest' && (
+              <div style={{
+                marginBottom: '16px',
+                padding: '16px',
+                backgroundColor: '#fef7e6',
+                border: '2px solid #f59e0b',
+                borderRadius: '8px'
+              }}>
+                <h5 style={{ margin: '0 0 12px 0', color: '#92400e', fontSize: '16px', fontWeight: '700' }}>
+                  🍇 Harvest Details
+                </h5>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                      Yield Amount
+                    </label>
+                    <input
+                      type="text"
+                      value={activityForm.harvest_yield}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, harvest_yield: e.target.value }))}
+                      placeholder="e.g. 4.5"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #f59e0b',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                      Unit
+                    </label>
+                    <select
+                      value={activityForm.harvest_unit}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, harvest_unit: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #f59e0b',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <option value="tons">tons</option>
+                      <option value="tons/acre">tons/acre</option>
+                      <option value="pounds">pounds</option>
+                      <option value="kg">kg</option>
+                      <option value="bins">bins</option>
+                      <option value="lugs">lugs</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                      Brix
+                    </label>
+                    <input
+                      type="text"
+                      value={activityForm.harvest_brix}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, harvest_brix: e.target.value }))}
+                      placeholder="e.g. 24.5"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #f59e0b',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                      pH
+                    </label>
+                    <input
+                      type="text"
+                      value={activityForm.harvest_ph}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, harvest_ph: e.target.value }))}
+                      placeholder="e.g. 3.4"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #f59e0b',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                      TA (optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={activityForm.harvest_ta}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, harvest_ta: e.target.value }))}
+                      placeholder="e.g. 6.5"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #f59e0b',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Phenology Tracking */}
+            {activityForm.activity_type === 'Phenology Tracking' && (
+              <div style={{
+                marginBottom: '16px',
+                padding: '16px',
+                backgroundColor: '#f0f9ff',
+                border: '2px solid #3b82f6',
+                borderRadius: '8px'
+              }}>
+                <h5 style={{ margin: '0 0 12px 0', color: '#1e40af', fontSize: '16px', fontWeight: '600' }}>
+                  🌱 Phenology Details
+                </h5>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#1e40af' }}>
+                      Growth Stage *
+                    </label>
+                    <select
+                      value={activityForm.phenology_stage}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, phenology_stage: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #3b82f6',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <option value="">Select stage...</option>
+                      <option value="Budbreak">Budbreak</option>
+                      <option value="Leaf Development">Leaf Development</option>
+                      <option value="Flowering">Flowering</option>
+                      <option value="Fruit Set">Fruit Set</option>
+                      <option value="Berry Development">Berry Development</option>
+                      <option value="Veraison">Veraison</option>
+                      <option value="Harvest Maturity">Harvest Maturity</option>
+                      <option value="Leaf Fall">Leaf Fall</option>
+                      <option value="Dormant">Dormant</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#1e40af' }}>
+                      % Complete *
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="5"
+                        value={activityForm.phenology_percent_complete || ''}
+                        onChange={(e) => setActivityForm(prev => ({ ...prev, phenology_percent_complete: e.target.value }))}
+                        placeholder="0-100%"
+                        style={{
+                          width: '80px',
+                          padding: '8px 12px',
+                          border: '1px solid #3b82f6',
+                          borderRadius: '6px',
+                          fontSize: '13px'
+                        }}
+                      />
+                      <span style={{ fontSize: '13px', color: '#1e40af' }}>%</span>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="5"
+                        value={activityForm.phenology_percent_complete || '0'}
+                        onChange={(e) => setActivityForm(prev => ({ ...prev, phenology_percent_complete: e.target.value }))}
+                        style={{ flex: 1 }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#1e40af' }}>
+                    Block/Location Estimate
+                  </label>
+                  <input
+                    type="text"
+                    value={activityForm.phenology_location || ''}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, phenology_location: e.target.value }))}
+                    placeholder="e.g. Block A: 75%, Block B: 60%, Main vineyard average"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #3b82f6',
+                      borderRadius: '6px',
+                      fontSize: '13px'
+                    }}
+                  />
+                  <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
+                    Optional: Break down completion by specific blocks or vineyard sections
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Phenology Details for Bud Break, Bloom, Fruit Set, and Veraison */}
+            {['Bud Break', 'Bloom', 'Fruit Set', 'Veraison'].includes(activityForm.activity_type) && (
+              <div style={{
+                marginBottom: '16px',
+                padding: '16px',
+                backgroundColor: '#f0f9ff',
+                border: '2px solid #3b82f6',
+                borderRadius: '8px'
+              }}>
+                <h5 style={{ margin: '0 0 12px 0', color: '#1e40af', fontSize: '16px', fontWeight: '600' }}>
+                  🌱 {activityForm.activity_type} Details
+                </h5>
+
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#1e40af' }}>
+                    % Complete *
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="5"
+                      value={activityForm.phenology_percent_complete || ''}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, phenology_percent_complete: e.target.value }))}
+                      placeholder="0-100%"
+                      required
+                      style={{
+                        width: '80px',
+                        padding: '8px 12px',
+                        border: '2px solid #3b82f6',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    />
+                    <span style={{ fontSize: '13px', color: '#1e40af', fontWeight: '600' }}>%</span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="5"
+                      value={activityForm.phenology_percent_complete || '0'}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, phenology_percent_complete: e.target.value }))}
+                      style={{ 
+                        flex: 1,
+                        accentColor: '#3b82f6'
+                      }}
+                    />
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
+                    Estimate the percentage of {activityForm.activity_type.toLowerCase()} completion across the vineyard
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#1e40af' }}>
+                    Block/Location Estimate (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={activityForm.phenology_location || ''}
+                    onChange={(e) => setActivityForm(prev => ({ ...prev, phenology_location: e.target.value }))}
+                    placeholder="e.g. Block A: 75%, Block B: 60%, East vineyard: 80%"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #3b82f6',
+                      borderRadius: '6px',
+                      fontSize: '13px'
+                    }}
+                  />
+                  <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
+                    Optional: Break down completion by specific blocks or vineyard sections
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
+                Notes
+              </label>
+              <textarea
+                value={activityForm.notes}
+                onChange={(e) => setActivityForm(prev => ({ ...prev, notes: e.target.value }))}
+                placeholder="Add details about this event..."
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  minHeight: '80px',
+                  resize: 'vertical',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+
+            {/* Location Section */}
+            <div style={{
+              marginBottom: '16px',
+              padding: '12px',
+              backgroundColor: '#fefce8',
+              border: '1px solid #fde68a',
+              borderRadius: '8px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <MapPin size={16} />
+                <label style={{ fontWeight: '600', fontSize: '14px', color: '#a16207' }}>
+                  Location (Optional)
+                </label>
+              </div>
+
+              {activityForm.location_lat && activityForm.location_lng ? (
+                <div style={{
+                  padding: '8px',
+                  backgroundColor: '#f0f9f4',
+                  border: '1px solid #bbf7d0',
+                  borderRadius: '6px',
+                  marginBottom: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}>
+                  <div style={{ fontSize: '13px', color: '#065f46' }}>
+                    📍 {activityForm.location_name || 'Location set'}
+                  </div>
+                  <button
+                    onClick={() => setActivityForm(prev => ({
+                      ...prev,
+                      location_lat: null,
+                      location_lng: null,
+                      location_accuracy: null,
+                      location_name: ''
+                    }))}
+                    style={{
+                      padding: '4px 8px',
+                      backgroundColor: '#ef4444',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '11px'
+                    }}
+                  >
+                    Clear
+                  </button>
+                </div>
+              ) : null}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={getCurrentLocation}
+                  disabled={isGettingLocation}
+                  style={{
+                    padding: '10px 12px',
+                    backgroundColor: isGettingLocation ? '#9ca3af' : '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: isGettingLocation ? 'not-allowed' : 'pointer',
+                    fontSize: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                    fontWeight: '500'
+                  }}
+                >
+                  {isGettingLocation ? (
+                    <>
+                      <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} />
+                      Getting...
+                    </>
+                  ) : (
+                    '📍 Current Location'
+                  )}
+                </button>
+
+                {currentVineyard && (
+                  <button
+                    type="button"
+                    onClick={() => setActivityForm(prev => ({
+                      ...prev,
+                      location_lat: currentVineyard.latitude,
+                      location_lng: currentVineyard.longitude,
+                      location_accuracy: null,
+                      location_name: `🍇 ${currentVineyard.name}`
+                    }))}
+                    style={{
+                      padding: '10px 12px',
+                      backgroundColor: '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px',
+                      fontWeight: '500'
+                    }}
+                  >
+                    🍇 Vineyard
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              {editingEvent && (
+                <button
+                  onClick={() => {
+                    setEditingEvent(null);
+                    setActivityForm({
+                      activity_type: '',
+                      start_date: new Date().toISOString().split('T')[0],
+                      end_date: '',
+                      notes: '',
+                      location_lat: null,
+                      location_lng: null,
+                      location_name: '',
+                      location_accuracy: null,
+                      spray_product: '',
+                      spray_quantity: '',
+                      spray_unit: 'oz/acre',
+                      spray_target: '',
+                      spray_conditions: '',
+                      spray_equipment: '',
+                      irrigation_amount: '',
+                      irrigation_unit: 'inches',
+                      irrigation_method: '',
+                      irrigation_duration: '',
+                      irrigation_measurement_method: '',
+                      irrigation_measurement_value: '',
+                      fertilizer_type: '',
+                      fertilizer_npk: '',
+                      fertilizer_rate: '',
+                      fertilizer_unit: 'lbs/acre',
+                      fertilizer_method: '',
+                      harvest_yield: '',
+                      harvest_unit: 'tons/acre',
+                      harvest_brix: '',
+                      harvest_ph: '',
+                      harvest_ta: '',
+                      harvest_block: '',
+                      canopy_activity: '',
+                      canopy_intensity: '',
+                      canopy_side: '',
+                      canopy_stage: '',
+                      scout_focus: '',
+                      scout_severity: '',
+                      scout_distribution: '',
+                      scout_action: '',
+                      phenology_stage: '',
+                      phenology_percent_complete: '',
+                      phenology_location: '',
+                      ripeness_block_estimates: '',
+                      ripeness_brix: '',
+                      ripeness_ph: '',
+                      ripeness_ta: '',
+                      ripeness_seed_brownness: '',
+                    });
+                  }}
+                  style={{
+                    padding: '12px 24px',
+                    backgroundColor: '#6b7280',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    fontWeight: '600'
+                  }}
+                >
+                  Cancel Edit
+                </button>
+              )}
+
+              <button
+                onClick={saveActivity}
+                disabled={
+                  isSavingActivity || 
+                  !activityForm.activity_type || 
+                  !activityForm.start_date ||
+                  (['Bud Break', 'Bloom', 'Fruit Set', 'Veraison'].includes(activityForm.activity_type) && !activityForm.phenology_percent_complete)
+                }
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: (
+                    !activityForm.activity_type || 
+                    !activityForm.start_date ||
+                    (['Bud Break', 'Bloom', 'Fruit Set', 'Veraison'].includes(activityForm.activity_type) && !activityForm.phenology_percent_complete)
+                  ) ? '#d1d5db' : '#22c55e',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: (
+                    !activityForm.activity_type || 
+                    !activityForm.start_date ||
+                    (['Bud Break', 'Bloom', 'Fruit Set', 'Veraison'].includes(activityForm.activity_type) && !activityForm.phenology_percent_complete)
+                  ) ? 'not-allowed' : 'pointer',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  opacity: isSavingActivity ? 0.7 : 1
+                }}
+              >
+                {isSavingActivity ? (
+                  <div style={{
+                    width: '16px',
+                    height: '16px',
+                    border: '2px solid transparent',
+                    borderTop: '2px solid white',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite'
+                  }}></div>
+                ) : (
+                  isSavingActivity ? 'Saving...' : (editingEvent ? 'Update Event' : 'Save Activity')
+                )}
+              </button>
+            </div>
+          </div>
         )}
       </div>
     );
@@ -3038,18 +3007,18 @@ export function WeatherDashboard({
       'canopy_management': '✂️',
       'scouting': '🔍',
       'harvest': '🍇',
-      'phenology_tracking': '🌱', // Updated for phenology
-      'ripeness_tracking': '🍇', // Updated for ripeness
-      'bud_break': '🌿',
+      'phenology': '🌱', // Added for phenology
+      'ripeness': '🍇', // Added for ripeness
+      'budbreak': '🌿',
       'bloom': '🌸',
       'fruit_set': '🍇',
       'veraison': '🍷',
       'pruning': '✂️',
       'soil_work': '🌍',
       'equipment_maintenance': '🔧',
-      'pest_observation': '🐞',
+      'pest': '🐞',
       'other': '📝',
-      // Legacy/alternative naming - ensure consistency
+      // Legacy/alternative naming
       'Spray Application': '🌿',
       'Fertilization': '🌱',
       'Irrigation': '💧',
@@ -3076,16 +3045,16 @@ export function WeatherDashboard({
       'canopy_management': 'Canopy Management',
       'scouting': 'Scouting',
       'harvest': 'Harvest',
-      'phenology_tracking': 'Phenology Tracking', // Updated
-      'ripeness_tracking': 'Ripeness Tracking', // Updated
-      'bud_break': 'Bud Break',
+      'phenology': 'Phenology', // Added for phenology
+      'ripeness': 'Ripeness', // Added for ripeness
+      'budbreak': 'Bud Break',
       'bloom': 'Bloom',
       'fruit_set': 'Fruit Set',
       'veraison': 'Veraison',
       'pruning': 'Pruning',
       'soil_work': 'Soil Work',
       'equipment_maintenance': 'Equipment Maintenance',
-      'pest_observation': 'Pest Observation',
+      'pest': 'Pest Observation',
       'other': 'Other',
       // Legacy/alternative naming
       'Spray Application': 'Spray Application',
@@ -3107,7 +3076,7 @@ export function WeatherDashboard({
       'Other': 'Other'
     };
 
-    const getEventDetails = useCallback((activity: any) => {
+    const getEventDetails = (activity: any) => {
       let details = [];
 
       if (activity.spray_product) {
@@ -3161,9 +3130,9 @@ export function WeatherDashboard({
       }
 
       return details;
-    }, []);
+    };
 
-    const startEditEvent = useCallback((activity: any) => {
+    const startEditEvent = (activity: any) => {
       setEditingEvent(activity);
       setShowActivityForm(true);
       setActiveTab('log'); // Switch to log tab when editing
@@ -3216,9 +3185,9 @@ export function WeatherDashboard({
         ripeness_ta: activity.ripeness_ta || '',
         ripeness_seed_brownness: activity.ripeness_seed_brownness || '',
       });
-    }, [eventTypeNames]);
+    };
 
-    const deleteEvent = useCallback(async (eventId: string) => {
+    const deleteEvent = async (eventId: string) => {
       if (window.confirm("Are you sure you want to delete this event?")) {
         try {
           setIsLoadingActivities(true);
@@ -3233,7 +3202,7 @@ export function WeatherDashboard({
           setIsLoadingActivities(false);
         }
       }
-    }, [loadActivities]);
+    };
 
     return (
       <div style={{ padding: '0 1rem 1rem 1rem' }}>
