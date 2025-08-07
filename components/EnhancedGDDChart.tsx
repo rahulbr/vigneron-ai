@@ -53,6 +53,84 @@ export function EnhancedGDDChart({
     "data points",
   );
 
+  // If no weather data, show alternative view
+  if (!weatherData || weatherData.length === 0) {
+    return (
+      <div style={{ marginTop: "30px" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "15px",
+            flexWrap: "wrap",
+            gap: "10px",
+          }}
+        >
+          <div>
+            <h2
+              style={{
+                fontSize: "24px",
+                fontWeight: "bold",
+                margin: "0 0 5px 0",
+              }}
+            >
+              📈 Growth Curve - {locationName}
+            </h2>
+            <p style={{ color: "#666", margin: "0" }}>
+              <strong>Weather data unavailable</strong>
+            </p>
+          </div>
+        </div>
+
+        {/* Weather Unavailable Message */}
+        <div
+          style={{
+            border: "1px solid #fed7aa",
+            borderRadius: "8px",
+            padding: "30px",
+            backgroundColor: "#fef9e7",
+            textAlign: "center"
+          }}
+        >
+          <div style={{ fontSize: "48px", marginBottom: "16px" }}>🌤️</div>
+          <h3 style={{ color: "#d97706", marginBottom: "8px" }}>Weather Data Unavailable</h3>
+          <p style={{ color: "#92400e", marginBottom: "16px", lineHeight: "1.5" }}>
+            The growth curve chart requires weather data to display GDD (Growing Degree Days) accumulation.
+            Weather data is currently unavailable, but you can still:
+          </p>
+          <ul style={{ 
+            textAlign: "left", 
+            color: "#92400e", 
+            maxWidth: "400px", 
+            margin: "0 auto",
+            paddingLeft: "20px"
+          }}>
+            <li>Log vineyard activities and phenology events</li>
+            <li>View and manage your event history</li>
+            <li>Access reports and analytics</li>
+            <li>Check back later when weather data is available</li>
+          </ul>
+        </div>
+
+        {/* Chart Instructions */}
+        <div
+          style={{
+            marginTop: "15px",
+            padding: "12px",
+            backgroundColor: "#f0f9ff",
+            borderRadius: "8px",
+            fontSize: "13px",
+            lineHeight: "1.4"
+          }}
+        >
+          <strong>📊 Note:</strong> The growth curve will automatically appear when weather data becomes available.
+          You can continue using all other features of the app in the meantime.
+        </div>
+      </div>
+    );
+  }
+
   // Load phenology events from database
   const loadPhenologyEvents = useCallback(async () => {
     if (!vineyardId) return;
