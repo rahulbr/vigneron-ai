@@ -421,7 +421,7 @@ export function WeatherDashboard({
   // Switch to a different vineyard
   const switchVineyard = async (vineyard: any) => {
     try {
-      console.log('🔄 Switching to vineyard:', vineyard.name);
+      console.log('🔄 Switching to vineyard:', vineyard.name, 'ID:', vineyard.id);
 
       setCurrentVineyard(vineyard);
       setVineyardId(vineyard.id);
@@ -435,6 +435,15 @@ export function WeatherDashboard({
       setWeatherAnalysis('');
       setPhenologyAnalysis('');
       setShowAIPanel(false);
+
+      // Clear and reload activities immediately
+      setActivities([]);
+      
+      // Force reload activities after a short delay
+      setTimeout(() => {
+        console.log('🔄 Force reloading activities for vineyard:', vineyard.id);
+        loadActivities();
+      }, 500);
 
       // Refresh weather data for new vineyard
       if (isInitialized && dateRange.start && dateRange.end) {
@@ -635,30 +644,61 @@ export function WeatherDashboard({
 
   // Load activities for current vineyard
   const loadActivities = async () => {
-    if (!vineyardId) return;
+    if (!vineyardId) {
+      console.log('⚠️ No vineyard ID - cannot load activities');
+      return;
+    }
 
     setIsLoadingActivities(true);
     try {
       console.log('📋 Loading activities for vineyard:', vineyardId);
 
-      const { data, error } = await supabase
+      // First try to load with block associations
+      let { data, error } = await supabase
         .from('phenology_events')
         .select(`
           *,
-          blocks:event_blocks.block(*)
+          event_blocks!inner(
+            block_id,
+            blocks(*)
+          )
         `)
         .eq('vineyard_id', vineyardId)
         .order('event_date', { ascending: false });
 
+      // If that fails, try without block associations
+      if (error) {
+        console.log('📋 Trying to load activities without block associations...');
+        const result = await supabase
+          .from('phenology_events')
+          .select('*')
+          .eq('vineyard_id', vineyardId)
+          .order('event_date', { ascending: false });
+        
+        data = result.data;
+        error = result.error;
+      }
+
       if (error) {
         console.error('❌ Error loading activities:', error);
+        setActivities([]);
         return;
       }
 
-      console.log('✅ Loaded activities:', data?.length || 0);
-      setActivities(data || []);
+      console.log('✅ Loaded activities:', data?.length || 0, data);
+      
+      // Process the data to ensure blocks are properly formatted
+      const processedActivities = (data || []).map((activity: any) => {
+        if (activity.event_blocks && Array.isArray(activity.event_blocks)) {
+          activity.blocks = activity.event_blocks.map((eb: any) => eb.blocks).filter(Boolean);
+        }
+        return activity;
+      });
+
+      setActivities(processedActivities);
     } catch (error) {
       console.error('❌ Failed to load activities:', error);
+      setActivities([]);
     } finally {
       setIsLoadingActivities(false);
     }
@@ -667,9 +707,23 @@ export function WeatherDashboard({
   // Auto-load activities when vineyard changes
   useEffect(() => {
     if (vineyardId) {
+      console.log('🔄 Vineyard changed, loading activities immediately:', vineyardId);
       loadActivities();
+    } else {
+      console.log('⚠️ No vineyard ID available');
     }
   }, [vineyardId]);
+
+  // Force load activities when component mounts
+  useEffect(() => {
+    if (currentVineyard && currentVineyard.id) {
+      console.log('🚀 Component mounted, forcing activity load for:', currentVineyard.id);
+      setVineyardId(currentVineyard.id);
+      setTimeout(() => {
+        loadActivities();
+      }, 1000); // Small delay to ensure vineyard ID is set
+    }
+  }, [currentVineyard]);
 
   // Calculate safety alerts when activities change
   useEffect(() => {
@@ -4360,29 +4414,47 @@ export function WeatherDashboard({
               <h4 style={{ margin: '0', fontSize: '16px', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 📅 Event History ({activities.filter(activity => {
                   if (eventFilterTypes.length === 0) return true;
-                  const eventType = activity.event_type?.toLowerCase().replace(' ', '_') || 'other';
+                  const eventType = activity.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
                   return eventFilterTypes.includes(eventType);
-                }).length})
+                }).length} total)
               </h4>
-              <button
-                onClick={loadActivities}
-                disabled={isLoadingActivities}
-                style={{
-                  padding: '6px 12px',
-                  backgroundColor: '#f3f4f6',
-                  color: '#374151',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                <RefreshCw size={12} style={{ animation: isLoadingActivities ? 'spin 1s linear infinite' : 'none' }} />
-                Refresh
-              </button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                  Total: {activities.length} events
+                </span>
+                <button
+                  onClick={loadActivities}
+                  disabled={isLoadingActivities}
+                  style={{
+                    padding: '6px 12px',
+                    backgroundColor: '#f3f4f6',
+                    color: '#374151',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <RefreshCw size={12} style={{ animation: isLoadingActivities ? 'spin 1s linear infinite' : 'none' }} />
+                  Refresh
+                </button>
+              </div>
+            </div>
+
+            {/* Debug Info */}
+            <div style={{ 
+              marginBottom: '10px', 
+              padding: '8px', 
+              backgroundColor: '#f0f9ff', 
+              border: '1px solid #bae6fd', 
+              borderRadius: '4px',
+              fontSize: '12px',
+              color: '#0369a1'
+            }}>
+              🔍 Debug: Vineyard ID: {vineyardId}, Activities loaded: {activities.length}, Loading: {isLoadingActivities ? 'Yes' : 'No'}
             </div>
 
             {isLoadingActivities ? (
@@ -4403,6 +4475,18 @@ export function WeatherDashboard({
                 <p style={{ margin: '0', color: '#6b7280', fontSize: '14px' }}>
                   Start logging your vineyard events to track phenology and activities throughout the season.
                 </p>
+                <div style={{ 
+                  marginTop: '10px', 
+                  fontSize: '12px', 
+                  color: '#6b7280',
+                  fontFamily: 'monospace',
+                  backgroundColor: '#f1f5f9',
+                  padding: '8px',
+                  borderRadius: '4px'
+                }}>
+                  Vineyard ID: {vineyardId || 'None'}<br/>
+                  Loading: {isLoadingActivities ? 'Yes' : 'No'}
+                </div>
               </div>
             ) : (
               <div style={{
