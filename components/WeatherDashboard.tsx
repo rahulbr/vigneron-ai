@@ -1725,6 +1725,11 @@ export function WeatherDashboard({
     );
   }
 
+  // Initialize data loading effect
+  useEffect(() => {
+    initializeData();
+  }, []);
+
   // Calculate some key variables for the main dashboard
   const currentYear = new Date().getFullYear();
   const previousYear = currentYear - 1;
