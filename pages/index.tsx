@@ -1,14 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { WeatherDashboard } from '../components/WeatherDashboard';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-const supabase = supabaseUrl && supabaseAnonKey 
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null;
+import { supabase } from '../lib/supabase';
 
 interface Vineyard {
   id: string;
@@ -33,24 +26,6 @@ export default function Home() {
     }
 
     try {
-      if (!supabase) {
-        console.log('🏗️ Creating demo vineyard data locally (bypassing database for now)');
-        
-        const demoVineyard: Vineyard = {
-          id: vineyardId,
-          name: 'Demo Vineyard - Napa Valley',
-          location: 'Napa Valley, CA',
-          latitude: 38.2975,
-          longitude: -122.2869,
-          created_at: new Date().toISOString()
-        };
-        
-        setVineyard(demoVineyard);
-        console.log('✅ Demo vineyard data loaded:', demoVineyard);
-        setLoading(false);
-        return;
-      }
-
       const { data, error } = await supabase
         .from('vineyards')
         .select('*')
