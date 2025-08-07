@@ -16,8 +16,8 @@ interface WeatherDashboardProps {
   locationName?: string;
 }
 
-export function WeatherDashboard({ 
-  vineyardId: propVineyardId, 
+export function WeatherDashboard({
+  vineyardId: propVineyardId,
   initialLatitude = 37.3272, // La Honda, CA fallback
   initialLongitude = -122.2813,
   locationName = "La Honda, CA"
@@ -140,7 +140,7 @@ export function WeatherDashboard({
 
   // Edit activity state
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
-  
+
   // Reports modal state
   const [showReportsModal, setShowReportsModal] = useState(false);
   const [editActivityForm, setEditActivityForm] = useState({
@@ -213,7 +213,7 @@ export function WeatherDashboard({
       });
 
       const { latitude, longitude, accuracy } = position.coords;
-      
+
       // Update the form with current location
       setActivityForm(prev => ({
         ...prev,
@@ -228,7 +228,7 @@ export function WeatherDashboard({
     } catch (error: any) {
       console.error('❌ Location error:', error);
       let errorMessage = 'Failed to get location';
-      
+
       if (error.code === 1) {
         errorMessage = 'Location access denied. Please enable location permissions.';
       } else if (error.code === 2) {
@@ -238,7 +238,7 @@ export function WeatherDashboard({
       } else {
         errorMessage = error.message || 'Unknown location error';
       }
-      
+
       setLocationError(errorMessage);
     } finally {
       setIsGettingLocation(false);
@@ -289,7 +289,8 @@ export function WeatherDashboard({
     autoFetch: false
   };
 
-  const { data, loading, error, lastUpdated, refetch, retry, clearError } = useWeather(weatherOptions);
+  // Modified useWeather hook to include caching functionality
+  const { data, loading, error, lastUpdated, refetch, retry, clearError, refetchWithCache } = useWeather(weatherOptions);
 
   // Load user's vineyards on component mount
   useEffect(() => {
@@ -356,8 +357,8 @@ export function WeatherDashboard({
       const { createVineyard } = await import('../lib/supabase');
       const newVineyard = await createVineyard(
         customLocation || 'New Vineyard',
-        customLocation || 'Unknown Location', 
-        latitude, 
+        customLocation || 'Unknown Location',
+        latitude,
         longitude
       );
 
@@ -372,7 +373,7 @@ export function WeatherDashboard({
 
       // Refresh weather data for new vineyard
       if (isInitialized && dateRange.start && dateRange.end) {
-        refetch();
+        refetchWithCache();
       }
 
     } catch (error) {
@@ -401,7 +402,7 @@ export function WeatherDashboard({
 
       // Refresh weather data for new vineyard
       if (isInitialized && dateRange.start && dateRange.end) {
-        refetch();
+        refetchWithCache();
       }
 
     } catch (error) {
@@ -519,7 +520,7 @@ export function WeatherDashboard({
       // Refresh weather data with new location
       clearError();
       if (isInitialized && dateRange.start && dateRange.end) {
-        refetch();
+        refetchWithCache();
       }
 
       console.log('✅ Vineyard location updated successfully:', updatedVineyard.name);
@@ -566,9 +567,9 @@ export function WeatherDashboard({
       actualEndDate = today;
     }
 
-    console.log('📅 Setting growing season date range:', { 
-      actualStartDate, 
-      actualEndDate, 
+    console.log('📅 Setting growing season date range:', {
+      actualStartDate,
+      actualEndDate,
       year: currentYear,
       note: 'Growing season data - never extends beyond today'
     });
@@ -590,9 +591,9 @@ export function WeatherDashboard({
         longitude,
         dateRange
       });
-      refetch();
+      refetchWithCache();
     }
-  }, [isInitialized, dateRange.start, dateRange.end, latitude, longitude, refetch]);
+  }, [isInitialized, dateRange.start, dateRange.end, latitude, longitude, refetchWithCache]);
 
   // Remove auto-generation of AI insights - only generate when button is clicked
 
@@ -650,10 +651,10 @@ export function WeatherDashboard({
   const calculateSafetyAlerts = () => {
     const alerts: any[] = [];
     const today = new Date();
-    
+
     // Check recent spray applications for re-entry and pre-harvest intervals
-    const sprayApplications = activities.filter(activity => 
-      activity.event_type === 'spray_application' && 
+    const sprayApplications = activities.filter(activity =>
+      activity.event_type === 'spray_application' &&
       activity.spray_product &&
       sprayDatabase[activity.spray_product as keyof typeof sprayDatabase]
     );
@@ -661,7 +662,7 @@ export function WeatherDashboard({
     sprayApplications.forEach(spray => {
       const sprayDate = new Date(spray.event_date);
       const productInfo = sprayDatabase[spray.spray_product as keyof typeof sprayDatabase];
-      
+
       if (!productInfo) return;
 
       // Calculate days since spray
@@ -689,7 +690,7 @@ export function WeatherDashboard({
       harvestEvents.forEach(harvest => {
         const harvestDate = new Date(harvest.event_date);
         const daysFromSprayToHarvest = Math.floor((harvestDate.getTime() - sprayDate.getTime()) / (1000 * 60 * 60 * 24));
-        
+
         if (daysFromSprayToHarvest >= 0 && daysFromSprayToHarvest < productInfo.preharvestDays) {
           alerts.push({
             id: `preharvest-${spray.id}-${harvest.id}`,
@@ -710,9 +711,9 @@ export function WeatherDashboard({
       if (productInfo.preharvestDays > 0) {
         const upcomingHarvestCutoff = new Date(sprayDate);
         upcomingHarvestCutoff.setDate(upcomingHarvestCutoff.getDate() + productInfo.preharvestDays);
-        
+
         const daysUntilSafeHarvest = Math.floor((upcomingHarvestCutoff.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        
+
         if (daysUntilSafeHarvest > 0 && daysUntilSafeHarvest <= 30) {
           alerts.push({
             id: `harvest-warning-${spray.id}`,
@@ -904,8 +905,8 @@ export function WeatherDashboard({
       // This will cause the EnhancedGDDChart component to reload its phenology events
       if (typeof window !== 'undefined') {
         // Set a flag that the chart component can listen for
-        window.dispatchEvent(new CustomEvent('phenologyEventsChanged', { 
-          detail: { vineyardId } 
+        window.dispatchEvent(new CustomEvent('phenologyEventsChanged', {
+          detail: { vineyardId }
         }));
       }
 
@@ -921,12 +922,12 @@ export function WeatherDashboard({
   // Start editing an activity
   const startEditingActivity = (activity: any) => {
     console.log('✏️ Starting to edit activity:', activity);
-    
+
     // Map database event_type back to display format
     const mapEventTypeToDisplay = (dbEventType: string): string => {
       const eventTypeMapping: { [key: string]: string } = {
         'bud_break': 'Bud Break',
-        'bloom': 'Bloom', 
+        'bloom': 'Bloom',
         'fruit_set': 'Fruit Set',
         'veraison': 'Veraison',
         'harvest': 'Harvest',
@@ -941,7 +942,7 @@ export function WeatherDashboard({
         'scouting': 'Scouting',
         'other': 'Other'
       };
-      
+
       // Handle the normalized event type from database
       const normalizedType = dbEventType?.toLowerCase().replace(/\s+/g, '_') || 'other';
       return eventTypeMapping[normalizedType] || 'Other';
@@ -996,7 +997,7 @@ export function WeatherDashboard({
       scout_distribution: activity.scout_distribution || '',
       scout_action: activity.scout_action || ''
     });
-    
+
     console.log('✏️ Edit form populated with values:', {
       activity_type: displayEventType,
       start_date: activity.event_date,
@@ -1075,7 +1076,7 @@ export function WeatherDashboard({
         const displayMapping: { [key: string]: string } = {
           'Bud Break': 'bud_break',
           'Bloom': 'bloom',
-          'Fruit Set': 'fruit_set', 
+          'Fruit Set': 'fruit_set',
           'Veraison': 'veraison',
           'Harvest': 'harvest',
           'Pruning': 'pruning',
@@ -1089,7 +1090,7 @@ export function WeatherDashboard({
           'Scouting': 'scouting',
           'Other': 'other'
         };
-        
+
         return displayMapping[displayType] || 'other';
       };
 
@@ -1111,6 +1112,12 @@ export function WeatherDashboard({
         updateData.location_lng = editActivityForm.location_lng;
         updateData.location_name = editActivityForm.location_name;
         updateData.location_accuracy = editActivityForm.location_accuracy;
+      } else {
+        // Ensure location fields are cleared if not provided
+        updateData.location_lat = null;
+        updateData.location_lng = null;
+        updateData.location_name = '';
+        updateData.location_accuracy = null;
       }
 
       // Add event-type specific data
@@ -1121,6 +1128,14 @@ export function WeatherDashboard({
         updateData.spray_target = editActivityForm.spray_target || null;
         updateData.spray_conditions = editActivityForm.spray_conditions || null;
         updateData.spray_equipment = editActivityForm.spray_equipment || null;
+      } else {
+        // Clear spray fields if not applicable
+        updateData.spray_product = null;
+        updateData.spray_quantity = null;
+        updateData.spray_unit = null;
+        updateData.spray_target = null;
+        updateData.spray_conditions = null;
+        updateData.spray_equipment = null;
       }
 
       if (editActivityForm.activity_type === 'Irrigation') {
@@ -1128,6 +1143,11 @@ export function WeatherDashboard({
         updateData.irrigation_unit = editActivityForm.irrigation_unit || null;
         updateData.irrigation_method = editActivityForm.irrigation_method || null;
         updateData.irrigation_duration = editActivityForm.irrigation_duration || null;
+      } else {
+        updateData.irrigation_amount = null;
+        updateData.irrigation_unit = null;
+        updateData.irrigation_method = null;
+        updateData.irrigation_duration = null;
       }
 
       if (editActivityForm.activity_type === 'Fertilization') {
@@ -1136,6 +1156,12 @@ export function WeatherDashboard({
         updateData.fertilizer_rate = editActivityForm.fertilizer_rate || null;
         updateData.fertilizer_unit = editActivityForm.fertilizer_unit || null;
         updateData.fertilizer_method = editActivityForm.fertilizer_method || null;
+      } else {
+        updateData.fertilizer_type = null;
+        updateData.fertilizer_npk = null;
+        updateData.fertilizer_rate = null;
+        updateData.fertilizer_unit = null;
+        updateData.fertilizer_method = null;
       }
 
       if (editActivityForm.activity_type === 'Harvest') {
@@ -1145,6 +1171,13 @@ export function WeatherDashboard({
         updateData.harvest_ph = editActivityForm.harvest_ph || null;
         updateData.harvest_ta = editActivityForm.harvest_ta || null;
         updateData.harvest_block = editActivityForm.harvest_block || null;
+      } else {
+        updateData.harvest_yield = null;
+        updateData.harvest_unit = null;
+        updateData.harvest_brix = null;
+        updateData.harvest_ph = null;
+        updateData.harvest_ta = null;
+        updateData.harvest_block = null;
       }
 
       if (editActivityForm.activity_type === 'Canopy Management') {
@@ -1152,6 +1185,11 @@ export function WeatherDashboard({
         updateData.canopy_intensity = editActivityForm.canopy_intensity || null;
         updateData.canopy_side = editActivityForm.canopy_side || null;
         updateData.canopy_stage = editActivityForm.canopy_stage || null;
+      } else {
+        updateData.canopy_activity = null;
+        updateData.canopy_intensity = null;
+        updateData.canopy_side = null;
+        updateData.canopy_stage = null;
       }
 
       if (editActivityForm.activity_type === 'Scouting' || editActivityForm.activity_type === 'Pest') {
@@ -1159,6 +1197,11 @@ export function WeatherDashboard({
         updateData.scout_severity = editActivityForm.scout_severity || null;
         updateData.scout_distribution = editActivityForm.scout_distribution || null;
         updateData.scout_action = editActivityForm.scout_action || null;
+      } else {
+        updateData.scout_focus = null;
+        updateData.scout_severity = null;
+        updateData.scout_distribution = null;
+        updateData.scout_action = null;
       }
 
       await updatePhenologyEvent(activityId, updateData);
@@ -1171,8 +1214,8 @@ export function WeatherDashboard({
 
       // Force the chart to refresh its events
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('phenologyEventsChanged', { 
-          detail: { vineyardId } 
+        window.dispatchEvent(new CustomEvent('phenologyEventsChanged', {
+          detail: { vineyardId }
         }));
       }
 
@@ -1204,8 +1247,8 @@ export function WeatherDashboard({
       // This will cause the EnhancedGDDChart component to reload its phenology events
       if (typeof window !== 'undefined') {
         // Set a flag that the chart component can listen for
-        window.dispatchEvent(new CustomEvent('phenologyEventsChanged', { 
-          detail: { vineyardId } 
+        window.dispatchEvent(new CustomEvent('phenologyEventsChanged', {
+          detail: { vineyardId }
         }));
       }
 
@@ -1361,8 +1404,8 @@ export function WeatherDashboard({
       // Calculate summary statistics
       const totalGDD = data.reduce((sum, day) => sum + day.gdd, 0);
       const totalRainfall = data.reduce((sum, day) => sum + day.rainfall, 0);
-      const avgTempHigh = data.reduce((sum, day) => sum + day.temp_high, 0) / data.length;
-      const avgTempLow = data.reduce((sum, day) => sum + day.temp_low, 0) / data.length;
+      const avgTempHigh = data.length > 0 ? data.reduce((sum, day) => sum + day.temp_high, 0) / data.length : 0;
+      const avgTempLow = data.length > 0 ? data.reduce((sum, day) => sum + day.temp_low, 0) / data.length : 0;
 
       const context: VineyardContext = {
         locationName: customLocation,
@@ -1461,7 +1504,7 @@ export function WeatherDashboard({
     // Clear error and refetch if dates are ready
     clearError();
     if (isInitialized && dateRange.start && dateRange.end) {
-      refetch();
+      refetchWithCache();
     }
   };
 
@@ -1518,7 +1561,7 @@ export function WeatherDashboard({
     console.log('📅 Updating custom date range:', dateRange);
     clearError();
     if (dateRange.start && dateRange.end) {
-      refetch();
+      refetchWithCache();
     }
   };
 
@@ -1529,14 +1572,14 @@ export function WeatherDashboard({
   const avgTempLow = data.length > 0 ? data.reduce((sum, day) => sum + day.temp_low, 0) / data.length : 0;
 
   // Calculate location statistics
-  const eventsWithLocation = activities.filter(activity => 
+  const eventsWithLocation = activities.filter(activity =>
     activity.location_lat && activity.location_lng
   );
-  const eventsWithoutLocation = activities.filter(activity => 
+  const eventsWithoutLocation = activities.filter(activity =>
     !activity.location_lat || !activity.location_lng
   );
-  const locationCoveragePercent = activities.length > 0 
-    ? Math.round((eventsWithLocation.length / activities.length) * 100) 
+  const locationCoveragePercent = activities.length > 0
+    ? Math.round((eventsWithLocation.length / activities.length) * 100)
     : 0;
 
   // Get icon for insight type (harvest-focused)
@@ -1564,19 +1607,19 @@ export function WeatherDashboard({
   // Get urgency styling
   const getUrgencyStyle = (urgency: string) => {
     switch (urgency) {
-      case 'high': return { 
+      case 'high': return {
         badge: { backgroundColor: '#dc2626', color: 'white' },
         border: '2px solid #dc2626'
       };
-      case 'medium': return { 
+      case 'medium': return {
         badge: { backgroundColor: '#f59e0b', color: 'white' },
         border: '1px solid #f59e0b'
       };
-      case 'low': return { 
+      case 'low': return {
         badge: { backgroundColor: '#6b7280', color: 'white' },
         border: '1px solid #e5e7eb'
       };
-      default: return { 
+      default: return {
         badge: { backgroundColor: '#6b7280', color: 'white' },
         border: '1px solid #e5e7eb'
       };
@@ -1587,9 +1630,9 @@ export function WeatherDashboard({
   if (!isInitialized) {
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
-        <div style={{ 
-          width: '30px', 
-          height: '30px', 
+        <div style={{
+          width: '30px',
+          height: '30px',
           border: '3px solid #f3f3f3',
           borderTop: '3px solid #3498db',
           borderRadius: '50%',
@@ -1614,9 +1657,9 @@ export function WeatherDashboard({
               key={alert.id}
               style={{
                 padding: '15px 20px',
-                backgroundColor: alert.severity === 'critical' ? '#fef2f2' : 
+                backgroundColor: alert.severity === 'critical' ? '#fef2f2' :
                                 alert.severity === 'high' ? '#fffbeb' : '#f0f9ff',
-                border: `2px solid ${alert.severity === 'critical' ? '#ef4444' : 
+                border: `2px solid ${alert.severity === 'critical' ? '#ef4444' :
                                    alert.severity === 'high' ? '#f59e0b' : '#3b82f6'}`,
                 borderRadius: '8px',
                 marginBottom: '10px',
@@ -1625,34 +1668,34 @@ export function WeatherDashboard({
                 gap: '12px'
               }}
             >
-              <div style={{ 
+              <div style={{
                 fontSize: '20px',
                 marginTop: '2px',
-                color: alert.severity === 'critical' ? '#ef4444' : 
+                color: alert.severity === 'critical' ? '#ef4444' :
                        alert.severity === 'high' ? '#f59e0b' : '#3b82f6'
               }}>
                 {alert.severity === 'critical' ? '🚨' : alert.severity === 'high' ? '🚫' : '📅'}
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ 
-                  fontWeight: '700', 
-                  fontSize: '16px', 
+                <div style={{
+                  fontWeight: '700',
+                  fontSize: '16px',
                   marginBottom: '4px',
-                  color: alert.severity === 'critical' ? '#991b1b' : 
+                  color: alert.severity === 'critical' ? '#991b1b' :
                          alert.severity === 'high' ? '#92400e' : '#1e40af'
                 }}>
                   {alert.title}
                 </div>
-                <div style={{ 
-                  fontSize: '14px', 
+                <div style={{
+                  fontSize: '14px',
                   marginBottom: '6px',
-                  color: alert.severity === 'critical' ? '#7f1d1d' : 
+                  color: alert.severity === 'critical' ? '#7f1d1d' :
                          alert.severity === 'high' ? '#78350f' : '#1e3a8a'
                 }}>
                   {alert.message}
                 </div>
-                <div style={{ 
-                  fontSize: '12px', 
+                <div style={{
+                  fontSize: '12px',
                   color: '#6b7280',
                   display: 'flex',
                   alignItems: 'center',
@@ -1687,7 +1730,7 @@ export function WeatherDashboard({
 
         {/* Current Vineyard Display */}
         {currentVineyard && (
-          <div style={{ 
+          <div style={{
             marginTop: '15px',
             padding: '12px 16px',
             backgroundColor: '#f0f9ff',
@@ -1877,10 +1920,10 @@ export function WeatherDashboard({
 
               {/* Search Results for new vineyard */}
               {showSearchResults && searchResults.length > 0 && (
-                <div style={{ 
-                  marginBottom: '15px', 
-                  border: '1px solid #a7f3d0', 
-                  borderRadius: '6px', 
+                <div style={{
+                  marginBottom: '15px',
+                  border: '1px solid #a7f3d0',
+                  borderRadius: '6px',
                   backgroundColor: 'white',
                   maxHeight: '200px',
                   overflowY: 'auto'
@@ -2116,10 +2159,10 @@ export function WeatherDashboard({
 
               {/* Search Results for editing */}
               {showSearchResults && searchResults.length > 0 && (
-                <div style={{ 
-                  marginBottom: '15px', 
-                  border: '1px solid #bfdbfe', 
-                  borderRadius: '6px', 
+                <div style={{
+                  marginBottom: '15px',
+                  border: '1px solid #bfdbfe',
+                  borderRadius: '6px',
                   backgroundColor: 'white',
                   maxHeight: '200px',
                   overflowY: 'auto'
@@ -2254,7 +2297,7 @@ export function WeatherDashboard({
             <div style={{ marginBottom: '15px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {userVineyards.map((vineyard) => (
-                  <div 
+                  <div
                     key={vineyard.id}
                     style={{
                       display: 'flex',
@@ -2439,15 +2482,15 @@ export function WeatherDashboard({
           )}
 
           {/* Show vineyard count */}
-          <div style={{ 
-            fontSize: '13px', 
+          <div style={{
+            fontSize: '13px',
             color: '#6b7280',
             padding: '10px',
             backgroundColor: '#f1f5f9',
             borderRadius: '6px',
             textAlign: 'center'
           }}>
-            📊 {userVineyards.length === 0 ? 'No vineyards configured' : 
+            📊 {userVineyards.length === 0 ? 'No vineyards configured' :
                  `${userVineyards.length} vineyard${userVineyards.length !== 1 ? 's' : ''} configured`}
           </div>
         </div>
@@ -2455,10 +2498,10 @@ export function WeatherDashboard({
 
       {/* Connection Status */}
       <div className={`status-indicator section-spacing ${
-        isConnected === true ? 'status-success' : 
-        isConnected === false ? 'status-error' : 
+        isConnected === true ? 'status-success' :
+        isConnected === false ? 'status-error' :
         'status-warning'
-      }`} style={{ 
+      }`} style={{
         display: 'flex',
         alignItems: 'center',
         gap: '8px'
@@ -2477,11 +2520,11 @@ export function WeatherDashboard({
           <>
             <AlertCircle size={16} style={{ color: '#dc2626' }} />
             <span style={{ color: '#991b1b' }}>Weather API Connection Failed</span>
-            <button 
+            <button
               onClick={testConnection}
-              style={{ 
-                marginLeft: 'auto', 
-                padding: '4px 8px', 
+              style={{
+                marginLeft: 'auto',
+                padding: '4px 8px',
                 fontSize: '12px',
                 backgroundColor: '#dc2626',
                 color: 'white',
@@ -2506,10 +2549,10 @@ export function WeatherDashboard({
 
 
       {/* Date Range Controls - 3 Buttons */}
-      <div style={{ 
-        marginBottom: '20px', 
-        padding: '20px', 
-        backgroundColor: '#f8fafc', 
+      <div style={{
+        marginBottom: '20px',
+        padding: '20px',
+        backgroundColor: '#f8fafc',
         borderRadius: '12px',
         border: '1px solid #e2e8f0'
       }}>
@@ -2525,7 +2568,7 @@ export function WeatherDashboard({
             style={{
               padding: '8px 16px',
               backgroundColor: dateRangeMode === 'current' ? '#22c55e' : '#f3f4f6',
-              color: dateRangeMode === 'current' ?'white' : '#374151',
+              color: dateRangeMode === 'current' ? 'white' : '#374151',
               border: '1px solid #d1d5db',
               borderRadius: '6px',
               cursor: 'pointer',
@@ -2615,9 +2658,9 @@ export function WeatherDashboard({
         )}
 
         {/* Show current date range */}
-        <div style={{ 
-          padding: '10px', 
-          backgroundColor: '#e0f2fe', 
+        <div style={{
+          padding: '10px',
+          backgroundColor: '#e0f2fe',
           borderRadius: '6px',
           fontSize: '14px',
           color: '#0369a1'
@@ -2633,9 +2676,9 @@ export function WeatherDashboard({
 
       {/* Error Display */}
       {error && (
-        <div style={{ 
-          marginBottom: '20px', 
-          padding: '16px', 
+        <div style={{
+          marginBottom: '20px',
+          padding: '16px',
           backgroundColor: '#fef2f2',
           border: '1px solid #fecaca',
           borderRadius: '8px',
@@ -2707,7 +2750,7 @@ export function WeatherDashboard({
               <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280' }}>Total Rainfall</span>
             </div>
             <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#3b82f6' }}>
-              {totalRainfall.toFixed(2)}"
+              {totalRainfall.toFixed(2)}
             </div>
             <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '4px' }}>
               Precipitation
@@ -2744,8 +2787,8 @@ export function WeatherDashboard({
 
       {/* Loading State */}
       {loading && (
-        <div style={{ 
-          padding: '40px', 
+        <div style={{
+          padding: '40px',
           textAlign: 'center',
           backgroundColor: '#f8fafc',
           borderRadius: '12px',
@@ -2763,7 +2806,7 @@ export function WeatherDashboard({
       {/* Enhanced GDD Chart - FIXED WITH VINEYARD ID */}
       {data.length > 0 && !loading && vineyardId && (
         <div style={{ marginBottom: '20px' }}>
-          <EnhancedGDDChart 
+          <EnhancedGDDChart
             weatherData={data}
             locationName={customLocation}
             vineyardId={vineyardId}
@@ -2774,8 +2817,8 @@ export function WeatherDashboard({
 
       {/* Data Status Footer */}
       {lastUpdated && (
-        <div style={{ 
-          padding: '12px 16px', 
+        <div style={{
+          padding: '12px 16px',
           backgroundColor: '#f1f5f9',
           borderRadius: '8px',
           border: '1px solid #e2e8f0',
@@ -2841,13 +2884,13 @@ export function WeatherDashboard({
                         return `https://www.google.com/maps?q=${event.location_lat},${event.location_lng}&z=18`;
                       } else {
                         // For multiple locations, create a route
-                        const waypoints = filteredEventsWithLocation.slice(1, -1).map(event => 
+                        const waypoints = filteredEventsWithLocation.slice(1, -1).map(event =>
                           `${event.location_lat},${event.location_lng}`
                         ).join('|');
-                        
+
                         const origin = `${filteredEventsWithLocation[0].location_lat},${filteredEventsWithLocation[0].location_lng}`;
                         const destination = `${filteredEventsWithLocation[filteredEventsWithLocation.length - 1].location_lat},${filteredEventsWithLocation[filteredEventsWithLocation.length - 1].location_lng}`;
-                        
+
                         return waypoints.length > 0
                           ? `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}`
                           : `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
@@ -2867,7 +2910,7 @@ export function WeatherDashboard({
                       gap: '4px',
                       fontWeight: '500'
                     }}
-                    title={filteredEventsWithLocation.length === 1 
+                    title={filteredEventsWithLocation.length === 1
                       ? 'View event location on map'
                       : `Route through ${filteredEventsWithLocation.length} filtered event locations`
                     }
@@ -2876,7 +2919,7 @@ export function WeatherDashboard({
                   </a>
                 );
               })()}
-              
+
               {/* Reports Button */}
               <button
                 onClick={openReportsModal}
@@ -3142,7 +3185,7 @@ export function WeatherDashboard({
               </div>
 
               {/* Event Type Specific Details */}
-              
+
               {/* Irrigation Details */}
               {activityForm.activity_type === 'Irrigation' && (
                 <div style={{
@@ -3158,7 +3201,7 @@ export function WeatherDashboard({
                       Irrigation Details
                     </h5>
                   </div>
-                  
+
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '12px' }}>
                     <div>
                       <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#00695c' }}>
@@ -3269,7 +3312,7 @@ export function WeatherDashboard({
                       Fertilization Details
                     </h5>
                   </div>
-                  
+
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '12px' }}>
                     <div>
                       <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#365314' }}>
@@ -3411,7 +3454,7 @@ export function WeatherDashboard({
                       Harvest Details
                     </h5>
                   </div>
-                  
+
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '12px' }}>
                     <div>
                       <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#991b1b' }}>
@@ -3553,7 +3596,7 @@ export function WeatherDashboard({
                       Canopy Management Details
                     </h5>
                   </div>
-                  
+
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '12px' }}>
                     <div>
                       <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#065f46' }}>
@@ -3683,7 +3726,7 @@ export function WeatherDashboard({
                       {activityForm.activity_type === 'Pest' ? 'Pest Observation' : 'Scouting'} Details
                     </h5>
                   </div>
-                  
+
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '12px' }}>
                     <div>
                       <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#064e3b' }}>
@@ -3837,7 +3880,7 @@ export function WeatherDashboard({
                       Spray Application Details
                     </h5>
                   </div>
-                  
+
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '12px' }}>
                     <div>
                       <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
@@ -4043,7 +4086,7 @@ export function WeatherDashboard({
                     color: '#475569',
                     marginTop: '8px'
                   }}>
-                    <strong>Safety Data Sources:</strong> EPA pesticide labels, University extension publications, industry standard practices. 
+                    <strong>Safety Data Sources:</strong> EPA pesticide labels, University extension publications, industry standard practices.
                     Always verify with current product labels and local regulations before application.
                   </div>
                 </div>
@@ -4056,7 +4099,7 @@ export function WeatherDashboard({
                 <textarea
                   value={activityForm.notes}
                   onChange={(e) => setActivityForm(prev => ({ ...prev, notes: e.target.value }))}
-                  placeholder={activityForm.activity_type === 'Spray Application' ? 
+                  placeholder={activityForm.activity_type === 'Spray Application' ?
                     "Additional notes about application conditions, coverage, any issues encountered..." :
                     "Add any details about this event..."
                   }
@@ -4072,7 +4115,7 @@ export function WeatherDashboard({
               </div>
 
               {/* Simplified Location Section */}
-              <div style={{ 
+              <div style={{
                 marginBottom: '16px',
                 padding: '12px',
                 backgroundColor: '#fefce8',
@@ -4116,8 +4159,17 @@ export function WeatherDashboard({
                     </button>
                   </div>
                 ) : (
-                  <div style={{ fontSize: '12px', color: '#92400e', marginBottom: '8px' }}>
-                    No location set
+                  <div style={{
+                    padding: '8px',
+                    backgroundColor: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '6px',
+                    marginBottom: '8px',
+                    textAlign: 'center'
+                  }}>
+                    <div style={{ fontSize: '12px', color: '#92400e' }}>
+                      No location set for this event
+                    </div>
                   </div>
                 )}
 
@@ -4410,7 +4462,7 @@ export function WeatherDashboard({
                           </div>
 
                           {/* Event Type Specific Details for Edit Form */}
-                          
+
                           {/* Spray Application Details */}
                           {editActivityForm.activity_type === 'Spray Application' && (
                             <div style={{
@@ -4426,7 +4478,7 @@ export function WeatherDashboard({
                                   Spray Application Details
                                 </h5>
                               </div>
-                              
+
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginBottom: '10px' }}>
                                 <div>
                                   <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#92400e' }}>
@@ -4524,6 +4576,7 @@ export function WeatherDashboard({
                                     <option value="total liters">total liters</option>
                                   </select>
                                 </div>
+                                {/* ... other spray fields ... */}
                               </div>
 
                               {/* Safety Information Display for Edit */}
@@ -4543,22 +4596,29 @@ export function WeatherDashboard({
                                   </div>
                                   {(() => {
                                     const productInfo = sprayDatabase[editActivityForm.spray_product as keyof typeof sprayDatabase];
-                                    return (
-                                      <div style={{ fontSize: '11px', color: '#7f1d1d' }}>
-                                        <div style={{ marginBottom: '3px' }}>
-                                          <strong>Re-entry Interval:</strong> {productInfo.reentryHours} hours
+                                    if (productInfo) {
+                                      const sprayDate = new Date(editActivityForm.start_date);
+                                      const today = new Date();
+                                      const hoursSinceSpray = Math.floor((today.getTime() - sprayDate.getTime()) / (1000 * 60 * 60));
+
+                                      return (
+                                        <div style={{ fontSize: '11px', color: '#7f1d1d' }}>
+                                          <div style={{ marginBottom: '3px' }}>
+                                            <strong>Re-entry Interval:</strong> {productInfo.reentryHours} hours
+                                          </div>
+                                          <div style={{ marginBottom: '3px' }}>
+                                            <strong>Pre-harvest Interval:</strong> {productInfo.preharvestDays} days
+                                          </div>
+                                          <div style={{ marginBottom: '3px' }}>
+                                            <strong>Category:</strong> {productInfo.category} | <strong>Signal Word:</strong> {productInfo.signal}
+                                          </div>
+                                          <div style={{ fontStyle: 'italic', marginTop: '4px' }}>
+                                            Always follow label instructions and local regulations
+                                          </div>
                                         </div>
-                                        <div style={{ marginBottom: '3px' }}>
-                                          <strong>Pre-harvest Interval:</strong> {productInfo.preharvestDays} days
-                                        </div>
-                                        <div style={{ marginBottom: '3px' }}>
-                                          <strong>Category:</strong> {productInfo.category} | <strong>Signal Word:</strong> {productInfo.signal}
-                                        </div>
-                                        <div style={{ fontStyle: 'italic', marginTop: '4px' }}>
-                                          Always follow label instructions and local regulations
-                                        </div>
-                                      </div>
-                                    );
+                                      );
+                                    }
+                                    return null;
                                   })()}
                                 </div>
                               )}
@@ -4602,25 +4662,6 @@ export function WeatherDashboard({
                                   />
                                 </div>
                               </div>
-
-                              <div style={{ marginBottom: '10px' }}>
-                                <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#92400e' }}>
-                                  Weather Conditions
-                                </label>
-                                <input
-                                  type="text"
-                                  value={editActivityForm.spray_conditions}
-                                  onChange={(e) => setEditActivityForm(prev => ({ ...prev, spray_conditions: e.target.value }))}
-                                  placeholder="e.g. Wind: 5mph SW, Temp: 72°F, Humidity: 65%"
-                                  style={{
-                                    width: '100%',
-                                    padding: '6px 10px',
-                                    border: '1px solid #f59e0b',
-                                    borderRadius: '6px',
-                                    fontSize: '11px'
-                                  }}
-                                />
-                              </div>
                             </div>
                           )}
 
@@ -4639,7 +4680,7 @@ export function WeatherDashboard({
                                   Irrigation Details
                                 </h5>
                               </div>
-                              
+
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '10px' }}>
                                 <div>
                                   <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#00695c' }}>
@@ -4750,7 +4791,7 @@ export function WeatherDashboard({
                                   Fertilization Details
                                 </h5>
                               </div>
-                              
+
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '10px' }}>
                                 <div>
                                   <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#365314' }}>
@@ -4892,7 +4933,7 @@ export function WeatherDashboard({
                                   Harvest Details
                                 </h5>
                               </div>
-                              
+
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '10px' }}>
                                 <div>
                                   <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#991b1b' }}>
@@ -5034,7 +5075,7 @@ export function WeatherDashboard({
                                   Canopy Management Details
                                 </h5>
                               </div>
-                              
+
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '10px' }}>
                                 <div>
                                   <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#065f46' }}>
@@ -5164,7 +5205,7 @@ export function WeatherDashboard({
                                   {editActivityForm.activity_type === 'Pest' ? 'Pest Observation' : 'Scouting'} Details
                                 </h5>
                               </div>
-                              
+
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '10px' }}>
                                 <div>
                                   <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#064e3b' }}>
@@ -5304,16 +5345,16 @@ export function WeatherDashboard({
                           )}
 
                           {/* Location Edit Section */}
-                          <div style={{ 
+                          <div style={{
                             marginBottom: '15px',
                             padding: '12px',
                             backgroundColor: '#fffbeb',
-                            border: '1px solid #fed7aa',
+                            border: '1px solid #fde68a',
                             borderRadius: '8px'
                           }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
                               <span style={{ fontSize: '16px' }}>📍</span>
-                              <label style={{ fontWeight: '600', fontSize: '13px', color: '#a16207' }}>
+                              <label style={{ fontWeight: '600', fontSize: '14px', color: '#a16207' }}>
                                 Event Location
                               </label>
                               <span style={{
@@ -5435,10 +5476,10 @@ export function WeatherDashboard({
 
                             {/* Search Results for Edit */}
                             {showSearchResults && searchResults.length > 0 && (
-                              <div style={{ 
-                                marginBottom: '8px', 
-                                border: '1px solid #d1d5db', 
-                                borderRadius: '4px', 
+                              <div style={{
+                                marginBottom: '8px',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '4px',
                                 backgroundColor: 'white',
                                 maxHeight: '120px',
                                 overflowY: 'auto'
@@ -5523,7 +5564,7 @@ export function WeatherDashboard({
                                     });
 
                                     const { latitude, longitude, accuracy } = position.coords;
-                                    
+
                                     setEditActivityForm(prev => ({
                                       ...prev,
                                       location_lat: latitude,
@@ -5599,7 +5640,7 @@ export function WeatherDashboard({
                                     fontWeight: '500'
                                   }}
                                 >
-                                  🍇 Use Vineyard Location
+                                  🍇 Vineyard Location
                                 </button>
                               )}
                             </div>
@@ -5681,8 +5722,8 @@ export function WeatherDashboard({
                               <span style={{ fontWeight: '600', color: '#374151', fontSize: '14px' }}>
                                 {style.label}
                               </span>
-                              <span style={{ 
-                                fontSize: '11px', 
+                              <span style={{
+                                fontSize: '11px',
                                 color: '#6b7280',
                                 padding: '2px 6px',
                                 backgroundColor: '#f1f5f9',
@@ -5720,7 +5761,7 @@ export function WeatherDashboard({
                             {(activity.location_lat && activity.location_lng) ? (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                                 <div style={{ fontSize: '12px', color: '#059669', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                  📍 
+                                  📍
                                   {activity.location_name ? (
                                     <span>{activity.location_name}</span>
                                   ) : (
@@ -5768,9 +5809,9 @@ export function WeatherDashboard({
                                 border: '1px solid #fbbf24',
                                 borderRadius: '6px'
                               }}>
-                                <div style={{ 
-                                  fontWeight: '600', 
-                                  fontSize: '13px', 
+                                <div style={{
+                                  fontWeight: '600',
+                                  fontSize: '13px',
                                   color: '#92400e',
                                   marginBottom: '6px',
                                   display: 'flex',
@@ -5784,7 +5825,7 @@ export function WeatherDashboard({
                                       const sprayDate = new Date(activity.event_date);
                                       const today = new Date();
                                       const hoursSinceSpray = Math.floor((today.getTime() - sprayDate.getTime()) / (1000 * 60 * 60));
-                                      
+
                                       if (hoursSinceSpray < productInfo.reentryHours) {
                                         return (
                                           <span style={{
@@ -5821,17 +5862,12 @@ export function WeatherDashboard({
                                       <strong>Equipment:</strong> {activity.spray_equipment}
                                     </div>
                                   )}
-                                  {activity.spray_conditions && (
-                                    <div style={{ marginBottom: '3px' }}>
-                                      <strong>Conditions:</strong> {activity.spray_conditions}
-                                    </div>
-                                  )}
                                   {(() => {
                                     const productInfo = sprayDatabase[activity.spray_product as keyof typeof sprayDatabase];
                                     if (productInfo) {
                                       return (
-                                        <div style={{ 
-                                          marginTop: '6px', 
+                                        <div style={{
+                                          marginTop: '6px',
                                           padding: '4px 6px',
                                           backgroundColor: '#fecaca',
                                           borderRadius: '4px',
@@ -5925,9 +5961,9 @@ export function WeatherDashboard({
 
       {/* Generate AI Insights Button */}
       {data.length > 0 && !isGeneratingInsights && (
-        <div style={{ 
+        <div style={{
           marginTop: '30px',
-          marginBottom: '20px', 
+          marginBottom: '20px',
           textAlign: 'center'
         }}>
           <button
@@ -5961,11 +5997,11 @@ export function WeatherDashboard({
 
       {/* AI Insights Panel - Moved to Bottom */}
       {showAIPanel && (
-        <div style={{ 
+        <div style={{
           marginTop: '20px',
-          marginBottom: '20px', 
-          padding: '20px', 
-          backgroundColor: '#fefce8', 
+          marginBottom: '20px',
+          padding: '20px',
+          backgroundColor: '#fefce8',
           borderRadius: '12px',
           border: '1px solid #fde68a'
         }}>
@@ -6020,11 +6056,11 @@ export function WeatherDashboard({
                         const urgencyOrder = { high: 3, medium: 2, low: 1 };
                         const typeOrder = { harvest_timing: 4, action_required: 3, opportunity: 2, monitor: 1 };
 
-                        const urgencyDiff = (urgencyOrder[b.urgency as keyof typeof urgencyOrder] || 1) - 
+                        const urgencyDiff = (urgencyOrder[b.urgency as keyof typeof urgencyOrder] || 1) -
                                           (urgencyOrder[a.urgency as keyof typeof urgencyOrder] || 1);
                         if (urgencyDiff !== 0) return urgencyDiff;
 
-                        return (typeOrder[b.type as keyof typeof typeOrder] || 1) - 
+                        return (typeOrder[b.type as keyof typeof typeOrder] || 1) -
                                (typeOrder[a.type as keyof typeof typeOrder] || 1);
                       })
                       .map((insight) => {
@@ -6051,7 +6087,7 @@ export function WeatherDashboard({
                                   <div style={{ fontWeight: '600', fontSize: '15px', color: colors.text }}>
                                     {insight.title}
                                   </div>
-                                  <div style={{ 
+                                  <div style={{
                                     ...urgencyStyle.badge,
                                     padding: '2px 8px',
                                     borderRadius: '12px',
@@ -6096,7 +6132,7 @@ export function WeatherDashboard({
                 {/* Weather Analysis */}
                 {weatherAnalysis && (
                   <div>
-                    <h4 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#92400e', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <h4 style={{ margin: '0 0 15px 0', fontSize: '16px', color: '#92400e', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       🌤️ Weather Impact on Harvest
                     </h4>
                     <div style={{
