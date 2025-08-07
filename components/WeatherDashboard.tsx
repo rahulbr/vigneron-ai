@@ -653,31 +653,12 @@ export function WeatherDashboard({
     try {
       console.log('📋 Loading activities for vineyard:', vineyardId);
 
-      // First try to load with block associations
+      // Load all events first
       let { data, error } = await supabase
         .from('phenology_events')
-        .select(`
-          *,
-          event_blocks!inner(
-            block_id,
-            blocks(*)
-          )
-        `)
+        .select('*')
         .eq('vineyard_id', vineyardId)
         .order('event_date', { ascending: false });
-
-      // If that fails, try without block associations
-      if (error) {
-        console.log('📋 Trying to load activities without block associations...');
-        const result = await supabase
-          .from('phenology_events')
-          .select('*')
-          .eq('vineyard_id', vineyardId)
-          .order('event_date', { ascending: false });
-        
-        data = result.data;
-        error = result.error;
-      }
 
       if (error) {
         console.error('❌ Error loading activities:', error);
@@ -685,16 +666,30 @@ export function WeatherDashboard({
         return;
       }
 
-      console.log('✅ Loaded activities:', data?.length || 0, data);
-      
-      // Process the data to ensure blocks are properly formatted
-      const processedActivities = (data || []).map((activity: any) => {
-        if (activity.event_blocks && Array.isArray(activity.event_blocks)) {
-          activity.blocks = activity.event_blocks.map((eb: any) => eb.blocks).filter(Boolean);
-        }
-        return activity;
-      });
+      console.log('✅ Loaded activities from database:', data?.length || 0, data);
 
+      // Now try to load block associations for each event (optional)
+      const processedActivities = [];
+      
+      for (const activity of data || []) {
+        try {
+          const { data: blockData } = await supabase
+            .from('event_blocks')
+            .select(`
+              blocks(*)
+            `)
+            .eq('event_id', activity.id);
+
+          activity.blocks = blockData?.map((eb: any) => eb.blocks).filter(Boolean) || [];
+        } catch (blockError) {
+          console.log('⚠️ Could not load blocks for event:', activity.id, blockError);
+          activity.blocks = [];
+        }
+        
+        processedActivities.push(activity);
+      }
+
+      console.log('✅ Final processed activities:', processedActivities.length, processedActivities);
       setActivities(processedActivities);
     } catch (error) {
       console.error('❌ Failed to load activities:', error);
@@ -852,18 +847,8 @@ export function WeatherDashboard({
       alert('Please fill in activity type and start date');
       return;
     }
-    // Ensure blocks are selected for relevant event types
-    if (
-      (activityForm.activity_type === 'Harvest' ||
-       activityForm.activity_type === 'Spray Application' ||
-       activityForm.activity_type === 'Canopy Management' ||
-       activityForm.activity_type === 'Irrigation' ||
-       activityForm.activity_type === 'Fertilization') &&
-      selectedBlockIds.length === 0
-    ) {
-      alert('Please select at least one block for this event type.');
-      return;
-    }
+    // Block selection is now optional for all event types
+    // No validation required - blocks can be empty
 
 
     setIsSavingActivity(true);
@@ -1170,18 +1155,8 @@ export function WeatherDashboard({
       alert('Please fill in activity type and start date');
       return;
     }
-    // Ensure blocks are selected for relevant event types
-    if (
-      (editActivityForm.activity_type === 'Harvest' ||
-       editActivityForm.activity_type === 'Spray Application' ||
-       editActivityForm.activity_type === 'Canopy Management' ||
-       editActivityForm.activity_type === 'Irrigation' ||
-       editActivityForm.activity_type === 'Fertilization') &&
-      selectedBlockIds.length === 0
-    ) {
-      alert('Please select at least one block for this event type.');
-      return;
-    }
+    // Block selection is now optional for all event types
+    // No validation required - blocks can be empty
 
     setIsUpdatingActivity(true);
     try {
@@ -3312,9 +3287,17 @@ export function WeatherDashboard({
                 </div>
               </div>
 
-              {/* Block Selection - Required for certain event types */}
-              {selectedProperty && (activityForm.activity_type === 'Harvest' || activityForm.activity_type === 'Spray Application' || activityForm.activity_type === 'Canopy Management' || activityForm.activity_type === 'Irrigation' || activityForm.activity_type === 'Fertilization') && (
+              {/* Block Selection - Optional for all event types */}
+              {selectedProperty && (
                 <div style={{ marginBottom: '16px' }}>
+                  <div style={{ marginBottom: '8px' }}>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
+                      Select Blocks (Optional)
+                    </label>
+                    <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
+                      Choose which vineyard blocks this event applies to, or leave empty for vineyard-wide events.
+                    </div>
+                  </div>
                   <BlockSelector
                     propertyId={selectedProperty.id}
                     selectedBlockIds={selectedBlockIds}
@@ -4462,33 +4445,54 @@ export function WeatherDashboard({
                 <RefreshCw size={20} style={{ animation: 'spin 1s linear infinite', marginBottom: '8px' }} />
                 <div>Loading events...</div>
               </div>
-            ) : activities.length === 0 ? (
-              <div style={{
-                padding: '30px',
-                textAlign: 'center',
-                backgroundColor: '#f8fafc',
-                borderRadius: '8px',
-                border: '2px dashed #cbd5e1'
-              }}>
-                <div style={{ fontSize: '48px', marginBottom: '10px' }}>📅</div>
-                <h4 style={{ margin: '0 0 8px 0', color: '#374151' }}>No Events Logged</h4>
-                <p style={{ margin: '0', color: '#6b7280', fontSize: '14px' }}>
-                  Start logging your vineyard events to track phenology and activities throughout the season.
-                </p>
-                <div style={{ 
-                  marginTop: '10px', 
-                  fontSize: '12px', 
-                  color: '#6b7280',
-                  fontFamily: 'monospace',
-                  backgroundColor: '#f1f5f9',
-                  padding: '8px',
-                  borderRadius: '4px'
-                }}>
-                  Vineyard ID: {vineyardId || 'None'}<br/>
-                  Loading: {isLoadingActivities ? 'Yes' : 'No'}
-                </div>
-              </div>
-            ) : (
+            ) : (() => {
+              // Filter activities by event type
+              const filteredActivities = activities.filter(activity => {
+                if (eventFilterTypes.length === 0) return true;
+                const eventType = activity.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
+                return eventFilterTypes.includes(eventType);
+              });
+
+              console.log('🎯 Displaying filtered activities:', filteredActivities.length, 'of', activities.length, 'total');
+
+              if (filteredActivities.length === 0) {
+                return (
+                  <div style={{
+                    padding: '30px',
+                    textAlign: 'center',
+                    backgroundColor: '#f8fafc',
+                    borderRadius: '8px',
+                    border: '2px dashed #cbd5e1'
+                  }}>
+                    <div style={{ fontSize: '48px', marginBottom: '10px' }}>📅</div>
+                    <h4 style={{ margin: '0 0 8px 0', color: '#374151' }}>
+                      {activities.length === 0 ? 'No Events Logged' : 'No Events Match Filter'}
+                    </h4>
+                    <p style={{ margin: '0', color: '#6b7280', fontSize: '14px' }}>
+                      {activities.length === 0 
+                        ? 'Start logging your vineyard events to track phenology and activities throughout the season.'
+                        : `${activities.length} events total, but none match the current filter. Clear the filter to see all events.`
+                      }
+                    </p>
+                    <div style={{ 
+                      marginTop: '10px', 
+                      fontSize: '12px', 
+                      color: '#6b7280',
+                      fontFamily: 'monospace',
+                      backgroundColor: '#f1f5f9',
+                      padding: '8px',
+                      borderRadius: '4px'
+                    }}>
+                      Vineyard ID: {vineyardId || 'None'}<br/>
+                      Loading: {isLoadingActivities ? 'Yes' : 'No'}<br/>
+                      Total Events: {activities.length}<br/>
+                      Filtered Events: {filteredActivities.length}
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
               <div style={{
                 maxHeight: '500px',
                 overflowY: 'auto',
@@ -4496,12 +4500,7 @@ export function WeatherDashboard({
                 borderRadius: '8px',
                 backgroundColor: 'white'
               }}>
-                {activities.filter(activity => {
-                  // Apply event type filter
-                  if (eventFilterTypes.length === 0) return true;
-                  const eventType = activity.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
-                  return eventFilterTypes.includes(eventType);
-                }).map((activity, index, filteredArray) => {
+                {filteredActivities.map((activity, index, filteredArray) => {
                   // Get event style with icon and color
                   const eventStyles: { [key: string]: { color: string, label: string, emoji: string } } = {
                     bud_break: { color: "#22c55e", label: "Bud Break", emoji: "🌱" },
@@ -6363,7 +6362,8 @@ export function WeatherDashboard({
                   );
                 })}
               </div>
-            )}
+              );
+            })()}
           </div>
 
         </div>
