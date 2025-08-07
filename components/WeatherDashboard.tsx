@@ -1725,6 +1725,10 @@ export function WeatherDashboard({
     );
   }
 
+  // Calculate some key variables for the main dashboard
+  const currentYear = new Date().getFullYear();
+  const previousYear = currentYear - 1;
+
   // If initialized, show the dashboard
   return (
     <div className="container section-spacing" style={{ padding: '1rem' }}>
