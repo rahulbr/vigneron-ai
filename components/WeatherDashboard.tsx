@@ -643,7 +643,10 @@ export function WeatherDashboard({
 
       const { data, error } = await supabase
         .from('phenology_events')
-        .select('*')
+        .select(`
+          *,
+          blocks:event_blocks.block(*)
+        `)
         .eq('vineyard_id', vineyardId)
         .order('event_date', { ascending: false });
 
@@ -3932,7 +3935,7 @@ export function WeatherDashboard({
                   marginBottom: '16px',
                   padding: '16px',
                   backgroundColor: '#fef3c7',
-                  border: '2px solid #fbbf24',
+                  border: '2px solid #f59e0b',
                   borderRadius: '8px'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
@@ -4423,6 +4426,11 @@ export function WeatherDashboard({
 
                   // Check if this activity is being edited
                   const isBeingEdited = editingActivityId === activity.id;
+
+                  // Get block names for display
+                  const blockNames = activity.blocks && Array.isArray(activity.blocks)
+                    ? activity.blocks.map((block: any) => block.name).join(', ')
+                    : 'N/A';
 
                   return (
                     <div
@@ -5770,40 +5778,39 @@ export function WeatherDashboard({
                         // Normal display
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                           <div style={{ flex: 1 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
                               <div
                                 style={{
-                                  width: '12px',
-                                  height: '12px',
+                                  width: '8px',
+                                  height: '8px',
                                   backgroundColor: style.color,
-                                  borderRadius: '50%',
+                                  borderRadius: '50%'
                                 }}
                               ></div>
-                              <span style={{ fontSize: '16px', marginRight: '4px' }}>{style.emoji}</span>
-                              <span style={{ fontWeight: '600', color: '#374151', fontSize: '14px' }}>
-                                {style.label}
+                              <span style={{ fontWeight: '600', fontSize: '14px', color: '#374151' }}>
+                                {style.emoji} {style.label}
                               </span>
-                              <span style={{
-                                fontSize: '11px',
-                                color: '#6b7280',
-                                padding: '2px 6px',
-                                backgroundColor: '#f1f5f9',
-                                borderRadius: '10px'
-                              }}>
+                              <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: 'auto' }}>
                                 {new Date(activity.event_date).toLocaleDateString()}
                               </span>
-                              {cumulativeGDD > 0 && (
-                                <span style={{
-                                  fontSize: '11px',
-                                  color: '#059669',
-                                  padding: '2px 6px',
-                                  backgroundColor: '#ecfdf5',
-                                  borderRadius: '10px',
-                                  fontWeight: '500'
-                                }}>
-                                  {Math.round(cumulativeGDD)} GDDs
-                                </span>
-                              )}
+                            </div>
+
+                            {/* Block Information */}
+                            <div style={{ marginBottom: '6px' }}>
+                              <span style={{
+                                fontSize: '11px',
+                                fontWeight: '600',
+                                color: '#374151',
+                                backgroundColor: '#f3f4f6',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                marginRight: '6px'
+                              }}>
+                                📍 Blocks:
+                              </span>
+                              <span style={{ fontSize: '11px', color: '#6b7280' }}>
+                                {blockNames}
+                              </span>
                             </div>
 
                             {activity.end_date && (
