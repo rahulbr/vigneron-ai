@@ -1536,6 +1536,7 @@ export function WeatherDashboard({
                       fontSize: '13px'
                     }}
                   >
+                    <option value="gallons/vine">gallons/vine</option>
                     <option value="inches">inches</option>
                     <option value="gallons">gallons</option>
                     <option value="gal/acre">gal/acre</option>
@@ -1543,7 +1544,6 @@ export function WeatherDashboard({
                     <option value="liters">liters</option>
                     <option value="L/ha">L/ha</option>
                     <option value="mm">mm</option>
-                    <option value="gallons/vine">gallons/vine</option>
                   </select>
                 </div>
 
@@ -1593,6 +1593,143 @@ export function WeatherDashboard({
                   />
                 </div>
               </div>
+
+              {/* Irrigation Assessment Section */}
+              <div style={{
+                marginTop: '12px',
+                padding: '12px',
+                backgroundColor: '#f0f9ff',
+                border: '1px solid #0ea5e9',
+                borderRadius: '6px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                  <h6 style={{ margin: '0', color: '#0369a1', fontSize: '14px', fontWeight: '600' }}>
+                    🔬 Irrigation Assessment (Optional)
+                  </h6>
+                  <div style={{
+                    fontSize: '11px',
+                    color: '#64748b',
+                    backgroundColor: '#e2e8f0',
+                    padding: '2px 6px',
+                    borderRadius: '3px'
+                  }}>
+                    ℹ️ Track measurements that led to irrigation decision
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '12px', color: '#0369a1' }}>
+                      Measurement Method
+                    </label>
+                    <select
+                      value={activityForm.scout_focus}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, scout_focus: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '6px 8px',
+                        border: '1px solid #0ea5e9',
+                        borderRadius: '4px',
+                        fontSize: '12px'
+                      }}
+                    >
+                      <option value="">Select method...</option>
+                      <option value="Leaf Water Potential (pressure chamber)">Leaf Water Potential (pressure chamber)</option>
+                      <option value="Soil Moisture Probe">Soil Moisture Probe</option>
+                      <option value="Tensiometer">Tensiometer</option>
+                      <option value="Visual Inspection">Visual Inspection</option>
+                      <option value="Neutron Probe">Neutron Probe</option>
+                      <option value="Time Domain Reflectometry (TDR)">Time Domain Reflectometry (TDR)</option>
+                      <option value="Capacitance Sensor">Capacitance Sensor</option>
+                      <option value="Gravimetric Sampling">Gravimetric Sampling</option>
+                      <option value="Infrared Thermometry">Infrared Thermometry</option>
+                      <option value="Canopy Temperature">Canopy Temperature</option>
+                      <option value="Stem Water Potential">Stem Water Potential</option>
+                      <option value="Stomatal Conductance">Stomatal Conductance</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '12px', color: '#0369a1' }}>
+                      Measured Value
+                    </label>
+                    <input
+                      type="text"
+                      value={activityForm.scout_severity}
+                      onChange={(e) => setActivityForm(prev => ({ ...prev, scout_severity: e.target.value }))}
+                      placeholder="e.g. -12 bars, 45%, 25°C"
+                      style={{
+                        width: '100%',
+                        padding: '6px 8px',
+                        border: '1px solid #0ea5e9',
+                        borderRadius: '4px',
+                        fontSize: '12px'
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Auto Weather Addition */}
+              {activityForm.start_date === new Date().toISOString().split('T')[0] && 
+               !activityForm.notes.includes('Weather') && (
+                <div style={{ marginTop: '12px' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!data || data.length === 0) {
+                        alert('Weather data not available');
+                        return;
+                      }
+
+                      const today = new Date().toISOString().split('T')[0];
+                      const todayWeather = data.find(d => d.date === today);
+                      
+                      if (!todayWeather) {
+                        alert('Today\'s weather data not available');
+                        return;
+                      }
+
+                      // Check for extreme weather
+                      let weatherAlert = '';
+                      if (todayWeather.temp_high >= 100) {
+                        weatherAlert = '🔥 EXCESSIVE HEAT WARNING ';
+                      } else if (todayWeather.temp_high >= 95) {
+                        weatherAlert = '⚠️ EXTREME HEAT ';
+                      } else if (todayWeather.temp_low <= 28) {
+                        weatherAlert = '🧊 SEVERE FREEZE WARNING ';
+                      } else if (todayWeather.temp_low <= 32) {
+                        weatherAlert = '❄️ FREEZING ';
+                      }
+
+                      const weatherInfo = `Weather (${today}): High ${todayWeather.temp_high}°F, Low ${todayWeather.temp_low}°F, Rainfall ${todayWeather.rainfall}"${weatherAlert ? ` - ${weatherAlert}` : ''}`;
+                      
+                      setActivityForm(prev => ({
+                        ...prev,
+                        notes: prev.notes ? `${prev.notes}\n\n${weatherInfo}` : weatherInfo
+                      }));
+                    }}
+                    style={{
+                      padding: '8px 12px',
+                      backgroundColor: '#0ea5e9',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    🌤️ Add Weather Context
+                  </button>
+                  <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
+                    Auto-logs today's weather including extreme conditions
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
