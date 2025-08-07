@@ -438,7 +438,7 @@ export function WeatherDashboard({
 
       // Clear and reload activities immediately
       setActivities([]);
-      
+
       // Force reload activities after a short delay
       setTimeout(() => {
         console.log('🔄 Force reloading activities for vineyard:', vineyard.id);
@@ -670,7 +670,7 @@ export function WeatherDashboard({
 
       // Now try to load block associations for each event (optional)
       const processedActivities = [];
-      
+
       for (const activity of data || []) {
         try {
           const { data: blockData } = await supabase
@@ -685,7 +685,7 @@ export function WeatherDashboard({
           console.log('⚠️ Could not load blocks for event:', activity.id, blockError);
           activity.blocks = [];
         }
-        
+
         processedActivities.push(activity);
       }
 
@@ -900,7 +900,7 @@ export function WeatherDashboard({
           brix: activityForm.harvest_brix,
           ph: activityForm.harvest_ph,
           ta: activityForm.harvest_ta,
-          block: activityForm.harvest_block // This is now handled by selectedBlockIds
+          block: activityForm.harvest_block // This field is now handled by selectedBlockIds
         };
       }
 
@@ -2972,7 +2972,7 @@ export function WeatherDashboard({
                 });
 
                 // Sort events by date for logical routing
-                const sortedEvents = filteredEventsWithLocation.sort((a, b) => 
+                const sortedEvents = filteredEventsWithLocation.sort((a, b) =>
                   new Date(a.event_date).getTime() - new Date(b.event_date).getTime()
                 );
 
@@ -4428,11 +4428,11 @@ export function WeatherDashboard({
             </div>
 
             {/* Debug Info */}
-            <div style={{ 
-              marginBottom: '10px', 
-              padding: '8px', 
-              backgroundColor: '#f0f9ff', 
-              border: '1px solid #bae6fd', 
+            <div style={{
+              marginBottom: '10px',
+              padding: '8px',
+              backgroundColor: '#f0f9ff',
+              border: '1px solid #bae6fd',
               borderRadius: '4px',
               fontSize: '12px',
               color: '#0369a1'
@@ -4469,14 +4469,14 @@ export function WeatherDashboard({
                       {activities.length === 0 ? 'No Events Logged' : 'No Events Match Filter'}
                     </h4>
                     <p style={{ margin: '0', color: '#6b7280', fontSize: '14px' }}>
-                      {activities.length === 0 
+                      {activities.length === 0
                         ? 'Start logging your vineyard events to track phenology and activities throughout the season.'
                         : `${activities.length} events total, but none match the current filter. Clear the filter to see all events.`
                       }
                     </p>
-                    <div style={{ 
-                      marginTop: '10px', 
-                      fontSize: '12px', 
+                    <div style={{
+                      marginTop: '10px',
+                      fontSize: '12px',
                       color: '#6b7280',
                       fontFamily: 'monospace',
                       backgroundColor: '#f1f5f9',
@@ -4544,7 +4544,7 @@ export function WeatherDashboard({
                   // Get summary details for farmer view
                   const getSummaryDetails = () => {
                     const details = [];
-                    
+
                     if (activity.spray_product) details.push(`Product: ${activity.spray_product}`);
                     if (activity.spray_quantity && activity.spray_unit) details.push(`Rate: ${activity.spray_quantity} ${activity.spray_unit}`);
                     if (activity.irrigation_amount && activity.irrigation_unit) details.push(`${activity.irrigation_amount} ${activity.irrigation_unit}`);
@@ -4556,7 +4556,7 @@ export function WeatherDashboard({
                     if (activity.canopy_activity) details.push(`Activity: ${activity.canopy_activity}`);
                     if (activity.scout_focus) details.push(`Focus: ${activity.scout_focus}`);
                     if (activity.scout_severity) details.push(`Severity: ${activity.scout_severity}`);
-                    
+
                     return details.slice(0, 3); // Show max 3 key details
                   };
 
@@ -4606,9 +4606,9 @@ export function WeatherDashboard({
                               ></div>
                               <span style={{ fontSize: '16px', flexShrink: 0 }}>{style.emoji}</span>
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ 
-                                  fontWeight: '600', 
-                                  fontSize: '15px', 
+                                <div style={{
+                                  fontWeight: '600',
+                                  fontSize: '15px',
                                   color: '#374151',
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis',
@@ -4617,21 +4617,21 @@ export function WeatherDashboard({
                                   {style.label}
                                 </div>
                                 <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '2px' }}>
-                                  {new Date(activity.event_date).toLocaleDateString('en-US', { 
-                                    weekday: 'short', 
-                                    month: 'short', 
-                                    day: 'numeric' 
+                                  {new Date(activity.event_date).toLocaleDateString('en-US', {
+                                    weekday: 'short',
+                                    month: 'short',
+                                    day: 'numeric'
                                   })}
                                   {activity.end_date && activity.end_date !== activity.event_date && (
-                                    <span> → {new Date(activity.end_date).toLocaleDateString('en-US', { 
-                                      month: 'short', 
-                                      day: 'numeric' 
+                                    <span> → {new Date(activity.end_date).toLocaleDateString('en-US', {
+                                      month: 'short',
+                                      day: 'numeric'
                                     })}</span>
                                   )}
                                 </div>
                               </div>
                             </div>
-                            
+
                             {/* Quick action buttons */}
                             <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexShrink: 0 }}>
                               {activity.location_lat && activity.location_lng && (
@@ -4663,14 +4663,18 @@ export function WeatherDashboard({
                                   deleteActivity(activity.id, style.label);
                                 }}
                                 style={{
-                                  padding: '4px 6px',
+                                  padding: '4px',
                                   backgroundColor: '#ef4444',
                                   color: 'white',
                                   border: 'none',
                                   borderRadius: '4px',
                                   cursor: 'pointer',
-                                  fontSize: '11px',
-                                  fontWeight: '500'
+                                  fontSize: '12px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  width: '24px',
+                                  height: '24px'
                                 }}
                                 title="Delete event"
                               >
@@ -4682,8 +4686,8 @@ export function WeatherDashboard({
                           {/* Details row */}
                           <div style={{ marginBottom: '6px' }}>
                             {summaryDetails.length > 0 && (
-                              <div style={{ 
-                                fontSize: '13px', 
+                              <div style={{
+                                fontSize: '13px',
                                 color: '#475569',
                                 marginBottom: '4px',
                                 display: 'flex',
@@ -4702,10 +4706,10 @@ export function WeatherDashboard({
                                 ))}
                               </div>
                             )}
-                            
+
                             {blockNames && (
-                              <div style={{ 
-                                fontSize: '12px', 
+                              <div style={{
+                                fontSize: '12px',
                                 color: '#6b7280',
                                 marginBottom: '4px',
                                 display: 'flex',
@@ -4729,7 +4733,7 @@ export function WeatherDashboard({
                           {(activity.notes || activity.location_name) && (
                             <div style={{ fontSize: '12px', color: '#6b7280' }}>
                               {activity.notes && (
-                                <div style={{ 
+                                <div style={{
                                   marginBottom: '2px',
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis',
@@ -4760,13 +4764,13 @@ export function WeatherDashboard({
 
                           {/* GDD info */}
                           {cumulativeGDD > 0 && (
-                            <div style={{ 
-                              fontSize: '11px', 
+                            <div style={{
+                              fontSize: '11px',
                               color: '#059669',
                               marginTop: '6px',
                               fontWeight: '500'
                             }}>
-                              {cumulativeGDD} GDDs accumulated
+                              {Math.round(cumulativeGDD)} GDDs accumulated
                             </div>
                           )}
 
@@ -6312,16 +6316,18 @@ export function WeatherDashboard({
                               <button
                                 onClick={() => startEditingActivity(activity)}
                                 style={{
-                                  padding: '4px 8px',
+                                  padding: '4px',
                                   backgroundColor: '#f59e0b',
                                   color: 'white',
                                   border: 'none',
                                   borderRadius: '4px',
                                   cursor: 'pointer',
-                                  fontSize: '11px',
+                                  fontSize: '12px',
                                   display: 'flex',
                                   alignItems: 'center',
-                                  gap: '4px',
+                                  justifyContent: 'center',
+                                  width: '24px',
+                                  height: '24px',
                                   transition: 'all 0.2s ease',
                                   fontWeight: '500'
                                 }}
@@ -6329,30 +6335,32 @@ export function WeatherDashboard({
                                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f59e0b'}
                                 title={`Edit this ${style.label} event`}
                               >
-                                ✏️ Edit
+                                ✏️
                               </button>
 
                               {/* Delete button */}
                               <button
                                 onClick={() => deleteActivity(activity.id, style.label)}
                                 style={{
-                                  padding: '4px 8px',
+                                  padding: '4px',
                                   backgroundColor: '#ef4444',
                                   color: 'white',
                                   border: 'none',
                                   borderRadius: '4px',
                                   cursor: 'pointer',
-                                  fontSize: '11px',
+                                  fontSize: '12px',
                                   display: 'flex',
                                   alignItems: 'center',
-                                  gap: '4px',
+                                  justifyContent: 'center',
+                                  width: '24px',
+                                  height: '24px',
                                   transition: 'all 0.2s ease'
                                 }}
                                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
                                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
                                 title={`Delete this ${style.label} event`}
                               >
-                                🗑️ Delete
+                                🗑️
                               </button>
                             </div>
                           </div>
