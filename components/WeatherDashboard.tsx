@@ -1,6 +1,6 @@
 // components/WeatherDashboard.tsx - Phase 1: Tab-Based Navigation Implementation
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWeather, useWeatherConnection } from '../hooks/useWeather';
 import { EnhancedGDDChart } from './EnhancedGDDChart';
 import { googleGeocodingService, GeocodeResult } from '../lib/googleGeocodingService';
@@ -783,9 +783,9 @@ export function WeatherDashboard({
     return predictions;
   };
 
-  const phenologyPredictions = getPhenologyPredictions();
+  const phenologyPredictions = useMemo(getPhenologyPredictions, [data, activities, totalGDD]);
 
-  const DashboardTab = () => (
+  const DashboardTab = React.memo(() => (
     <div style={{ padding: '0 1rem 1rem 1rem' }}>
       {/* Safety Alerts */}
       {safetyAlerts.length > 0 && (
@@ -1163,9 +1163,9 @@ export function WeatherDashboard({
         </div>
       )}
     </div>
-  );
+  ));
 
-  const LogEventTab = () => {
+  const LogEventTab = React.memo(() => {
     return (
     <div style={{ padding: '0 1rem 1rem 1rem' }}>
       <div style={{ marginBottom: '20px' }}>
@@ -1813,7 +1813,7 @@ export function WeatherDashboard({
 
                       const today = new Date().toISOString().split('T')[0];
                       const todayWeather = data.find(d => d.date === today);
-                      
+
                       if (!todayWeather) {
                         alert('Today\'s weather data not available');
                         return;
@@ -1826,13 +1826,13 @@ export function WeatherDashboard({
                       } else if (todayWeather.temp_high >= 95) {
                         weatherAlert = '⚠️ EXTREME HEAT ';
                       } else if (todayWeather.temp_low <= 28) {
-                        weatherAlert = '🧊 SEVERE FREEZE WARNING ';
+                        weatherAlert = ' অত্যাবশ্যক ফ্রিজ সতর্কতা ';
                       } else if (todayWeather.temp_low <= 32) {
                         weatherAlert = '❄️ FREEZING ';
                       }
 
                       const weatherInfo = `Weather (${today}): High ${todayWeather.temp_high}°F, Low ${todayWeather.temp_low}°F, Rainfall ${todayWeather.rainfall}"${weatherAlert ? ` - ${weatherAlert}` : ''}`;
-                      
+
                       setActivityForm(prev => ({
                         ...prev,
                         notes: prev.notes ? `${prev.notes}\n\n${weatherInfo}` : weatherInfo
@@ -2723,9 +2723,9 @@ export function WeatherDashboard({
       )}
     </div>
   );
-  }
+  });
 
-  const HistoryTab = () => {
+  const HistoryTab = React.memo(() => {
     const filteredActivities = eventTypeFilter === 'all' 
       ? activities 
       : activities.filter(activity => activity.event_type === eventTypeFilter);
@@ -2800,9 +2800,12 @@ export function WeatherDashboard({
     };
 
     // Get unique event types from activities for dynamic filter
-    const uniqueEventTypes = [...new Set(activities.map(a => a.event_type))].sort();
+    const uniqueEventTypes = useMemo(() => {
+      const types = [...new Set(activities.map(a => a.event_type))];
+      return types.sort();
+    }, [activities]);
 
-    const getEventDetails = (activity: any) => {
+    const getEventDetails = useCallback((activity: any) => {
       let details = [];
 
       if (activity.spray_product) {
@@ -2838,9 +2841,9 @@ export function WeatherDashboard({
       }
 
       return details;
-    };
+    }, []);
 
-    const startEditEvent = (activity: any) => {
+    const startEditEvent = useCallback((activity: any) => {
       setEditingEvent(activity);
       setShowActivityForm(true);
       setActiveTab('log'); // Switch to log tab when editing
@@ -2883,9 +2886,9 @@ export function WeatherDashboard({
         scout_distribution: activity.scout_distribution || '',
         scout_action: activity.scout_action || ''
       });
-    };
+    }, [eventTypeNames]);
 
-    const deleteEvent = async (eventId: string) => {
+    const deleteEvent = useCallback(async (eventId: string) => {
       if (window.confirm("Are you sure you want to delete this event?")) {
         try {
           setIsLoadingActivities(true);
@@ -2900,7 +2903,7 @@ export function WeatherDashboard({
           setIsLoadingActivities(false);
         }
       }
-    };
+    }, [loadActivities]);
 
     return (
       <div style={{ padding: '0 1rem 1rem 1rem' }}>
@@ -3205,9 +3208,9 @@ export function WeatherDashboard({
         )}
       </div>
     );
-  };
+  });
 
-  const SettingsTab = () => (
+  const SettingsTab = React.memo(() => (
     <div style={{ padding: '0 1rem 1rem 1rem' }}>
       <div style={{ marginBottom: '20px' }}>
         <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700', color: '#374151' }}>
@@ -3388,7 +3391,7 @@ export function WeatherDashboard({
         </div>
       )}
     </div>
-  );
+  ));
 
   return (
     <div style={{ 
