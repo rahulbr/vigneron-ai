@@ -103,7 +103,7 @@ export function WeatherDashboard({
     spray_conditions: '',
     spray_equipment: '',
     irrigation_amount: '',
-    irrigation_unit: 'inches',
+    irrigation_unit: 'gallons/vine',
     irrigation_method: '',
     irrigation_duration: '',
     fertilizer_type: '',
@@ -1034,7 +1034,7 @@ export function WeatherDashboard({
               <CloudRain size={20} style={{ color: '#3b82f6' }} />
             </div>
             <div style={{ fontSize: '24px', fontWeight: '700', color: '#3b82f6', marginBottom: '4px' }}>
-              {totalRainfall.toFixed(1)}"
+              {totalRainfall.toFixed(1)}
             </div>
             <div style={{ fontSize: '12px', color: '#6b7280' }}>
               Total Rainfall
@@ -1543,6 +1543,7 @@ export function WeatherDashboard({
                     <option value="liters">liters</option>
                     <option value="L/ha">L/ha</option>
                     <option value="mm">mm</option>
+                    <option value="gallons/vine">gallons/vine</option>
                   </select>
                 </div>
 
@@ -3088,7 +3089,7 @@ export function WeatherDashboard({
           Generate Reports
         </button>
 
-        <div style={{ fontSize: '12px', color: '#6b7280', textAlign: 'center' }}>
+        <div style={{ fontSize: '12px', color: '#64748b', textAlign: 'center' }}>
           {!currentVineyard ? 'Select a vineyard first' : 
            activities.length === 0 ? 'No events to report' : 
            `${activities.length} events available for reporting`}
