@@ -1,10 +1,9 @@
-
 // lib/supabase.ts - MERGED with authentication + your existing functions
 import { createClient } from '@supabase/supabase-js'
 
-// Use the correct Supabase project: rahulbr's Project
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://wyzgljbmcrhceauysgpw.supabase.co'
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5emdsamJtY3JoY2VhdXlzZ3B3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkyMzU2MTYsImV4cCI6MjA2NDgxMTYxNn0.VdoJN7nWJuPFv-UFAZ3Fkqf3Ydt4RNkxH4cJpKPfKyY'
+// Use environment variables OR hardcoded values for quick setup
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ozesvylffpvktxldvthi.supabase.co'
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96ZXN2eWxmZnB2a3R4bGR2dGhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEwNDE5NjksImV4cCI6MjA2NjYxNzk2OX0.R-7u_ptj2XbvIWLe6qGelf5PqjrACLZChYdKTNVX3Ow'
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
