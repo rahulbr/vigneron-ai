@@ -319,22 +319,22 @@ export function EnhancedGDDChart({
     // Calculate which date was clicked based on mouse position
     const rect = event.currentTarget.getBoundingClientRect();
     const clickX = event.clientX - rect.left;
-
+    
     // Calculate the relative position within the chart area (excluding padding)
     const chartAreaWidth = width - 2 * padding;
     const relativeX = clickX - padding;
-
+    
     // Ensure click is within the chart area
     if (relativeX < 0 || relativeX > chartAreaWidth) {
       console.log('📊 Click outside chart area, opening form without pre-populated date');
       scrollToEventLogAddEvent();
       return;
     }
-
+    
     // Calculate which data point index was clicked
     const dataPointIndex = Math.round((relativeX / chartAreaWidth) * (chartData.length - 1));
     const clickedDate = chartData[dataPointIndex]?.date;
-
+    
     console.log('📊 Chart clicked at date:', clickedDate, 'data point index:', dataPointIndex);
 
     // Scroll to Event Log section and trigger Add Event form with pre-populated date
@@ -347,15 +347,15 @@ export function EnhancedGDDChart({
         const addEventButton = document.querySelector('[data-event-log-add-button]') as HTMLButtonElement;
         if (addEventButton) {
           console.log('📊 Clicking Add Event button to open form with date:', clickedDate);
-
+          
           // Dispatch custom event with the clicked date
           if (clickedDate && typeof window !== 'undefined') {
-            const dateEvent = new CustomEvent('chartDateClicked', {
-              detail: { date: clickedDate }
+            const dateEvent = new CustomEvent('chartDateClicked', { 
+              detail: { date: clickedDate } 
             });
             window.dispatchEvent(dateEvent);
           }
-
+          
           addEventButton.click();
         } else {
           console.warn('📊 Could not find Add Event button');
@@ -599,6 +599,39 @@ export function EnhancedGDDChart({
             )}
           </div>
 
+          <button
+            onClick={() => {
+              console.log('📊 Add Event button clicked - opening Add Event form');
+              // Scroll to Event Log section
+              const eventLogSection = document.querySelector('[data-event-log-section]');
+              if (eventLogSection) {
+                eventLogSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+
+              // Directly click the Add Event button to open the form
+              setTimeout(() => {
+                const addEventButton = document.querySelector('[data-event-log-add-button]') as HTMLButtonElement;
+                if (addEventButton) {
+                  console.log('📊 Clicking Add Event button to open form');
+                  addEventButton.click();
+                } else {
+                  console.warn('📊 Could not find Add Event button');
+                }
+              }, 300);
+            }}
+            disabled={loading}
+            style={{
+              padding: "8px 16px",
+              backgroundColor: loading ? "#ccc" : "#22c55e",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              cursor: loading ? "not-allowed" : "pointer",
+              fontSize: "14px",
+            }}
+          >
+            Add Event
+          </button>
           <button
             onClick={loadPhenologyEvents}
             disabled={loading}
@@ -895,11 +928,11 @@ export function EnhancedGDDChart({
 
                 {/* Future projection line (dashed) */}
                 {futurePathData && (
-                  <path
-                    d={futurePathData}
-                    fill="none"
-                    stroke="#94a3b8"
-                    strokeWidth="2"
+                  <path 
+                    d={futurePathData} 
+                    fill="none" 
+                    stroke="#94a3b8" 
+                    strokeWidth="2" 
                     strokeDasharray="5,5"
                     opacity="0.7"
                   />
