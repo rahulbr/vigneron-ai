@@ -236,7 +236,7 @@ export function WeatherDashboard({
         throw new Error('Geolocation is not supported by this browser');
       }
 
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+      const position = await new Promise<GeolocationGeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(
           resolve,
           reject,
@@ -798,8 +798,16 @@ export function WeatherDashboard({
       alert('Please fill in activity type and start date');
       return;
     }
-    if (activityForm.activity_type === 'Harvest' && selectedBlockIds.length === 0) {
-      alert('Please select at least one block for Harvest events.');
+    // Ensure blocks are selected for relevant event types
+    if (
+      (activityForm.activity_type === 'Harvest' ||
+       activityForm.activity_type === 'Spray Application' ||
+       activityForm.activity_type === 'Canopy Management' ||
+       activityForm.activity_type === 'Irrigation' ||
+       activityForm.activity_type === 'Fertilization') &&
+      selectedBlockIds.length === 0
+    ) {
+      alert('Please select at least one block for this event type.');
       return;
     }
 
@@ -1035,11 +1043,11 @@ export function WeatherDashboard({
       scout_action: activity.scout_action || ''
     });
 
-    // If it's a harvest event, pre-select the blocks
-    if (activity.event_type === 'harvest' && activity.blocks && Array.isArray(activity.blocks)) {
-      setSelectedBlockIds(activity.blocks.map((block: any) => block.id));
+    // Pre-select the blocks for any event type
+    if (activity.blocks && Array.isArray(activity.blocks)) {
+      setSelectedBlockIds(activity.blocks);
     } else {
-      setSelectedBlockIds([]); // Clear block selection if not a harvest event or no blocks are associated
+      setSelectedBlockIds([]); // Clear block selection if no blocks are associated
     }
 
     console.log('✏️ Edit form populated with values:', {
@@ -1108,8 +1116,16 @@ export function WeatherDashboard({
       alert('Please fill in activity type and start date');
       return;
     }
-    if (editActivityForm.activity_type === 'Harvest' && selectedBlockIds.length === 0) {
-      alert('Please select at least one block for Harvest events.');
+    // Ensure blocks are selected for relevant event types
+    if (
+      (editActivityForm.activity_type === 'Harvest' ||
+       editActivityForm.activity_type === 'Spray Application' ||
+       editActivityForm.activity_type === 'Canopy Management' ||
+       editActivityForm.activity_type === 'Irrigation' ||
+       editActivityForm.activity_type === 'Fertilization') &&
+      selectedBlockIds.length === 0
+    ) {
+      alert('Please select at least one block for this event type.');
       return;
     }
 

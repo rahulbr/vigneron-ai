@@ -51,6 +51,8 @@ interface PhenologyEvent {
   harvest_block?: string;
   is_actual?: boolean;
   created_at?: string;
+  // Fields for associated blocks, managed via a separate table
+  blocks?: string[]; // This will store block IDs associated with the event
 }
 
 export interface UserProfile {
@@ -145,7 +147,7 @@ export async function getVineyard(id: string): Promise<Vineyard | null> {
     console.error('Error fetching vineyard:', error);
     return null;
   }
-  
+
   return data;
 }
 
@@ -269,12 +271,12 @@ export async function saveVineyardLocation(
 export async function getUserVineyards(): Promise<Vineyard[]> {
   try {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
+
     if (authError) {
       console.error('Authentication error:', authError)
       return []
     }
-    
+
     if (!user) {
       console.log('No authenticated user found')
       return []
@@ -440,7 +442,7 @@ export async function savePhenologyEvent(
   notes: string = '', 
   endDate?: string, 
   harvestBlock?: string,
-  blockIds?: string[], // NEW: Array of block IDs
+  selectedBlockIds?: string[], // Renamed from blockIds to selectedBlockIds for clarity
   locationData?: {
     latitude?: number;
     longitude?: number;
@@ -659,11 +661,11 @@ export async function savePhenologyEvent(
     }
 
     const savedEvent = data[0];
-    
+
     // Associate event with blocks if provided
-    if (blockIds && blockIds.length > 0) {
-      await associateEventWithBlocks(savedEvent.id, blockIds);
-      console.log('✅ Event associated with blocks:', blockIds);
+    if (selectedBlockIds && selectedBlockIds.length > 0) {
+      await associateEventWithBlocks(savedEvent.id, selectedBlockIds);
+      console.log('✅ Event associated with blocks:', selectedBlockIds);
     }
 
     console.log('✅ Phenology event saved successfully:', savedEvent);
@@ -1082,6 +1084,8 @@ export async function updatePhenologyEvent(
     harvest_ph?: string;
     harvest_ta?: string;
     harvest_block?: string;
+    // Include blocks field for update
+    blocks?: string[];
   }>
 ): Promise<PhenologyEvent> {
   try {
@@ -1102,8 +1106,16 @@ export async function updatePhenologyEvent(
       throw new Error('Failed to update phenology event');
     }
 
-    console.log('✅ Phenology event updated successfully:', data[0]);
-    return data[0];
+    const savedEvent = data[0];
+
+    // Update the blocks association if the 'blocks' field is present in updates
+    if (updates.blocks !== undefined) {
+      await associateEventWithBlocks(eventId, updates.blocks);
+      console.log('✅ Event blocks updated:', updates.blocks);
+    }
+
+    console.log('✅ Phenology event updated successfully:', savedEvent);
+    return savedEvent;
   } catch (error) {
     console.error('❌ Failed to update phenology event:', error);
     throw error;
@@ -1114,6 +1126,13 @@ export async function deletePhenologyEvent(eventId: string): Promise<void> {
   try {
     console.log('🗑️ Deleting phenology event:', eventId);
 
+    // First, delete associated blocks
+    await supabase
+      .from('event_blocks')
+      .delete()
+      .eq('event_id', eventId);
+
+    // Then, delete the event itself
     const { error } = await supabase
       .from('phenology_events')
       .delete()
