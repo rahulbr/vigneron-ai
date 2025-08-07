@@ -137,6 +137,7 @@ export function useWeather(options: UseWeatherOptions) {
   return {
     ...state,
     refetch: fetchWeatherData,
+    refetchWithCache: fetchWeatherData, // Add the missing function
     retry,
     clearError
   };
