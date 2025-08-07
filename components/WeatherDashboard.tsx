@@ -304,7 +304,7 @@ export function WeatherDashboard({
             ripeness_block_estimates: '', ripeness_brix: '', ripeness_ph: '', ripeness_ta: '', ripeness_seed_brownness: '',
           };
           Object.assign(updated, resetFields);
-          
+
           // Set default values based on new activity type
           if (value === 'Spray Application') {
             updated.spray_conditions = generateAutoWeatherNotes('Spray Application');
@@ -326,7 +326,7 @@ export function WeatherDashboard({
         ...(name === 'location_name' && !value && { location_lat: null, location_lng: null, location_accuracy: null }),
       }));
     }, []),
-    
+
     handlePhenologyPercentChange: useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
       const { value, name } = e.target;
       setActivityForm(prev => ({
@@ -640,7 +640,7 @@ export function WeatherDashboard({
       // Event type mapping for database storage - updated to match database constraints
       const eventTypeMap: { [key: string]: string } = {
         'Bud Break': 'bud_break',
-        'Bloom': 'bloom', 
+        'Bloom': 'bloom',
         'Fruit Set': 'fruit_set',
         'Veraison': 'veraison',
         'Harvest': 'harvest',
@@ -2823,7 +2823,7 @@ export function WeatherDashboard({
                       name="phenology_percent_complete"
                       value={activityForm.phenology_percent_complete || '0'}
                       onChange={formHandlers.handlePhenologyPercentChange}
-                      style={{ 
+                      style={{
                         flex: 1,
                         accentColor: '#3b82f6'
                       }}
@@ -3066,15 +3066,15 @@ export function WeatherDashboard({
               <button
                 onClick={saveActivity}
                 disabled={
-                  isSavingActivity || 
-                  !activityForm.activity_type || 
+                  isSavingActivity ||
+                  !activityForm.activity_type ||
                   !activityForm.start_date ||
                   (['Bud Break', 'Bloom', 'Fruit Set', 'Veraison'].includes(activityForm.activity_type) && !activityForm.phenology_percent_complete)
                 }
                 style={{
                   padding: '12px 24px',
                   backgroundColor: (
-                    !activityForm.activity_type || 
+                    !activityForm.activity_type ||
                     !activityForm.start_date ||
                     (['Bud Break', 'Bloom', 'Fruit Set', 'Veraison'].includes(activityForm.activity_type) && !activityForm.phenology_percent_complete)
                   ) ? '#d1d5db' : '#22c55e',
@@ -3082,7 +3082,7 @@ export function WeatherDashboard({
                   border: 'none',
                   borderRadius: '8px',
                   cursor: (
-                    !activityForm.activity_type || 
+                    !activityForm.activity_type ||
                     !activityForm.start_date ||
                     (['Bud Break', 'Bloom', 'Fruit Set', 'Veraison'].includes(activityForm.activity_type) && !activityForm.phenology_percent_complete)
                   ) ? 'not-allowed' : 'pointer',
@@ -3115,524 +3115,527 @@ export function WeatherDashboard({
   }
 
   const HistoryTab = () => {
-    const filteredActivities = eventTypeFilter === 'all'
-      ? activities
-      : activities.filter(activity => activity.event_type === eventTypeFilter);
+    // This IIFE is necessary to define uniqueEventTypes within the scope of the HistoryTab function
+    // before it's used in the JSX.
+    return (() => {
+      // Calculate unique event types for filter dropdown
+      const uniqueEventTypes = Array.from(new Set(activities.map(activity => activity.event_type))).sort();
 
-    // Complete event type mapping with all possible types
-    const eventTypeEmojis: { [key: string]: string } = {
-      'spray_application': '🌿',
-      'fertilization': '🌱',
-      'irrigation': '💧',
-      'canopy_management': '✂️',
-      'scouting': '🔍',
-      'harvest': '🍇',
-      'phenology': '🌱', // Added for phenology
-      'ripeness': '🍇', // Added for ripeness
-      'budbreak': '🌿',
-      'bloom': '🌸',
-      'fruit_set': '🍇',
-      'veraison': '🍷',
-      'pruning': '✂️',
-      'soil_work': '🌍',
-      'equipment_maintenance': '🔧',
-      'pest': '🐞',
-      'other': '📝',
-      // Legacy/alternative naming
-      'Spray Application': '🌿',
-      'Fertilization': '🌱',
-      'Irrigation': '💧',
-      'Canopy Management': '✂️',
-      'Scouting': '🔍',
-      'Harvest': '🍇',
-      'Phenology Tracking': '🌱',
-      'Ripeness Tracking': '🍇',
-      'Bud Break': '🌿',
-      'Bloom': '🌸',
-      'Fruit Set': '🍇',
-      'Veraison': '🍷',
-      'Pruning': '✂️',
-      'Soil Work': '🌍',
-      'Equipment Maintenance': '🔧',
-      'Pest': '🐞',
-      'Other': '📝'
-    };
+      const filteredActivities = eventTypeFilter === 'all'
+        ? activities
+        : activities.filter(activity => activity.event_type === eventTypeFilter);
 
-    const eventTypeNames: { [key: string]: string } = {
-      'spray_application': 'Spray Application',
-      'fertilization': 'Fertilization',
-      'irrigation': 'Irrigation',
-      'canopy_management': 'Canopy Management',
-      'scouting': 'Scouting',
-      'harvest': 'Harvest',
-      'phenology': 'Phenology', // Added for phenology
-      'ripeness': 'Ripeness', // Added for ripeness
-      'budbreak': 'Bud Break',
-      'bloom': 'Bloom',
-      'fruit_set': 'Fruit Set',
-      'veraison': 'Veraison',
-      'pruning': 'Pruning',
-      'soil_work': 'Soil Work',
-      'equipment_maintenance': 'Equipment Maintenance',
-      'pest': 'Pest Observation',
-      'other': 'Other',
-      // Legacy/alternative naming
-      'Spray Application': 'Spray Application',
-      'Fertilization': 'Fertilization',
-      'Irrigation': 'Irrigation',
-      'Canopy Management': 'Canopy Management',
-      'Scouting': 'Scouting',
-      'Harvest': 'Harvest',
-      'Phenology Tracking': 'Phenology Tracking',
-      'Ripeness Tracking': 'Ripeness Tracking',
-      'Bud Break': 'Bud Break',
-      'Bloom': 'Bloom',
-      'Fruit Set': 'Fruit Set',
-      'Veraison': 'Veraison',
-      'Pruning': 'Pruning',
-      'Soil Work': 'Soil Work',
-      'Equipment Maintenance': 'Equipment Maintenance',
-      'Pest': 'Pest Observation',
-      'Other': 'Other'
-    };
+      const eventTypeEmojis: { [key: string]: string } = {
+        'spray_application': '🌿',
+        'fertilization': '🌱',
+        'irrigation': '💧',
+        'canopy_management': '✂️',
+        'scouting': '🔍',
+        'harvest': '🍇',
+        'phenology': '🌱', // Added for phenology
+        'ripeness': '🍇', // Added for ripeness
+        'budbreak': '🌿',
+        'bloom': '🌸',
+        'fruit_set': '🍇',
+        'veraison': '🍷',
+        'pruning': '✂️',
+        'soil_work': '🌍',
+        'equipment_maintenance': '🔧',
+        'pest': '🐞',
+        'other': '📝',
+        // Legacy/alternative naming
+        'Spray Application': '🌿',
+        'Fertilization': '🌱',
+        'Irrigation': '💧',
+        'Canopy Management': '✂️',
+        'Scouting': '🔍',
+        'Harvest': '🍇',
+        'Phenology Tracking': '🌱',
+        'Ripeness Tracking': '🍇',
+        'Bud Break': '🌿',
+        'Bloom': '🌸',
+        'Fruit Set': '🍇',
+        'Veraison': '🍷',
+        'Pruning': '✂️',
+        'Soil Work': '🌍',
+        'Equipment Maintenance': '🔧',
+        'Pest': '🐞',
+        'Other': '📝'
+      };
 
-    const getEventDetails = (activity: any) => {
-      let details = [];
+      const eventTypeNames: { [key: string]: string } = {
+        'spray_application': 'Spray Application',
+        'fertilization': 'Fertilization',
+        'irrigation': 'Irrigation',
+        'canopy_management': 'Canopy Management',
+        'scouting': 'Scouting',
+        'harvest': 'Harvest',
+        'phenology': 'Phenology', // Added for phenology
+        'ripeness': 'Ripeness', // Added for ripeness
+        'budbreak': 'Bud Break',
+        'bloom': 'Bloom',
+        'fruit_set': 'Fruit Set',
+        'veraison': 'Veraison',
+        'pruning': 'Pruning',
+        'soil_work': 'Soil Work',
+        'equipment_maintenance': 'Equipment Maintenance',
+        'pest': 'Pest Observation',
+        'other': 'Other',
+        // Legacy/alternative naming
+        'Spray Application': 'Spray Application',
+        'Fertilization': 'Fertilization',
+        'Irrigation': 'Irrigation',
+        'Canopy Management': 'Canopy Management',
+        'Scouting': 'Scouting',
+        'Harvest': 'Harvest',
+        'Phenology Tracking': 'Phenology Tracking',
+        'Ripeness Tracking': 'Ripeness Tracking',
+        'Bud Break': 'Bud Break',
+        'Bloom': 'Bloom',
+        'Fruit Set': 'Fruit Set',
+        'Veraison': 'Veraison',
+        'Pruning': 'Pruning',
+        'Soil Work': 'Soil Work',
+        'Equipment Maintenance': 'Equipment Maintenance',
+        'Pest': 'Pest Observation',
+        'Other': 'Other'
+      };
 
-      if (activity.spray_product) {
-        details.push(`Product: ${activity.spray_product}`);
-        if (activity.spray_quantity) details.push(`Amount: ${activity.spray_quantity} ${activity.spray_unit || ''}`);
-        if (activity.spray_target) details.push(`Target: ${activity.spray_target}`);
-      }
+      const getEventDetails = (activity: any) => {
+        let details = [];
 
-      if (activity.fertilizer_type) {
-        details.push(`Type: ${activity.fertilizer_type}`);
-        if (activity.fertilizer_npk) details.push(`NPK: ${activity.fertilizer_npk}`);
-        if (activity.fertilizer_rate) details.push(`Rate: ${activity.fertilizer_rate} ${activity.fertilizer_unit || ''}`);
-      }
-
-      if (activity.irrigation_amount) {
-        details.push(`Amount: ${activity.irrigation_amount} ${activity.irrigation_unit || ''}`);
-        if (activity.irrigation_method) details.push(`Method: ${activity.irrigation_method}`);
-        if (activity.irrigation_measurement_method) details.push(`Measurement: ${activity.irrigation_measurement_method}`);
-        if (activity.irrigation_measurement_value) details.push(`Value: ${activity.irrigation_measurement_value}`);
-      }
-
-      if (activity.ripeness_brix || activity.ripeness_ph || activity.ripeness_ta || activity.ripeness_seed_brownness || activity.ripeness_block_estimates) {
-        details.push('Ripeness:');
-        if (activity.ripeness_brix) details.push(` Brix: ${activity.ripeness_brix}°`);
-        if (activity.ripeness_ph) details.push(` pH: ${activity.ripeness_ph}`);
-        if (activity.ripeness_ta) details.push(` TA: ${activity.ripeness_ta}`);
-        if (activity.ripeness_seed_brownness) details.push(` Seed Brownness: ${activity.ripeness_seed_brownness}`);
-        if (activity.ripeness_block_estimates) details.push(` Block Estimates: ${activity.ripeness_block_estimates}`);
-      }
-
-      if (activity.phenology_stage) {
-        details.push(`Phenology: ${activity.phenology_stage}`);
-        if (activity.phenology_percent_complete) details.push(`${activity.phenology_percent_complete}% Complete`);
-        if (activity.phenology_location) details.push(`Block Estimates: ${activity.phenology_location}`);
-      }
-
-
-      if (activity.harvest_yield) {
-        details.push(`Yield: ${activity.harvest_yield} ${activity.harvest_unit || ''}`);
-        if (activity.harvest_brix) details.push(`Brix: ${activity.harvest_brix}°`);
-      }
-
-      if (activity.canopy_activity) {
-        details.push(`Activity: ${activity.canopy_activity}`);
-        if (activity.canopy_intensity) details.push(`Intensity: ${activity.canopy_intensity}`);
-      }
-
-      if (activity.scout_focus) {
-        details.push(`Focus: ${activity.scout_focus}`);
-        if (activity.scout_severity) details.push(`Severity: ${activity.scout_severity}`);
-      }
-
-      return details;
-    };
-
-    const startEditEvent = (activity: any) => {
-      setEditingEvent(activity);
-      setShowActivityForm(true);
-      setActiveTab('log'); // Switch to log tab when editing
-      setActivityForm({
-        activity_type: eventTypeNames[activity.event_type] || activity.event_type,
-        start_date: activity.event_date,
-        end_date: activity.end_date || '',
-        notes: activity.notes || '',
-        location_lat: activity.location_lat || null,
-        location_lng: activity.location_lng || null,
-        location_name: activity.location_name || '',
-        location_accuracy: activity.location_accuracy || null,
-        spray_product: activity.spray_product || '',
-        spray_quantity: activity.spray_quantity || '',
-        spray_unit: activity.spray_unit || 'oz/acre',
-        spray_target: activity.spray_target || '',
-        spray_conditions: activity.spray_conditions || '',
-        spray_equipment: activity.spray_equipment || '',
-        irrigation_amount: activity.irrigation_amount || '',
-        irrigation_unit: activity.irrigation_unit || 'inches',
-        irrigation_method: activity.irrigation_method || '',
-        irrigation_duration: activity.irrigation_duration || '',
-        irrigation_measurement_method: activity.irrigation_measurement_method || '',
-        irrigation_measurement_value: activity.irrigation_measurement_value || '',
-        fertilizer_type: activity.fertilizer_type || '',
-        fertilizer_npk: activity.fertilizer_npk || '',
-        fertilizer_rate: activity.fertilizer_rate || '',
-        fertilizer_unit: activity.fertilizer_unit || 'lbs/acre',
-        fertilizer_method: activity.fertilizer_method || '',
-        harvest_yield: activity.harvest_yield || '',
-        harvest_unit: activity.harvest_unit || 'tons/acre',
-        harvest_brix: activity.harvest_brix || '',
-        harvest_ph: activity.harvest_ph || '',
-        harvest_ta: activity.harvest_ta || '',
-        harvest_block: activity.harvest_block || '',
-        canopy_activity: activity.canopy_activity || '',
-        canopy_intensity: activity.canopy_intensity || '',
-        canopy_side: activity.canopy_side || '',
-        canopy_stage: activity.canopy_stage || '',
-        scout_focus: activity.scout_focus || '',
-        scout_severity: activity.scout_severity || '',
-        scout_distribution: activity.scout_distribution || '',
-        scout_action: activity.scout_action || '',
-        phenology_stage: activity.phenology_stage || '',
-        phenology_percent_complete: activity.phenology_percent_complete || '',
-        phenology_location: activity.phenology_location || '',
-        ripeness_block_estimates: activity.ripeness_block_estimates || '',
-        ripeness_brix: activity.ripeness_brix || '',
-        ripeness_ph: activity.ripeness_ph || '',
-        ripeness_ta: activity.ripeness_ta || '',
-        ripeness_seed_brownness: activity.ripeness_seed_brownness || '',
-      });
-    };
-
-    const deleteEvent = async (eventId: string) => {
-      if (window.confirm("Are you sure you want to delete this event?")) {
-        try {
-          setIsLoadingActivities(true);
-          const { deletePhenologyEvent } = await import('../lib/supabase');
-          await deletePhenologyEvent(eventId);
-          await loadActivities();
-          alert('Event deleted successfully!');
-        } catch (error) {
-          console.error('❌ Failed to delete event:', error);
-          alert('Failed to delete event: ' + (error as Error).message);
-        } finally {
-          setIsLoadingActivities(false);
+        if (activity.spray_product) {
+          details.push(`Product: ${activity.spray_product}`);
+          if (activity.spray_quantity) details.push(`Amount: ${activity.spray_quantity} ${activity.spray_unit || ''}`);
+          if (activity.spray_target) details.push(`Target: ${activity.spray_target}`);
         }
-      }
-    };
 
-    // Extract unique event types for filtering
-    const uniqueEventTypes = Array.from(new Set(activities.map(activity => activity.event_type)));
+        if (activity.fertilizer_type) {
+          details.push(`Type: ${activity.fertilizer_type}`);
+          if (activity.fertilizer_npk) details.push(`NPK: ${activity.fertilizer_npk}`);
+          if (activity.fertilizer_rate) details.push(`Rate: ${activity.fertilizer_rate} ${activity.fertilizer_unit || ''}`);
+        }
 
-    return (
-      <div style={{ padding: '0 1rem 1rem 1rem' }}>
-        <div style={{ marginBottom: '20px' }}>
-          <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700', color: '#374151' }}>
-            📅 Event History
-          </h3>
-          <p style={{ margin: '0', fontSize: '14px', color: '#6b7280' }}>
-            Recent vineyard activities and phenology events
-          </p>
-          <div style={{
-            fontSize: '12px',
-            color: '#6b7280',
-            backgroundColor: '#f0f9ff',
-            padding: '8px 12px',
-            borderRadius: '6px',
-            marginTop: '8px',
-            border: '1px solid #bae6fd'
-          }}>
-            🌡️ {activities.length} events recorded • Growing degree days tracked daily
-          </div>
-        </div>
+        if (activity.irrigation_amount) {
+          details.push(`Amount: ${activity.irrigation_amount} ${activity.irrigation_unit || ''}`);
+          if (activity.irrigation_method) details.push(`Method: ${activity.irrigation_method}`);
+          if (activity.irrigation_measurement_method) details.push(`Measurement: ${activity.irrigation_measurement_method}`);
+          if (activity.irrigation_measurement_value) details.push(`Value: ${activity.irrigation_measurement_value}`);
+        }
 
-        {/* Filter and Refresh Controls */}
-        <div style={{
-          display: 'flex',
-          gap: '12px',
-          marginBottom: '20px',
-          alignItems: 'center',
-          flexWrap: 'wrap'
-        }}>
-          <select
-            value={eventTypeFilter}
-            onChange={(e) => setEventTypeFilter(e.target.value)}
-            style={{
-              padding: '8px 12px',
-              border: '1px solid #d1d5db',
-              borderRadius: '6px',
-              fontSize: '14px',
-              backgroundColor: 'white'
-            }}
-          >
-            <option value="all">All Events ({activities.length})</option>
-            {uniqueEventTypes.map(eventType => (
-              <option key={eventType} value={eventType}>
-                {eventTypeEmojis[eventType] || '📋'} {eventTypeNames[eventType] || eventType} ({activities.filter(a => a.event_type === eventType).length})
-              </option>
-            ))}
-          </select>
+        if (activity.ripeness_brix || activity.ripeness_ph || activity.ripeness_ta || activity.ripeness_seed_brownness || activity.ripeness_block_estimates) {
+          details.push('Ripeness:');
+          if (activity.ripeness_brix) details.push(` Brix: ${activity.ripeness_brix}°`);
+          if (activity.ripeness_ph) details.push(` pH: ${activity.ripeness_ph}`);
+          if (activity.ripeness_ta) details.push(` TA: ${activity.ripeness_ta}`);
+          if (activity.ripeness_seed_brownness) details.push(` Seed Brownness: ${activity.ripeness_seed_brownness}`);
+          if (activity.ripeness_block_estimates) details.push(` Block Estimates: ${activity.ripeness_block_estimates}`);
+        }
 
-          <button
-            onClick={loadActivities}
-            disabled={isLoadingActivities}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              opacity: isLoadingActivities ? 0.6 : 1
-            }}
-          >
-            <RefreshCw size={14} style={{ animation: isLoadingActivities ? 'spin 1s linear infinite' : 'none' }} />
-            Refresh
-          </button>
+        if (activity.phenology_stage) {
+          details.push(`Phenology: ${activity.phenology_stage}`);
+          if (activity.phenology_percent_complete) details.push(`${activity.phenology_percent_complete}% Complete`);
+          if (activity.phenology_location) details.push(`Block Estimates: ${activity.phenology_location}`);
+        }
 
-          <div style={{ fontSize: '14px', color: '#6b7280' }}>
-            Showing {filteredActivities.length} of {activities.length} events
-          </div>
-        </div>
 
-        {/* Quick Stats */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-          gap: '12px',
-          marginBottom: '20px'
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            padding: '16px',
-            border: '1px solid #e5e7eb',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '24px', fontWeight: '700', color: '#059669' }}>
-              {activities.filter(a => a.event_type === 'spray_application' || a.event_type === 'Spray Application').length}
-            </div>
-            <div style={{ fontSize: '12px', color: '#6b7280' }}>
-              Spray Apps
-            </div>
-          </div>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            padding: '16px',
-            border: '1px solid #e5e7eb',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '24px', fontWeight: '700', color: '#7c3aed' }}>
-              {activities.filter(a => a.event_type === 'fertilization' || a.event_type === 'Fertilization').length}
-            </div>
-            <div style={{ fontSize: '12px', color: '#6b7280' }}>
-              Fertilizers
-            </div>
-          </div>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            padding: '16px',
-            border: '1px solid #e5e7eb',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '24px', fontWeight: '700', color: '#dc2626' }}>
-              {activities.filter(a => a.event_type === 'harvest' || a.event_type === 'Harvest').length}
-            </div>
-            <div style={{ fontSize: '12px', color: '#6b7280' }}>
-              Harvests
-            </div>
-          </div>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            padding: '16px',
-            border: '1px solid #e5e7eb',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '24px', fontWeight: '700', color: '#ea580c' }}>
-              {activities.filter(a => a.created_at && new Date(a.created_at).toDateString() === new Date().toDateString()).length}
-            </div>
-            <div style={{ fontSize: '12px', color: '#6b7280' }}>
-              Today
-            </div>
-          </div>
-        </div>
+        if (activity.harvest_yield) {
+          details.push(`Yield: ${activity.harvest_yield} ${activity.harvest_unit || ''}`);
+          if (activity.harvest_brix) details.push(`Brix: ${activity.harvest_brix}°`);
+        }
 
-        {/* Event List */}
-        {isLoadingActivities ? (
-          <div style={{ textAlign: 'center', padding: '20px', color: '#6b7280' }}>
-            <RefreshCw size={20} style={{ animation: 'spin 1s linear infinite', marginBottom: '8px' }} />
-            <div>Loading events...</div>
-          </div>
-        ) : filteredActivities.length === 0 ? (
-          <div style={{
-            padding: '40px 20px',
-            textAlign: 'center',
-            backgroundColor: '#f8fafc',
-            borderRadius: '12px',
-            border: '2px dashed #cbd5e1'
-          }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>📅</div>
-            <h4 style={{ margin: '0 0 8px 0', color: '#374151', fontSize: '18px' }}>
-              {eventTypeFilter === 'all' ? 'No Events Yet' : 'No Events Found'}
-            </h4>
-            <p style={{ margin: '0 0 16px 0', color: '#6b7280', fontSize: '14px' }}>
-              {eventTypeFilter === 'all'
-                ? 'Start logging your vineyard activities to see them here'
-                : `No ${eventTypeNames[eventTypeFilter] || eventTypeFilter.replace('_', ' ')} events found`
-              }
+        if (activity.canopy_activity) {
+          details.push(`Activity: ${activity.canopy_activity}`);
+          if (activity.canopy_intensity) details.push(`Intensity: ${activity.canopy_intensity}`);
+        }
+
+        if (activity.scout_focus) {
+          details.push(`Focus: ${activity.scout_focus}`);
+          if (activity.scout_severity) details.push(`Severity: ${activity.scout_severity}`);
+        }
+
+        return details;
+      };
+
+      const startEditEvent = (activity: any) => {
+        setEditingEvent(activity);
+        setShowActivityForm(true);
+        setActiveTab('log'); // Switch to log tab when editing
+        setActivityForm({
+          activity_type: eventTypeNames[activity.event_type] || activity.event_type,
+          start_date: activity.event_date,
+          end_date: activity.end_date || '',
+          notes: activity.notes || '',
+          location_lat: activity.location_lat || null,
+          location_lng: activity.location_lng || null,
+          location_name: activity.location_name || '',
+          location_accuracy: activity.location_accuracy || null,
+          spray_product: activity.spray_product || '',
+          spray_quantity: activity.spray_quantity || '',
+          spray_unit: activity.spray_unit || 'oz/acre',
+          spray_target: activity.spray_target || '',
+          spray_conditions: activity.spray_conditions || '',
+          spray_equipment: activity.spray_equipment || '',
+          irrigation_amount: activity.irrigation_amount || '',
+          irrigation_unit: activity.irrigation_unit || 'inches',
+          irrigation_method: activity.irrigation_method || '',
+          irrigation_duration: activity.irrigation_duration || '',
+          irrigation_measurement_method: activity.irrigation_measurement_method || '',
+          irrigation_measurement_value: activity.irrigation_measurement_value || '',
+          fertilizer_type: activity.fertilizer_type || '',
+          fertilizer_npk: activity.fertilizer_npk || '',
+          fertilizer_rate: activity.fertilizer_rate || '',
+          fertilizer_unit: activity.fertilizer_unit || 'lbs/acre',
+          fertilizer_method: activity.fertilizer_method || '',
+          harvest_yield: activity.harvest_yield || '',
+          harvest_unit: activity.harvest_unit || 'tons/acre',
+          harvest_brix: activity.harvest_brix || '',
+          harvest_ph: activity.harvest_ph || '',
+          harvest_ta: activity.harvest_ta || '',
+          harvest_block: activity.harvest_block || '',
+          canopy_activity: activity.canopy_activity || '',
+          canopy_intensity: activity.canopy_intensity || '',
+          canopy_side: activity.canopy_side || '',
+          canopy_stage: activity.canopy_stage || '',
+          scout_focus: activity.scout_focus || '',
+          scout_severity: activity.scout_severity || '',
+          scout_distribution: activity.scout_distribution || '',
+          scout_action: activity.scout_action || '',
+          phenology_stage: activity.phenology_stage || '',
+          phenology_percent_complete: activity.phenology_percent_complete || '',
+          phenology_location: activity.phenology_location || '',
+          ripeness_block_estimates: activity.ripeness_block_estimates || '',
+          ripeness_brix: activity.ripeness_brix || '',
+          ripeness_ph: activity.ripeness_ph || '',
+          ripeness_ta: activity.ripeness_ta || '',
+          ripeness_seed_brownness: activity.ripeness_seed_brownness || '',
+        });
+      };
+
+      const deleteEvent = async (eventId: string) => {
+        if (window.confirm("Are you sure you want to delete this event?")) {
+          try {
+            setIsLoadingActivities(true);
+            const { deletePhenologyEvent } = await import('../lib/supabase');
+            await deletePhenologyEvent(eventId);
+            await loadActivities();
+            alert('Event deleted successfully!');
+          } catch (error) {
+            console.error('❌ Failed to delete event:', error);
+            alert('Failed to delete event: ' + (error as Error).message);
+          } finally {
+            setIsLoadingActivities(false);
+          }
+        }
+      };
+
+      return (
+        <div style={{ padding: '0 1rem 1rem 1rem' }}>
+          <div style={{ marginBottom: '20px' }}>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700', color: '#374151' }}>
+              📅 Event History
+            </h3>
+            <p style={{ margin: '0', fontSize: '14px', color: '#6b7280' }}>
+              Recent vineyard activities and phenology events
             </p>
-            <button
-              onClick={() => {
-                setActiveTab('log');
-                setShowActivityForm(true);
-              }}
+            <div style={{
+              fontSize: '12px',
+              color: '#6b7280',
+              backgroundColor: '#f0f9ff',
+              padding: '8px 12px',
+              borderRadius: '6px',
+              marginTop: '8px',
+              border: '1px solid #bae6fd'
+            }}>
+              🌡️ {activities.length} events recorded • Growing degree days tracked daily
+            </div>
+          </div>
+
+          {/* Filter and Refresh Controls */}
+          <div style={{
+            display: 'flex',
+            gap: '12px',
+            marginBottom: '20px',
+            alignItems: 'center',
+            flexWrap: 'wrap'
+          }}>
+            <select
+              value={eventTypeFilter}
+              onChange={(e) => setEventTypeFilter(e.target.value)}
               style={{
-                padding: '12px 24px',
-                backgroundColor: '#22c55e',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
+                padding: '8px 12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
                 fontSize: '14px',
-                fontWeight: '600'
+                backgroundColor: 'white'
               }}
             >
-              Log First Event
-            </button>
-          </div>
-        ) : (
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            border: '1px solid #e5e7eb',
-            overflow: 'hidden'
-          }}>
-            {filteredActivities.map((activity, index) => {
-              const details = getEventDetails(activity);
+              <option value="all">All Events ({activities.length})</option>
+              {uniqueEventTypes.map(eventType => (
+                <option key={eventType} value={eventType}>
+                  {eventTypeEmojis[eventType] || '📋'} {eventTypeNames[eventType] || eventType} ({activities.filter(a => a.event_type === eventType).length})
+                </option>
+              ))}
+            </select>
 
-              return (
-                <div
-                  key={activity.id || index}
-                  style={{
-                    padding: '16px',
-                    borderBottom: index < filteredActivities.length - 1 ? '1px solid #f3f4f6' : 'none',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start'
-                  }}
-                >
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '18px' }}>
-                        {eventTypeEmojis[activity.event_type] || '📋'}
-                      </span>
-                      <span style={{ fontWeight: '600', color: '#374151' }}>
-                        {eventTypeNames[activity.event_type] || activity.event_type}
-                      </span>
-                      <span style={{
-                        fontSize: '12px',
-                        color: '#6b7280',
-                        backgroundColor: '#f3f4f6',
-                        padding: '2px 6px',
-                        borderRadius: '4px'
-                      }}>
-                        {new Date(activity.event_date).toLocaleDateString()}
-                      </span>
+            <button
+              onClick={loadActivities}
+              disabled={isLoadingActivities}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                opacity: isLoadingActivities ? 0.6 : 1
+              }}
+            >
+              <RefreshCw size={14} style={{ animation: isLoadingActivities ? 'spin 1s linear infinite' : 'none' }} />
+              Refresh
+            </button>
+
+            <div style={{ fontSize: '14px', color: '#6b7280' }}>
+              Showing {filteredActivities.length} of {activities.length} events
+            </div>
+          </div>
+
+          {/* Quick Stats */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+            gap: '12px',
+            marginBottom: '20px'
+          }}>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '16px',
+              border: '1px solid #e5e7eb',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#059669' }}>
+                {activities.filter(a => a.event_type === 'spray_application' || a.event_type === 'Spray Application').length}
+              </div>
+              <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                Spray Apps
+              </div>
+            </div>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '16px',
+              border: '1px solid #e5e7eb',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#7c3aed' }}>
+                {activities.filter(a => a.event_type === 'fertilization' || a.event_type === 'Fertilization').length}
+              </div>
+              <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                Fertilizers
+              </div>
+            </div>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '16px',
+              border: '1px solid #e5e7eb',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#dc2626' }}>
+                {activities.filter(a => a.event_type === 'harvest' || a.event_type === 'Harvest').length}
+              </div>
+              <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                Harvests
+              </div>
+            </div>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '16px',
+              border: '1px solid #e5e7eb',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#ea580c' }}>
+                {activities.filter(a => a.created_at && new Date(a.created_at).toDateString() === new Date().toDateString()).length}
+              </div>
+              <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                Today
+              </div>
+            </div>
+          </div>
+
+          {/* Event List */}
+          {isLoadingActivities ? (
+            <div style={{ textAlign: 'center', padding: '20px', color: '#6b7280' }}>
+              <RefreshCw size={20} style={{ animation: 'spin 1s linear infinite', marginBottom: '8px' }} />
+              <div>Loading events...</div>
+            </div>
+          ) : filteredActivities.length === 0 ? (
+            <div style={{
+              padding: '40px 20px',
+              textAlign: 'center',
+              backgroundColor: '#f8fafc',
+              borderRadius: '12px',
+              border: '2px dashed #cbd5e1'
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>📅</div>
+              <h4 style={{ margin: '0 0 8px 0', color: '#374151', fontSize: '18px' }}>
+                {eventTypeFilter === 'all' ? 'No Events Yet' : 'No Events Found'}
+              </h4>
+              <p style={{ margin: '0 0 16px 0', color: '#6b7280', fontSize: '14px' }}>
+                {eventTypeFilter === 'all'
+                  ? 'Start logging your vineyard activities to see them here'
+                  : `No ${eventTypeNames[eventTypeFilter] || eventTypeFilter.replace('_', ' ')} events found`
+                }
+              </p>
+              <button
+                onClick={() => {
+                  setActiveTab('log');
+                  setShowActivityForm(true);
+                }}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: '#22c55e',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600'
+                }}
+              >
+                Log First Event
+              </button>
+            </div>
+          ) : (
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              border: '1px solid #e5e7eb',
+              overflow: 'hidden'
+            }}>
+              {filteredActivities.map((activity, index) => {
+                const details = getEventDetails(activity);
+
+                return (
+                  <div
+                    key={activity.id || index}
+                    style={{
+                      padding: '16px',
+                      borderBottom: index < filteredActivities.length - 1 ? '1px solid #f3f4f6' : 'none',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start'
+                    }}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '18px' }}>
+                          {eventTypeEmojis[activity.event_type] || '📋'}
+                        </span>
+                        <span style={{ fontWeight: '600', color: '#374151' }}>
+                          {eventTypeNames[activity.event_type] || activity.event_type}
+                        </span>
+                        <span style={{
+                          fontSize: '12px',
+                          color: '#6b7280',
+                          backgroundColor: '#f3f4f6',
+                          padding: '2px 6px',
+                          borderRadius: '4px'
+                        }}>
+                          {new Date(activity.event_date).toLocaleDateString()}
+                        </span>
+                      </div>
+
+                      {activity.notes && (
+                        <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '8px' }}>
+                          {activity.notes}
+                        </div>
+                      )}
+
+                      {details.length > 0 && (
+                        <div style={{ fontSize: '12px', color: '#374151', marginBottom: '8px' }}>
+                          {details.map((detail, i) => (
+                            <div key={i} style={{ marginBottom: '2px' }}>• {detail}</div>
+                          ))}
+                        </div>
+                      )}
+
+                      {activity.location_name && (
+                        <div style={{ fontSize: '12px', color: '#059669', marginBottom: '4px' }}>
+                          📍 {activity.location_name}
+                        </div>
+                      )}
                     </div>
 
-                    {activity.notes && (
-                      <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '8px' }}>
-                        {activity.notes}
-                      </div>
-                    )}
-
-                    {details.length > 0 && (
-                      <div style={{ fontSize: '12px', color: '#374151', marginBottom: '8px' }}>
-                        {details.map((detail, i) => (
-                          <div key={i} style={{ marginBottom: '2px' }}>• {detail}</div>
-                        ))}
-                      </div>
-                    )}
-
-                    {activity.location_name && (
-                      <div style={{ fontSize: '12px', color: '#059669', marginBottom: '4px' }}>
-                        📍 {activity.location_name}
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                    <button
-                      onClick={() => startEditEvent(activity)}
-                      style={{
-                        padding: '4px 8px',
-                        backgroundColor: '#f59e0b',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        fontWeight: '500'
-                      }}
-                      title="Edit event"
-                    >
-                      Edit
-                    </button>
-
-                    <button
-                      onClick={() => deleteEvent(activity.id)}
-                      style={{
-                        padding: '4px 8px',
-                        backgroundColor: '#dc2626',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        fontWeight: '500'
-                      }}
-                      title="Delete event"
-                    >
-                      Delete
-                    </button>
-
-                    {activity.location_lat && activity.location_lng && (
-                      <a
-                        href={`https://www.google.com/maps?q=${activity.location_lat},${activity.location_lng}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                      <button
+                        onClick={() => startEditEvent(activity)}
                         style={{
                           padding: '4px 8px',
-                          backgroundColor: '#f0f9ff',
-                          border: '1px solid #bae6fd',
+                          backgroundColor: '#f59e0b',
+                          color: 'white',
+                          border: 'none',
                           borderRadius: '4px',
-                          textDecoration: 'none',
-                          fontSize: '12px'
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: '500'
                         }}
-                        title="View on map"
+                        title="Edit event"
                       >
-                        🗺️
-                      </a>
-                    )}
+                        Edit
+                      </button>
+
+                      <button
+                        onClick={() => deleteEvent(activity.id)}
+                        style={{
+                          padding: '4px 8px',
+                          backgroundColor: '#dc2626',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: '500'
+                        }}
+                        title="Delete event"
+                      >
+                        Delete
+                      </button>
+
+                      {activity.location_lat && activity.location_lng && (
+                        <a
+                          href={`https://www.google.com/maps?q=${activity.location_lat},${activity.location_lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            padding: '4px 8px',
+                            backgroundColor: '#f0f9ff',
+                            border: '1px solid #bae6fd',
+                            borderRadius: '4px',
+                            textDecoration: 'none',
+                            fontSize: '12px'
+                          }}
+                          title="View on map"
+                        >
+                          🗺️
+                        </a>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    );
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    })(); // Immediately invoke the function
   };
 
   const SettingsTab = () => (
