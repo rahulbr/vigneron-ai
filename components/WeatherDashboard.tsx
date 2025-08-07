@@ -310,13 +310,6 @@ export function WeatherDashboard({
   // Event filtering for Events section
   const [eventFilterTypes, setEventFilterTypes] = useState<string[]>([]);
   const [showEventFilterDropdown, setShowEventFilterDropdown] = useState(false);
-  
-  // Date filtering for Event Log
-  const [eventDateFilter, setEventDateFilter] = useState({
-    startDate: '',
-    endDate: ''
-  });
-  const [showDateFilterDropdown, setShowDateFilterDropdown] = useState(false);
 
   // Location visualization state
   const [showLocationMap, setShowLocationMap] = useState(false);
@@ -3053,111 +3046,7 @@ export function WeatherDashboard({
                 📊 Reports
               </button>
 
-              {/* Date Filter Dropdown */}
-              <div style={{ position: "relative" }}>
-                <button
-                  onClick={() => setShowDateFilterDropdown(!showDateFilterDropdown)}
-                  style={{
-                    padding: "6px 12px",
-                    backgroundColor: "#f3f4f6",
-                    color: "#374151",
-                    border: "1px solid #d1d5db",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontSize: "12px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px"
-                  }}
-                >
-                  📅 {(eventDateFilter.startDate || eventDateFilter.endDate) ? 'Date Filter' : 'All Dates'}
-                </button>
-
-                {showDateFilterDropdown && (
-                  <div style={{
-                    position: "absolute",
-                    top: "100%",
-                    right: "0",
-                    backgroundColor: "white",
-                    border: "1px solid #ddd",
-                    borderRadius: "6px",
-                    boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
-                    zIndex: 1000,
-                    minWidth: "250px",
-                    padding: "12px"
-                  }}>
-                    <div style={{ marginBottom: "8px", fontWeight: "bold", fontSize: "12px" }}>
-                      Filter events by date range:
-                    </div>
-                    <div style={{ marginBottom: "8px" }}>
-                      <label style={{ display: "block", fontSize: "11px", marginBottom: "4px" }}>From:</label>
-                      <input
-                        type="date"
-                        value={eventDateFilter.startDate}
-                        onChange={(e) => setEventDateFilter(prev => ({ ...prev, startDate: e.target.value }))}
-                        style={{
-                          width: "100%",
-                          padding: "4px 6px",
-                          border: "1px solid #d1d5db",
-                          borderRadius: "4px",
-                          fontSize: "11px"
-                        }}
-                      />
-                    </div>
-                    <div style={{ marginBottom: "12px" }}>
-                      <label style={{ display: "block", fontSize: "11px", marginBottom: "4px" }}>To:</label>
-                      <input
-                        type="date"
-                        value={eventDateFilter.endDate}
-                        onChange={(e) => setEventDateFilter(prev => ({ ...prev, endDate: e.target.value }))}
-                        style={{
-                          width: "100%",
-                          padding: "4px 6px",
-                          border: "1px solid #d1d5db",
-                          borderRadius: "4px",
-                          fontSize: "11px"
-                        }}
-                      />
-                    </div>
-                    <div style={{ display: "flex", gap: "6px" }}>
-                      <button
-                        onClick={() => {
-                          setEventDateFilter({ startDate: '', endDate: '' });
-                          setShowDateFilterDropdown(false);
-                        }}
-                        style={{
-                          flex: 1,
-                          padding: "6px",
-                          backgroundColor: "#f3f4f6",
-                          border: "1px solid #d1d5db",
-                          borderRadius: "4px",
-                          cursor: "pointer",
-                          fontSize: "11px"
-                        }}
-                      >
-                        Clear
-                      </button>
-                      <button
-                        onClick={() => setShowDateFilterDropdown(false)}
-                        style={{
-                          flex: 1,
-                          padding: "6px",
-                          backgroundColor: "#3b82f6",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "4px",
-                          cursor: "pointer",
-                          fontSize: "11px"
-                        }}
-                      >
-                        Apply
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Event Type Filter Dropdown */}
+              {/* Filter Dropdown */}
               <div style={{ position: "relative" }}>
                 <button
                   onClick={() => setShowEventFilterDropdown(!showEventFilterDropdown)}
@@ -3174,7 +3063,7 @@ export function WeatherDashboard({
                     gap: "4px"
                   }}
                 >
-                  🔍 {eventFilterTypes.length > 0 ? `${eventFilterTypes.length} types` : 'All Types'}
+                  🔍 {eventFilterTypes.length > 0 ? `${eventFilterTypes.length} filtered` : 'All'}
                 </button>
 
                 {showEventFilterDropdown && (
@@ -4506,7 +4395,11 @@ export function WeatherDashboard({
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
               <h4 style={{ margin: '0', fontSize: '16px', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                📅 Event History ({filteredActivities.length} shown)
+                📅 Event History ({activities.filter(activity => {
+                  if (eventFilterTypes.length === 0) return true;
+                  const eventType = activity.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
+                  return eventFilterTypes.includes(eventType);
+                }).length} total)
               </h4>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <span style={{ fontSize: '12px', color: '#6b7280' }}>
@@ -4553,23 +4446,11 @@ export function WeatherDashboard({
                 <div>Loading events...</div>
               </div>
             ) : (() => {
-              // Filter activities by event type and date
+              // Filter activities by event type
               const filteredActivities = activities.filter(activity => {
-                // Apply event type filter
-                if (eventFilterTypes.length > 0) {
-                  const eventType = activity.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
-                  if (!eventFilterTypes.includes(eventType)) return false;
-                }
-                
-                // Apply date filter
-                if (eventDateFilter.startDate && activity.event_date < eventDateFilter.startDate) {
-                  return false;
-                }
-                if (eventDateFilter.endDate && activity.event_date > eventDateFilter.endDate) {
-                  return false;
-                }
-                
-                return true;
+                if (eventFilterTypes.length === 0) return true;
+                const eventType = activity.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
+                return eventFilterTypes.includes(eventType);
               });
 
               console.log('🎯 Displaying filtered activities:', filteredActivities.length, 'of', activities.length, 'total');
@@ -4694,7 +4575,19 @@ export function WeatherDashboard({
                         transition: 'all 0.2s ease',
                         position: 'relative'
                       }}
-                      
+                      onClick={() => !isBeingEdited && startEditingActivity(activity)}
+                      onMouseEnter={(e) => {
+                        if (!isBeingEdited) {
+                          e.currentTarget.style.backgroundColor = '#f8fafc';
+                          e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isBeingEdited) {
+                          e.currentTarget.style.backgroundColor = 'white';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }
+                      }}
                     >
                       {!isBeingEdited && (
                         // Event summary view
@@ -4740,64 +4633,44 @@ export function WeatherDashboard({
                             </div>
                             
                             {/* Quick action buttons */}
-                            <div 
-                              style={{ display: 'flex', gap: '4px', alignItems: 'center', flexShrink: 0 }}
-                              onClick={(e) => e.stopPropagation()} // Prevent parent click when clicking buttons
-                            >
+                            <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexShrink: 0 }}>
                               {activity.location_lat && activity.location_lng && (
                                 <a
                                   href={`https://www.google.com/maps?q=${activity.location_lat},${activity.location_lng}&z=18`}
                                   target="_blank"
                                   rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
                                   style={{
-                                    padding: '6px 8px',
+                                    padding: '4px 8px',
                                     backgroundColor: '#10b981',
                                     color: 'white',
                                     textDecoration: 'none',
                                     borderRadius: '4px',
-                                    fontSize: '16px',
+                                    fontSize: '11px',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    lineHeight: 1
+                                    gap: '2px',
+                                    fontWeight: '500'
                                   }}
                                   title="View location on Google Maps"
                                 >
-                                  📍
+                                  📍 Map
                                 </a>
                               )}
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  startEditingActivity(activity);
-                                }}
-                                style={{
-                                  padding: '6px 8px',
-                                  backgroundColor: '#f59e0b',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '4px',
-                                  cursor: 'pointer',
-                                  fontSize: '16px',
-                                  lineHeight: 1
-                                }}
-                                title="Edit event"
-                              >
-                                ✏️
-                              </button>
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   deleteActivity(activity.id, style.label);
                                 }}
                                 style={{
-                                  padding: '6px 8px',
+                                  padding: '4px 6px',
                                   backgroundColor: '#ef4444',
                                   color: 'white',
                                   border: 'none',
                                   borderRadius: '4px',
                                   cursor: 'pointer',
-                                  fontSize: '16px',
-                                  lineHeight: 1
+                                  fontSize: '11px',
+                                  fontWeight: '500'
                                 }}
                                 title="Delete event"
                               >
@@ -4893,11 +4766,21 @@ export function WeatherDashboard({
                               marginTop: '6px',
                               fontWeight: '500'
                             }}>
-                              {Math.round(cumulativeGDD)} GDDs accumulated
+                              {cumulativeGDD} GDDs accumulated
                             </div>
                           )}
 
-                          
+                          {/* Click hint */}
+                          <div style={{
+                            position: 'absolute',
+                            top: '8px',
+                            right: '8px',
+                            fontSize: '10px',
+                            color: '#9ca3af',
+                            fontStyle: 'italic'
+                          }}>
+                            Click to edit
+                          </div>
                         </div>
                       )}
 
