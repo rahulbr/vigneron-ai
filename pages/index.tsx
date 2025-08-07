@@ -1,14 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { WeatherDashboard } from '../components/WeatherDashboard';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-const supabase = supabaseUrl && supabaseAnonKey 
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null;
+import { supabase } from '../lib/supabase';
 
 interface Vineyard {
   id: string;
@@ -33,23 +26,8 @@ export default function Home() {
     }
 
     try {
-      if (!supabase) {
-        console.log('🏗️ Creating demo vineyard data locally (bypassing database for now)');
-        
-        const demoVineyard: Vineyard = {
-          id: vineyardId,
-          name: 'Demo Vineyard - Napa Valley',
-          location: 'Napa Valley, CA',
-          latitude: 38.2975,
-          longitude: -122.2869,
-          created_at: new Date().toISOString()
-        };
-        
-        setVineyard(demoVineyard);
-        console.log('✅ Demo vineyard data loaded:', demoVineyard);
-        setLoading(false);
-        return;
-      }
+      // Always try to load from database first
+      console.log('🔍 Attempting to load vineyard from database...');
 
       const { data, error } = await supabase
         .from('vineyards')
@@ -58,17 +36,52 @@ export default function Home() {
         .maybeSingle();
 
       if (error) {
-        console.error('❌ Database error:', error);
+        console.error('❌ Database error, creating demo vineyard:', error);
+        // Create demo vineyard as fallback
+        const demoVineyard: Vineyard = {
+          id: vineyardId,
+          name: 'Demo Vineyard - Napa Valley',
+          location: 'Napa Valley, CA',
+          latitude: 38.2975,
+          longitude: -122.2869,
+          created_at: new Date().toISOString()
+        };
+        setVineyard(demoVineyard);
+        console.log('✅ Demo vineyard data loaded as fallback:', demoVineyard);
         setLoading(false);
         return;
       }
 
       if (data) {
         setVineyard(data);
-        console.log('✅ Vineyard data loaded:', data);
+        console.log('✅ Vineyard data loaded from database:', data);
+      } else {
+        console.log('🏗️ No vineyard found in database, creating demo vineyard');
+        // Create demo vineyard if no data found
+        const demoVineyard: Vineyard = {
+          id: vineyardId,
+          name: 'Demo Vineyard - Napa Valley',
+          location: 'Napa Valley, CA',
+          latitude: 38.2975,
+          longitude: -122.2869,
+          created_at: new Date().toISOString()
+        };
+        setVineyard(demoVineyard);
+        console.log('✅ Demo vineyard data created:', demoVineyard);
       }
     } catch (error) {
-      console.error('❌ Error loading vineyard:', error);
+      console.error('❌ Error loading vineyard, using demo data:', error);
+      // Final fallback to demo data
+      const demoVineyard: Vineyard = {
+        id: vineyardId,
+        name: 'Demo Vineyard - Napa Valley',
+        location: 'Napa Valley, CA',
+        latitude: 38.2975,
+        longitude: -122.2869,
+        created_at: new Date().toISOString()
+      };
+      setVineyard(demoVineyard);
+      console.log('✅ Demo vineyard data loaded as final fallback:', demoVineyard);
     } finally {
       setLoading(false);
     }

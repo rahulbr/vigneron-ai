@@ -44,9 +44,11 @@ export function WeatherDashboard({
   onSaveEvent,
   onLoadEvents
 }: WeatherDashboardProps) {
-  // Use either latitude/longitude or initialLatitude/initialLongitude
-  const finalLatitude = latitude ?? initialLatitude ?? 0;
-  const finalLongitude = longitude ?? initialLongitude ?? 0;
+  // Use either latitude/longitude or initialLatitude/initialLongitude with safe defaults
+  const finalLatitude = typeof latitude === 'number' ? latitude : 
+                        typeof initialLatitude === 'number' ? initialLatitude : 38.2975;
+  const finalLongitude = typeof longitude === 'number' ? longitude : 
+                         typeof initialLongitude === 'number' ? initialLongitude : -122.2869;
   // Early return if essential props are missing
   if (!vineyardId) {
     return (
@@ -265,7 +267,7 @@ export function WeatherDashboard({
               <h3 style={{ margin: '0 0 10px 0', color: '#15803d' }}>📍 Location</h3>
               <p style={{ margin: '0', fontSize: '14px', color: '#374151' }}>
                 {locationName}<br />
-                {finalLatitude.toFixed(4)}, {finalLongitude.toFixed(4)}
+                {(finalLatitude || 0).toFixed(4)}, {(finalLongitude || 0).toFixed(4)}
               </p>
             </div>
 
@@ -617,7 +619,7 @@ export function WeatherDashboard({
             <h3 style={{ margin: '0 0 15px 0', color: '#374151' }}>📍 Current Location</h3>
             <div style={{ fontSize: '16px', color: '#4b5563' }}>
               <strong>{locationName}</strong><br />
-              Coordinates: {finalLatitude.toFixed(6)}, {finalLongitude.toFixed(6)}
+              Coordinates: {(finalLatitude || 0).toFixed(6)}, {(finalLongitude || 0).toFixed(6)}
             </div>
           </div>
 
