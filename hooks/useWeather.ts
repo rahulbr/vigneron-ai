@@ -92,23 +92,33 @@ export function useWeather(options: UseWeatherOptions) {
 
     } catch (error) {
       let errorCode = 'UNKNOWN_ERROR';
-      let errorMessage = 'An unknown error occurred';
+      let errorMessage = 'Weather data temporarily unavailable';
 
       if (error instanceof Error) {
         errorMessage = error.message;
         
-        // Categorize errors
+        // Categorize errors for farmers
         if (errorMessage.includes('Invalid coordinates')) {
           errorCode = 'INVALID_COORDS';
+          errorMessage = 'Invalid vineyard location coordinates';
         } else if (errorMessage.includes('Invalid date range')) {
           errorCode = 'INVALID_DATE_RANGE';
-        } else if (errorMessage.includes('HTTP')) {
-          errorCode = 'API_ERROR';
+          errorMessage = 'Invalid date range selected';
+        } else if (errorMessage.includes('HTTP') || errorMessage.includes('fetch')) {
+          errorCode = 'NETWORK_ERROR';
+          errorMessage = 'Network connection issue - using backup data';
         } else if (errorMessage.includes('failed after')) {
           errorCode = 'NETWORK_ERROR';
+          errorMessage = 'Weather service unavailable - backup data provided';
         } else if (errorMessage.includes('Invalid API response')) {
           errorCode = 'DATA_FORMAT_ERROR';
+          errorMessage = 'Weather data format error - using backup';
         }
+      }
+
+      // For network errors, we don't want to completely fail the user experience
+      if (errorCode === 'NETWORK_ERROR') {
+        console.log('🌐 Network issues detected - app will continue with available data');
       }
 
       setState(prev => ({
