@@ -537,7 +537,7 @@ export function WeatherDashboard({
       }
 
       // Clear editing state
-      setEditingVineyardId(null);
+      setEditingVinevineyardId(null);
       setEditingVineyardName('');
 
       console.log('✅ Vineyard renamed successfully:', updatedVineyard.name);
@@ -2544,7 +2544,7 @@ export function WeatherDashboard({
             }}>
               <div style={{ fontSize: '48px', marginBottom: '15px' }}>🍇</div>
               <h4 style={{ margin: '0 0 10px 0', color: '#374151', fontSize: '18px' }}>No Vineyards Yet</h4>
-              <p style={{ margin: '0 0 15px 0', color: '#6b7280', fontSize: '14px' }}>
+              <p style={{ margin: '0', color: '#6b7280', fontSize: '14px' }}>
                 Create your first vineyard to start tracking weather data and phenology events.
               </p>
               <button
@@ -4889,7 +4889,7 @@ export function WeatherDashboard({
                                   </label>
                                   <select
                                     value={editActivityForm.fertilizer_unit}
-                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, fertilizer_unit: e.target.value }))}
+                                    onChange={(e) => setActivityForm(prev => ({ ...prev, fertilizer_unit: e.target.value }))}
                                     style={{
                                       width: '100%',
                                       padding: '6px 10px',
@@ -5738,7 +5738,7 @@ export function WeatherDashboard({
                             borderRadius: '8px'
                           }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
-                              <span style={{ fontSize: '16px' }}>📍</span>
+                              <span style={{ fontSize:'16px' }}>📍</span>
                               <label style={{ fontWeight: '600', fontSize: '13px', color: '#a16207' }}>
                                 Event Location
                               </label>
