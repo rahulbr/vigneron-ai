@@ -94,7 +94,7 @@ export async function createVineyard(name: string, location: string, lat: number
 export async function getVineyard(id: string): Promise<Vineyard | null> {
   const { data, error } = await supabase
     .from('vineyards')
-    .select('*')
+    .select('id,name,location,latitude,longitude,user_id,created_at,updated_at')
     .eq('id', id)
     .maybeSingle();
 
@@ -110,7 +110,7 @@ export async function getVineyardDetails(vineyardId: string): Promise<Vineyard |
   try {
     const { data, error } = await supabase
       .from('vineyards')
-      .select('*')
+      .select('id,name,location,latitude,longitude,user_id,created_at,updated_at')
       .eq('id', vineyardId)
       .maybeSingle();
 
@@ -638,7 +638,7 @@ export async function getPhenologyEvents(vineyardId: string): Promise<PhenologyE
 
     let query = supabase
       .from('phenology_events')
-      .select('*')
+      .select('id,vineyard_id,user_id,event_type,event_date,end_date,notes,harvest_block,is_actual,created_at,location_lat,location_lng,location_name')
       .eq('vineyard_id', validVineyardId)
       .order('event_date', { ascending: true });
 

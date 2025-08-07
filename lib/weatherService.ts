@@ -1,4 +1,6 @@
 // lib/weatherService.ts
+import { weatherCache } from './weatherCache';
+
 interface WeatherAPIResponse {
   daily?: {
     time: string[];
@@ -144,6 +146,13 @@ export class WeatherService {
       throw new Error(`Invalid date range: dates must be valid, start before end, not in future, and within 2 years`);
     }
 
+    // Check cache first
+    const cacheKey = `${latitude}_${longitude}`;
+    const cachedData = weatherCache.get(cacheKey, startDate, endDate);
+    if (cachedData) {
+      return cachedData;
+    }
+
     // Construct API URL
     const params = new URLSearchParams({
       latitude: latitude.toString(),
@@ -225,6 +234,11 @@ export class WeatherService {
       }
 
       console.log(`✅ Successfully processed ${processedData.length} weather data points`);
+      
+      // Cache the processed data
+      const cacheKey = `${latitude}_${longitude}`;
+      weatherCache.set(cacheKey, startDate, endDate, processedData);
+      
       return processedData;
 
     } catch (error) {
