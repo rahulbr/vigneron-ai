@@ -104,22 +104,23 @@ export function useWeather(options: UseWeatherOptions) {
         } else if (errorMessage.includes('Invalid date range')) {
           errorCode = 'INVALID_DATE_RANGE';
           errorMessage = 'Invalid date range selected';
+        } else if (errorMessage.includes('API key')) {
+          errorCode = 'API_KEY_ERROR';
+          errorMessage = 'Weather service configuration error - please contact support';
+        } else if (errorMessage.includes('rate limit')) {
+          errorCode = 'RATE_LIMIT_ERROR';
+          errorMessage = 'Weather service temporarily unavailable - please try again in a few minutes';
+        } else if (errorMessage.includes('Weather data unavailable')) {
+          errorCode = 'DATA_UNAVAILABLE';
+          errorMessage = errorMessage; // Use the specific message from the service
         } else if (errorMessage.includes('HTTP') || errorMessage.includes('fetch')) {
           errorCode = 'NETWORK_ERROR';
-          errorMessage = 'Network connection issue - using backup data';
-        } else if (errorMessage.includes('failed after')) {
-          errorCode = 'NETWORK_ERROR';
-          errorMessage = 'Weather service unavailable - backup data provided';
-        } else if (errorMessage.includes('Invalid API response')) {
-          errorCode = 'DATA_FORMAT_ERROR';
-          errorMessage = 'Weather data format error - using backup';
+          errorMessage = 'Network connection issue - please check your internet connection';
         }
       }
 
-      // For network errors, we don't want to completely fail the user experience
-      if (errorCode === 'NETWORK_ERROR') {
-        console.log('🌐 Network issues detected - app will continue with available data');
-      }
+      // Log the error for debugging
+      console.error('Weather service error:', { errorCode, errorMessage });
 
       setState(prev => ({
         ...prev,
@@ -162,7 +163,11 @@ export function useWeatherConnection() {
     try {
       const result = await weatherService.testConnection();
       setIsConnected(result);
+      if (!result) {
+        console.warn('❌ Weather service connection failed - check API key configuration');
+      }
     } catch (error) {
+      console.error('❌ Weather service connection error:', error);
       setIsConnected(false);
     } finally {
       setTesting(false);
