@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { WeatherDashboard } from '../components/WeatherDashboard';
-import { supabase } from '../lib/supabase';
+import WeatherDashboard from '../components/WeatherDashboard';
+import { supabase, savePhenologyEvent, getPhenologyEvents } from '../lib/supabase';
 
 interface Vineyard {
   id: string;
@@ -99,6 +99,33 @@ export default function Home() {
     }
   }, [vineyardId, loadVineyardData]);
 
+  const handleSaveEvent = async (eventData: any) => {
+    try {
+      await savePhenologyEvent(
+        eventData.vineyard_id,
+        eventData.event_type,
+        eventData.event_date,
+        eventData.notes || '',
+        eventData.end_date,
+        eventData.harvest_block
+      );
+      console.log('✅ Event saved successfully');
+    } catch (error) {
+      console.error('❌ Failed to save event:', error);
+      throw error;
+    }
+  };
+
+  const handleLoadEvents = async () => {
+    try {
+      if (!vineyardId) return [];
+      return await getPhenologyEvents(vineyardId);
+    } catch (error) {
+      console.error('❌ Failed to load events:', error);
+      return [];
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ 
@@ -153,6 +180,8 @@ export default function Home() {
         latitude={vineyard.latitude}
         longitude={vineyard.longitude}
         locationName={vineyard.location}
+        onSaveEvent={handleSaveEvent}
+        onLoadEvents={handleLoadEvents}
       />
     </div>
   );
