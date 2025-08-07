@@ -1,6 +1,6 @@
 // components/WeatherDashboard.tsx - Phase 1: Tab-Based Navigation Implementation
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useWeather, useWeatherConnection } from '../hooks/useWeather';
 import { EnhancedGDDChart } from './EnhancedGDDChart';
 import { googleGeocodingService, GeocodeResult } from '../lib/googleGeocodingService';
@@ -238,6 +238,112 @@ export function WeatherDashboard({
     }
 
     return notes;
+  };
+
+  // Memoized form handlers
+  const formHandlers = {
+    handleActivityTypeChange: useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+      const selectedType = e.target.value;
+      setActivityForm(prev => ({
+        ...prev,
+        activity_type: selectedType,
+        // Reset other fields if needed when type changes, or set defaults
+        spray_product: '', spray_quantity: '', spray_unit: 'oz/acre', spray_target: '', spray_conditions: '', spray_equipment: '',
+        irrigation_amount: '', irrigation_unit: 'inches', irrigation_method: '', irrigation_duration: '', irrigation_measurement_method: '', irrigation_measurement_value: '',
+        fertilizer_type: '', fertilizer_npk: '', fertilizer_rate: '', fertilizer_unit: 'lbs/acre', fertilizer_method: '',
+        harvest_yield: '', harvest_unit: 'tons/acre', harvest_brix: '', harvest_ph: '', harvest_ta: '', harvest_block: '',
+        phenology_stage: '', phenology_percent_complete: '', phenology_location: '',
+        ripeness_block_estimates: '', ripeness_brix: '', ripeness_ph: '', ripeness_ta: '', ripeness_seed_brownness: '',
+        // Auto-populate weather notes based on the new type
+        spray_conditions: selectedType === 'Spray Application' ? generateAutoWeatherNotes('Spray Application') : prev.spray_conditions,
+        notes: selectedType === 'Irrigation' ? generateAutoWeatherNotes('Irrigation') : prev.notes,
+      }));
+    }, [generateAutoWeatherNotes]), // Dependency array includes generateAutoWeatherNotes
+
+    handleDateChange: useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+      const newDate = e.target.value;
+      setActivityForm(prev => {
+        const updated = { ...prev, start_date: newDate };
+
+        // Auto-update weather conditions for spray applications and irrigation
+        if (updated.activity_type === 'Spray Application') {
+          updated.spray_conditions = generateAutoWeatherNotes('Spray Application');
+        }
+        if (updated.activity_type === 'Irrigation') {
+          updated.notes = generateAutoWeatherNotes('Irrigation');
+        }
+
+        return updated;
+      });
+    }, [generateAutoWeatherNotes]), // Dependency array includes generateAutoWeatherNotes
+
+    handleInputChange: useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      const { name, value } = event.target;
+      setActivityForm(prev => {
+        const updated = { ...prev, [name]: value };
+
+        // Auto-update weather conditions for spray applications and irrigation based on date change
+        if (name === 'start_date') {
+          if (updated.activity_type === 'Spray Application') {
+            updated.spray_conditions = generateAutoWeatherNotes('Spray Application');
+          }
+          if (updated.activity_type === 'Irrigation') {
+            updated.notes = generateAutoWeatherNotes('Irrigation');
+          }
+        }
+
+        // Dynamically update specific fields based on selected activity_type
+        if (name === 'activity_type') {
+          // Reset fields if the type changes, to prevent stale data
+          const resetFields = {
+            spray_product: '', spray_quantity: '', spray_unit: 'oz/acre', spray_target: '', spray_conditions: '', spray_equipment: '',
+            irrigation_amount: '', irrigation_unit: 'inches', irrigation_method: '', irrigation_duration: '', irrigation_measurement_method: '', irrigation_measurement_value: '',
+            fertilizer_type: '', fertilizer_npk: '', fertilizer_rate: '', fertilizer_unit: 'lbs/acre', fertilizer_method: '',
+            harvest_yield: '', harvest_unit: 'tons/acre', harvest_brix: '', harvest_ph: '', harvest_ta: '', harvest_block: '',
+            phenology_stage: '', phenology_percent_complete: '', phenology_location: '',
+            ripeness_block_estimates: '', ripeness_brix: '', ripeness_ph: '', ripeness_ta: '', ripeness_seed_brownness: '',
+          };
+          Object.assign(updated, resetFields);
+          
+          // Set default values based on new activity type
+          if (value === 'Spray Application') {
+            updated.spray_conditions = generateAutoWeatherNotes('Spray Application');
+          } else if (value === 'Irrigation') {
+            updated.notes = generateAutoWeatherNotes('Irrigation');
+          }
+        }
+
+        return updated;
+      });
+    }, [generateAutoWeatherNotes]), // Re-memoize if generateAutoWeatherNotes changes
+
+    handleLocationInputChange: useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+      const { name, value } = event.target;
+      setActivityForm(prev => ({
+        ...prev,
+        [name]: value,
+        // Clear coordinates if location name is cleared, or vice versa
+        ...(name === 'location_name' && !value && { location_lat: null, location_lng: null, location_accuracy: null }),
+      }));
+    }, []),
+    
+    handlePhenologyPercentChange: useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+      const { value, name } = e.target;
+      setActivityForm(prev => ({
+        ...prev,
+        [name]: value,
+        // Ensure value stays within 0-100 range for percentage
+        ...(name === 'phenology_percent_complete' && { phenology_percent_complete: Math.max(0, Math.min(100, parseInt(value) || 0)).toString() }),
+      }));
+    }, []),
+
+    handleNumericInputChange: useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+      const { name, value } = event.target;
+      setActivityForm(prev => ({
+        ...prev,
+        [name]: value,
+      }));
+    }, []),
   };
 
   // All your existing useEffect hooks and functions (unchanged - keeping all the business logic)
@@ -719,7 +825,7 @@ export function WeatherDashboard({
 
       setActivityForm({
         activity_type: '',
-        start_date: '',
+        start_date: new Date().toISOString().split('T')[0],
         end_date: '',
         notes: '',
         location_lat: null,
@@ -1447,23 +1553,7 @@ export function WeatherDashboard({
                 </label>
                 <select
                   value={activityForm.activity_type}
-                  onChange={(e) => {
-                    const selectedType = e.target.value;
-                    setActivityForm(prev => ({
-                      ...prev,
-                      activity_type: selectedType,
-                      // Reset other fields if needed when type changes, or set defaults
-                      spray_product: '', spray_quantity: '', spray_unit: 'oz/acre', spray_target: '', spray_conditions: '', spray_equipment: '',
-                      irrigation_amount: '', irrigation_unit: 'inches', irrigation_method: '', irrigation_duration: '', irrigation_measurement_method: '', irrigation_measurement_value: '',
-                      fertilizer_type: '', fertilizer_npk: '', fertilizer_rate: '', fertilizer_unit: 'lbs/acre', fertilizer_method: '',
-                      harvest_yield: '', harvest_unit: 'tons/acre', harvest_brix: '', harvest_ph: '', harvest_ta: '', harvest_block: '',
-                      phenology_stage: '', phenology_percent_complete: '', phenology_location: '',
-                      ripeness_block_estimates: '', ripeness_brix: '', ripeness_ph: '', ripeness_ta: '', ripeness_seed_brownness: '',
-                      // Auto-populate weather notes based on the new type
-                      spray_conditions: selectedType === 'Spray Application' ? generateAutoWeatherNotes('Spray Application') : prev.spray_conditions,
-                      notes: selectedType === 'Irrigation' ? generateAutoWeatherNotes('Irrigation') : prev.notes,
-                    }));
-                  }}
+                  onChange={formHandlers.handleActivityTypeChange}
                   style={{
                     width: '100%',
                     padding: '12px',
@@ -1488,22 +1578,7 @@ export function WeatherDashboard({
                 <input
                   type="date"
                   value={activityForm.start_date}
-                  onChange={(e) => {
-                    const newDate = e.target.value;
-                    setActivityForm(prev => {
-                      const updated = { ...prev, start_date: newDate };
-
-                      // Auto-update weather conditions for spray applications and irrigation
-                      if (updated.activity_type === 'Spray Application') {
-                        updated.spray_conditions = generateAutoWeatherNotes('Spray Application');
-                      }
-                      if (updated.activity_type === 'Irrigation') {
-                        updated.notes = generateAutoWeatherNotes('Irrigation');
-                      }
-
-                      return updated;
-                    });
-                  }}
+                  onChange={formHandlers.handleDateChange}
                   style={{
                     width: '100%',
                     padding: '12px',
@@ -1535,8 +1610,9 @@ export function WeatherDashboard({
                       Product *
                     </label>
                     <select
+                      name="spray_product"
                       value={activityForm.spray_product}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, spray_product: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       style={{
                         width: '100%',
                         padding: '8px 12px',
@@ -1578,8 +1654,9 @@ export function WeatherDashboard({
                     </label>
                     <input
                       type="text"
+                      name="spray_quantity"
                       value={activityForm.spray_quantity}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, spray_quantity: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       placeholder="e.g. 2.5"
                       style={{
                         width: '100%',
@@ -1596,8 +1673,9 @@ export function WeatherDashboard({
                       Unit
                     </label>
                     <select
+                      name="spray_unit"
                       value={activityForm.spray_unit}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, spray_unit: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       style={{
                         width: '100%',
                         padding: '8px 12px',
@@ -1624,8 +1702,9 @@ export function WeatherDashboard({
                     </label>
                     <input
                       type="text"
+                      name="spray_target"
                       value={activityForm.spray_target}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, spray_target: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       placeholder="e.g. Powdery mildew, aphids"
                       style={{
                         width: '100%',
@@ -1642,8 +1721,9 @@ export function WeatherDashboard({
                       Equipment Used
                     </label>
                     <select
+                      name="spray_equipment"
                       value={activityForm.spray_equipment}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, spray_equipment: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       style={{
                         width: '100%',
                         padding: '8px 12px',
@@ -1670,8 +1750,9 @@ export function WeatherDashboard({
                     Weather Conditions
                   </label>
                   <textarea
+                    name="spray_conditions"
                     value={activityForm.spray_conditions}
-                    onChange={(e) => setActivityForm(prev => ({ ...prev, spray_conditions: e.target.value }))}
+                    onChange={formHandlers.handleInputChange}
                     placeholder="e.g. Temp: 68°F, Wind: 3mph N, Humidity: 45%, Clear skies"
                     style={{
                       width: '100%',
@@ -1707,8 +1788,9 @@ export function WeatherDashboard({
                     </label>
                     <input
                       type="text"
+                      name="irrigation_amount"
                       value={activityForm.irrigation_amount}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, irrigation_amount: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       placeholder="e.g. 1.5"
                       style={{
                         width: '100%',
@@ -1725,8 +1807,9 @@ export function WeatherDashboard({
                       Unit
                     </label>
                     <select
+                      name="irrigation_unit"
                       value={activityForm.irrigation_unit}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, irrigation_unit: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       style={{
                         width: '100%',
                         padding: '8px 12px',
@@ -1750,8 +1833,9 @@ export function WeatherDashboard({
                       Method *
                     </label>
                     <select
+                      name="irrigation_method"
                       value={activityForm.irrigation_method}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, irrigation_method: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       style={{
                         width: '100%',
                         padding: '8px 12px',
@@ -1778,8 +1862,9 @@ export function WeatherDashboard({
                     </label>
                     <input
                       type="text"
+                      name="irrigation_duration"
                       value={activityForm.irrigation_duration}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, irrigation_duration: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       placeholder="e.g. 2 hours, 30 minutes"
                       style={{
                         width: '100%',
@@ -1797,8 +1882,9 @@ export function WeatherDashboard({
                     Measurement Method (optional)
                   </label>
                   <select
+                    name="irrigation_measurement_method"
                     value={activityForm.irrigation_measurement_method || ''}
-                    onChange={(e) => setActivityForm(prev => ({ ...prev, irrigation_measurement_method: e.target.value }))}
+                    onChange={formHandlers.handleInputChange}
                     style={{
                       width: '100%',
                       padding: '8px 12px',
@@ -1842,8 +1928,9 @@ export function WeatherDashboard({
                       Fertilizer Type *
                     </label>
                     <select
+                      name="fertilizer_type"
                       value={activityForm.fertilizer_type}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, fertilizer_type: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       style={{
                         width: '100%',
                         padding: '8px 12px',
@@ -1877,8 +1964,9 @@ export function WeatherDashboard({
                     </label>
                     <input
                       type="text"
+                      name="fertilizer_npk"
                       value={activityForm.fertilizer_npk}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, fertilizer_npk: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       placeholder="e.g. 20-10-10, 0-0-60"
                       style={{
                         width: '100%',
@@ -1896,8 +1984,9 @@ export function WeatherDashboard({
                     </label>
                     <input
                       type="text"
+                      name="fertilizer_rate"
                       value={activityForm.fertilizer_rate}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, fertilizer_rate: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       placeholder="e.g. 50"
                       style={{
                         width: '100%',
@@ -1914,8 +2003,9 @@ export function WeatherDashboard({
                       Unit
                     </label>
                     <select
+                      name="fertilizer_unit"
                       value={activityForm.fertilizer_unit}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, fertilizer_unit: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       style={{
                         width: '100%',
                         padding: '8px 12px',
@@ -1940,8 +2030,9 @@ export function WeatherDashboard({
                     Application Method
                   </label>
                   <select
+                    name="fertilizer_method"
                     value={activityForm.fertilizer_method}
-                    onChange={(e) => setActivityForm(prev => ({ ...prev, fertilizer_method: e.target.value }))}
+                    onChange={formHandlers.handleInputChange}
                     style={{
                       width: '100%',
                       padding: '8px 12px',
@@ -1983,8 +2074,9 @@ export function WeatherDashboard({
                       Activity *
                     </label>
                     <select
+                      name="canopy_activity"
                       value={activityForm.canopy_activity}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, canopy_activity: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       style={{
                         width: '100%',
                         padding: '8px 12px',
@@ -2008,8 +2100,9 @@ export function WeatherDashboard({
                       Intensity
                     </label>
                     <select
+                      name="canopy_intensity"
                       value={activityForm.canopy_intensity}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, canopy_intensity: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       style={{
                         width: '100%',
                         padding: '8px 12px',
@@ -2030,8 +2123,9 @@ export function WeatherDashboard({
                       Side
                     </label>
                     <select
+                      name="canopy_side"
                       value={activityForm.canopy_side}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, canopy_side: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       style={{
                         width: '100%',
                         padding: '8px 12px',
@@ -2071,8 +2165,9 @@ export function WeatherDashboard({
                       Pruning Type *
                     </label>
                     <select
+                      name="canopy_activity"
                       value={activityForm.canopy_activity}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, canopy_activity: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       style={{
                         width: '100%',
                         padding: '8px 12px',
@@ -2097,8 +2192,9 @@ export function WeatherDashboard({
                       Intensity
                     </label>
                     <select
+                      name="canopy_intensity"
                       value={activityForm.canopy_intensity}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, canopy_intensity: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       style={{
                         width: '100%',
                         padding: '8px 12px',
@@ -2120,8 +2216,9 @@ export function WeatherDashboard({
                       Growth Stage
                     </label>
                     <select
+                      name="canopy_stage"
                       value={activityForm.canopy_stage}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, canopy_stage: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       style={{
                         width: '100%',
                         padding: '8px 12px',
@@ -2162,8 +2259,9 @@ export function WeatherDashboard({
                       Activity Type *
                     </label>
                     <select
+                      name="canopy_activity"
                       value={activityForm.canopy_activity}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, canopy_activity: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       style={{
                         width: '100%',
                         padding: '8px 12px',
@@ -2192,8 +2290,9 @@ export function WeatherDashboard({
                     </label>
                     <input
                       type="text"
+                      name="spray_equipment"
                       value={activityForm.spray_equipment}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, spray_equipment: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       placeholder="e.g. Disc harrow, Cultivator"
                       style={{
                         width: '100%',
@@ -2211,8 +2310,9 @@ export function WeatherDashboard({
                     </label>
                     <input
                       type="text"
+                      name="canopy_intensity"
                       value={activityForm.canopy_intensity}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, canopy_intensity: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       placeholder="e.g. 6 inches, Light"
                       style={{
                         width: '100%',
@@ -2246,8 +2346,9 @@ export function WeatherDashboard({
                       Focus *
                     </label>
                     <select
+                      name="scout_focus"
                       value={activityForm.scout_focus}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, scout_focus: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       style={{
                         width: '100%',
                         padding: '8px 12px',
@@ -2271,8 +2372,9 @@ export function WeatherDashboard({
                       Severity
                     </label>
                     <select
+                      name="scout_severity"
                       value={activityForm.scout_severity}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, scout_severity: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       style={{
                         width: '100%',
                         padding: '8px 12px',
@@ -2295,8 +2397,9 @@ export function WeatherDashboard({
                       Distribution
                     </label>
                     <select
+                      name="scout_distribution"
                       value={activityForm.scout_distribution}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, scout_distribution: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       style={{
                         width: '100%',
                         padding: '8px 12px',
@@ -2335,8 +2438,9 @@ export function WeatherDashboard({
                     Block Estimates (% Complete)
                   </label>
                   <textarea
+                    name="ripeness_block_estimates"
                     value={activityForm.ripeness_block_estimates || ''}
-                    onChange={(e) => setActivityForm(prev => ({ ...prev, ripeness_block_estimates: e.target.value }))}
+                    onChange={formHandlers.handleInputChange}
                     placeholder="e.g. Block A: 85% ready, Block B: 70% ready, Block C: 90% ready"
                     rows={2}
                     style={{
@@ -2358,8 +2462,9 @@ export function WeatherDashboard({
                     <input
                       type="number"
                       step="0.1"
+                      name="ripeness_brix"
                       value={activityForm.ripeness_brix || ''}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, ripeness_brix: e.target.value }))}
+                      onChange={formHandlers.handleNumericInputChange}
                       placeholder="e.g. 24.5"
                       required
                       style={{
@@ -2379,8 +2484,9 @@ export function WeatherDashboard({
                     <input
                       type="number"
                       step="0.1"
+                      name="ripeness_ph"
                       value={activityForm.ripeness_ph || ''}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, ripeness_ph: e.target.value }))}
+                      onChange={formHandlers.handleNumericInputChange}
                       placeholder="e.g. 3.4"
                       required
                       style={{
@@ -2402,8 +2508,9 @@ export function WeatherDashboard({
                     <input
                       type="number"
                       step="0.1"
+                      name="ripeness_ta"
                       value={activityForm.ripeness_ta || ''}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, ripeness_ta: e.target.value }))}
+                      onChange={formHandlers.handleNumericInputChange}
                       placeholder="e.g. 6.5 g/L"
                       style={{
                         width: '100%',
@@ -2420,8 +2527,9 @@ export function WeatherDashboard({
                       Seed Brownness (optional)
                     </label>
                     <select
+                      name="ripeness_seed_brownness"
                       value={activityForm.ripeness_seed_brownness || ''}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, ripeness_seed_brownness: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       style={{
                         width: '100%',
                         padding: '8px 12px',
@@ -2462,8 +2570,9 @@ export function WeatherDashboard({
                     </label>
                     <input
                       type="text"
+                      name="harvest_yield"
                       value={activityForm.harvest_yield}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, harvest_yield: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       placeholder="e.g. 4.5"
                       style={{
                         width: '100%',
@@ -2480,8 +2589,9 @@ export function WeatherDashboard({
                       Unit
                     </label>
                     <select
+                      name="harvest_unit"
                       value={activityForm.harvest_unit}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, harvest_unit: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       style={{
                         width: '100%',
                         padding: '8px 12px',
@@ -2507,8 +2617,9 @@ export function WeatherDashboard({
                     </label>
                     <input
                       type="text"
+                      name="harvest_brix"
                       value={activityForm.harvest_brix}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, harvest_brix: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       placeholder="e.g. 24.5"
                       style={{
                         width: '100%',
@@ -2526,8 +2637,9 @@ export function WeatherDashboard({
                     </label>
                     <input
                       type="text"
+                      name="harvest_ph"
                       value={activityForm.harvest_ph}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, harvest_ph: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       placeholder="e.g. 3.4"
                       style={{
                         width: '100%',
@@ -2545,8 +2657,9 @@ export function WeatherDashboard({
                     </label>
                     <input
                       type="text"
+                      name="harvest_ta"
                       value={activityForm.harvest_ta}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, harvest_ta: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       placeholder="e.g. 6.5"
                       style={{
                         width: '100%',
@@ -2580,8 +2693,9 @@ export function WeatherDashboard({
                       Growth Stage *
                     </label>
                     <select
+                      name="phenology_stage"
                       value={activityForm.phenology_stage}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, phenology_stage: e.target.value }))}
+                      onChange={formHandlers.handleInputChange}
                       style={{
                         width: '100%',
                         padding: '8px 12px',
@@ -2613,8 +2727,9 @@ export function WeatherDashboard({
                         min="0"
                         max="100"
                         step="5"
+                        name="phenology_percent_complete"
                         value={activityForm.phenology_percent_complete || ''}
-                        onChange={(e) => setActivityForm(prev => ({ ...prev, phenology_percent_complete: e.target.value }))}
+                        onChange={formHandlers.handlePhenologyPercentChange}
                         placeholder="0-100%"
                         style={{
                           width: '80px',
@@ -2630,8 +2745,9 @@ export function WeatherDashboard({
                         min="0"
                         max="100"
                         step="5"
+                        name="phenology_percent_complete"
                         value={activityForm.phenology_percent_complete || '0'}
-                        onChange={(e) => setActivityForm(prev => ({ ...prev, phenology_percent_complete: e.target.value }))}
+                        onChange={formHandlers.handlePhenologyPercentChange}
                         style={{ flex: 1 }}
                       />
                     </div>
@@ -2644,8 +2760,9 @@ export function WeatherDashboard({
                   </label>
                   <input
                     type="text"
+                    name="phenology_location"
                     value={activityForm.phenology_location || ''}
-                    onChange={(e) => setActivityForm(prev => ({ ...prev, phenology_location: e.target.value }))}
+                    onChange={formHandlers.handleInputChange}
                     placeholder="e.g. Block A: 75%, Block B: 60%, Main vineyard average"
                     style={{
                       width: '100%',
@@ -2685,10 +2802,10 @@ export function WeatherDashboard({
                       min="0"
                       max="100"
                       step="5"
+                      name="phenology_percent_complete"
                       value={activityForm.phenology_percent_complete || ''}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, phenology_percent_complete: e.target.value }))}
+                      onChange={formHandlers.handlePhenologyPercentChange}
                       placeholder="0-100%"
-                      required
                       style={{
                         width: '80px',
                         padding: '8px 12px',
@@ -2703,8 +2820,9 @@ export function WeatherDashboard({
                       min="0"
                       max="100"
                       step="5"
+                      name="phenology_percent_complete"
                       value={activityForm.phenology_percent_complete || '0'}
-                      onChange={(e) => setActivityForm(prev => ({ ...prev, phenology_percent_complete: e.target.value }))}
+                      onChange={formHandlers.handlePhenologyPercentChange}
                       style={{ 
                         flex: 1,
                         accentColor: '#3b82f6'
@@ -2722,8 +2840,9 @@ export function WeatherDashboard({
                   </label>
                   <input
                     type="text"
+                    name="phenology_location"
                     value={activityForm.phenology_location || ''}
-                    onChange={(e) => setActivityForm(prev => ({ ...prev, phenology_location: e.target.value }))}
+                    onChange={formHandlers.handleInputChange}
                     placeholder="e.g. Block A: 75%, Block B: 60%, East vineyard: 80%"
                     style={{
                       width: '100%',
@@ -2745,8 +2864,9 @@ export function WeatherDashboard({
                 Notes
               </label>
               <textarea
+                name="notes"
                 value={activityForm.notes}
-                onChange={(e) => setActivityForm(prev => ({ ...prev, notes: e.target.value }))}
+                onChange={formHandlers.handleInputChange}
                 placeholder="Add details about this event..."
                 style={{
                   width: '100%',
@@ -3203,6 +3323,9 @@ export function WeatherDashboard({
         }
       }
     };
+
+    // Extract unique event types for filtering
+    const uniqueEventTypes = Array.from(new Set(activities.map(activity => activity.event_type)));
 
     return (
       <div style={{ padding: '0 1rem 1rem 1rem' }}>
