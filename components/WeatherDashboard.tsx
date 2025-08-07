@@ -1396,11 +1396,12 @@ export function WeatherDashboard({
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-            <div>
+            <div key="event-type-field">
               <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
                 Event Type *
               </label>
               <select
+                key="event-type-select"
                 value={activityForm.activity_type}
                 onChange={handleActivityTypeChange}
                 style={{
@@ -1420,11 +1421,12 @@ export function WeatherDashboard({
               </select>
             </div>
 
-            <div>
+            <div key="start-date-field">
               <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
                 Date *
               </label>
               <input
+                key="start-date-input"
                 type="date"
                 value={activityForm.start_date}
                 onChange={handleStartDateChange}
@@ -2495,6 +2497,7 @@ export function WeatherDashboard({
               Notes
             </label>
             <textarea
+              key="notes-textarea"
               value={activityForm.notes}
               onChange={handleNotesChange}
               placeholder="Add details about this event..."
