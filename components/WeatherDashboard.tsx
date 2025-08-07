@@ -12,6 +12,7 @@ interface ActivityForm {
   end_date?: string;
   notes: string;
   harvest_block?: string;
+  percent_complete?: number;
 }
 
 interface PhenologyEvent {
@@ -21,6 +22,7 @@ interface PhenologyEvent {
   end_date?: string;
   notes: string;
   harvest_block?: string;
+  percent_complete?: number;
 }
 
 interface WeatherDashboardProps {
@@ -66,7 +68,8 @@ export function WeatherDashboard({
     event_type: '',
     event_date: '',
     notes: '',
-    harvest_block: ''
+    harvest_block: '',
+    percent_complete: 0
   });
 
   const [locationSearch, setLocationSearch] = useState('');
@@ -144,7 +147,8 @@ export function WeatherDashboard({
         event_type: '',
         event_date: '',
         notes: '',
-        harvest_block: ''
+        harvest_block: '',
+        percent_complete: 0
       });
       setEditingEvent(null);
       setShowActivityForm(false);
@@ -161,14 +165,17 @@ export function WeatherDashboard({
       event_date: event.event_date,
       end_date: event.end_date || '',
       notes: event.notes || '',
-      harvest_block: event.harvest_block || ''
+      harvest_block: event.harvest_block || '',
+      percent_complete: event.percent_complete || 0
     });
     setShowActivityForm(true);
   };
 
   const eventTypeOptions = [
-    'Bud Break', 'Flowering', 'Fruit Set', 'Veraison', 'Harvest',
-    'Pruning', 'Spray Application', 'Irrigation', 'Canopy Management'
+    'Bud Break', 'Bloom', 'Flowering', 'Fruit Set', 'Veraison', 'Harvest',
+    'Pruning', 'Spray Application', 'Irrigation', 'Canopy Management',
+    'Fertilization', 'Pest Scouting', 'Disease Scouting', 'Leaf Removal',
+    'Hedging', 'Shoot Positioning', 'Cluster Thinning', 'Phenology Tracking'
   ];
 
   return (
@@ -389,7 +396,8 @@ export function WeatherDashboard({
                   event_type: '',
                   event_date: '',
                   notes: '',
-                  harvest_block: ''
+                  harvest_block: '',
+                  percent_complete: 0
                 });
                 setShowActivityForm(true);
               }}
@@ -462,7 +470,7 @@ export function WeatherDashboard({
 
                 <div>
                   <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#374151' }}>
-                    Block/Section
+                    Block/Location
                   </label>
                   <input
                     type="text"
@@ -478,6 +486,30 @@ export function WeatherDashboard({
                     }}
                   />
                 </div>
+
+                {/* Add % Complete field for phenology event types */}
+                {['Bud Break', 'Bloom', 'Fruit Set', 'Veraison', 'Phenology Tracking'].includes(activityForm.event_type) && (
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#374151' }}>
+                      % Complete *
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="5"
+                      value={activityForm.percent_complete || 0}
+                      onChange={(e) => updateActivityForm('percent_complete', parseInt(e.target.value))}
+                      style={{
+                        width: '100%',
+                        marginBottom: '5px'
+                      }}
+                    />
+                    <div style={{ textAlign: 'center', fontSize: '14px', color: '#6b7280' }}>
+                      {activityForm.percent_complete || 0}%
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div style={{ marginTop: '15px' }}>
@@ -485,9 +517,8 @@ export function WeatherDashboard({
                   Notes
                 </label>
                 <textarea
-                  key="activity-notes"
                   value={activityForm.notes}
-                  onChange={(e) => setActivityForm(prev => ({ ...prev, notes: e.target.value }))}
+                  onChange={(e) => updateActivityForm('notes', e.target.value)}
                   placeholder="Add details about this event..."
                   rows={3}
                   style={{
@@ -572,6 +603,11 @@ export function WeatherDashboard({
                           {event.harvest_block && (
                             <span style={{ marginLeft: '15px' }}>
                               📍 {event.harvest_block}
+                            </span>
+                          )}
+                          {event.percent_complete !== undefined && event.percent_complete > 0 && (
+                            <span style={{ marginLeft: '15px' }}>
+                              📊 {event.percent_complete}% Complete
                             </span>
                           )}
                         </div>
