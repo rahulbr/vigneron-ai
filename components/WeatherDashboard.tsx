@@ -2929,7 +2929,7 @@ export function WeatherDashboard({
               )}
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              {/* Quick Location Actions */}
+              {/* Route Button for Filtered Events */}
               {(() => {
                 // Filter events by type first, then check for location
                 const filteredEventsWithLocation = activities.filter(activity => {
@@ -2942,22 +2942,27 @@ export function WeatherDashboard({
                   return activity.location_lat && activity.location_lng;
                 });
 
+                // Sort events by date for logical routing
+                const sortedEvents = filteredEventsWithLocation.sort((a, b) => 
+                  new Date(a.event_date).getTime() - new Date(b.event_date).getTime()
+                );
+
                 // Show button if there are any filtered events with locations
-                return filteredEventsWithLocation.length > 0 && (
+                return sortedEvents.length > 0 && (
                   <a
                     href={(() => {
-                      if (filteredEventsWithLocation.length === 1) {
+                      if (sortedEvents.length === 1) {
                         // For single location, just open the map at that location
-                        const event = filteredEventsWithLocation[0];
+                        const event = sortedEvents[0];
                         return `https://www.google.com/maps?q=${event.location_lat},${event.location_lng}&z=18`;
                       } else {
-                        // For multiple locations, create a route
-                        const waypoints = filteredEventsWithLocation.slice(1, -1).map(event =>
+                        // For multiple locations, create a route ordered by date
+                        const waypoints = sortedEvents.slice(1, -1).map(event =>
                           `${event.location_lat},${event.location_lng}`
                         ).join('|');
 
-                        const origin = `${filteredEventsWithLocation[0].location_lat},${filteredEventsWithLocation[0].location_lng}`;
-                        const destination = `${filteredEventsWithLocation[filteredEventsWithLocation.length - 1].location_lat},${filteredEventsWithLocation[filteredEventsWithLocation.length - 1].location_lng}`;
+                        const origin = `${sortedEvents[0].location_lat},${sortedEvents[0].location_lng}`;
+                        const destination = `${sortedEvents[sortedEvents.length - 1].location_lat},${sortedEvents[sortedEvents.length - 1].location_lng}`;
 
                         return waypoints.length > 0
                           ? `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}`
@@ -2976,14 +2981,15 @@ export function WeatherDashboard({
                       display: 'flex',
                       alignItems: 'center',
                       gap: '4px',
-                      fontWeight: '500'
+                      fontWeight: '500',
+                      whiteSpace: 'nowrap'
                     }}
-                    title={filteredEventsWithLocation.length === 1
+                    title={sortedEvents.length === 1
                       ? 'View event location on map'
-                      : `Route through ${filteredEventsWithLocation.length} filtered event locations`
+                      : `Route through ${sortedEvents.length} filtered events (chronological order)`
                     }
                   >
-                    🗺️ {filteredEventsWithLocation.length === 1 ? 'View' : 'Route All'} ({filteredEventsWithLocation.length})
+                    🗺️ {sortedEvents.length === 1 ? 'View Map' : 'Route All'} ({sortedEvents.length})
                   </a>
                 );
               })()}
@@ -4352,7 +4358,11 @@ export function WeatherDashboard({
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
               <h4 style={{ margin: '0', fontSize: '16px', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                📅 Event History
+                📅 Event History ({activities.filter(activity => {
+                  if (eventFilterTypes.length === 0) return true;
+                  const eventType = activity.event_type?.toLowerCase().replace(' ', '_') || 'other';
+                  return eventFilterTypes.includes(eventType);
+                }).length})
               </h4>
               <button
                 onClick={loadActivities}
@@ -4396,7 +4406,7 @@ export function WeatherDashboard({
               </div>
             ) : (
               <div style={{
-                maxHeight: '400px',
+                maxHeight: '500px',
                 overflowY: 'auto',
                 border: '1px solid #e5e7eb',
                 borderRadius: '8px',
@@ -4405,9 +4415,9 @@ export function WeatherDashboard({
                 {activities.filter(activity => {
                   // Apply event type filter
                   if (eventFilterTypes.length === 0) return true;
-                  const eventType = activity.event_type?.toLowerCase().replace(' ', '_') || 'other';
+                  const eventType = activity.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
                   return eventFilterTypes.includes(eventType);
-                }).map((activity, index) => {
+                }).map((activity, index, filteredArray) => {
                   // Get event style with icon and color
                   const eventStyles: { [key: string]: { color: string, label: string, emoji: string } } = {
                     bud_break: { color: "#22c55e", label: "Bud Break", emoji: "🌱" },
@@ -4446,19 +4456,251 @@ export function WeatherDashboard({
                   // Get block names for display
                   const blockNames = activity.blocks && Array.isArray(activity.blocks)
                     ? activity.blocks.map((block: any) => block.name).join(', ')
-                    : 'N/A';
+                    : '';
+
+                  // Get summary details for farmer view
+                  const getSummaryDetails = () => {
+                    const details = [];
+                    
+                    if (activity.spray_product) details.push(`Product: ${activity.spray_product}`);
+                    if (activity.spray_quantity && activity.spray_unit) details.push(`Rate: ${activity.spray_quantity} ${activity.spray_unit}`);
+                    if (activity.irrigation_amount && activity.irrigation_unit) details.push(`${activity.irrigation_amount} ${activity.irrigation_unit}`);
+                    if (activity.irrigation_method) details.push(`Method: ${activity.irrigation_method}`);
+                    if (activity.fertilizer_type) details.push(`Type: ${activity.fertilizer_type}`);
+                    if (activity.fertilizer_rate && activity.fertilizer_unit) details.push(`Rate: ${activity.fertilizer_rate} ${activity.fertilizer_unit}`);
+                    if (activity.harvest_yield && activity.harvest_unit) details.push(`Yield: ${activity.harvest_yield} ${activity.harvest_unit}`);
+                    if (activity.harvest_brix) details.push(`Brix: ${activity.harvest_brix}°`);
+                    if (activity.canopy_activity) details.push(`Activity: ${activity.canopy_activity}`);
+                    if (activity.scout_focus) details.push(`Focus: ${activity.scout_focus}`);
+                    if (activity.scout_severity) details.push(`Severity: ${activity.scout_severity}`);
+                    
+                    return details.slice(0, 3); // Show max 3 key details
+                  };
+
+                  const summaryDetails = getSummaryDetails();
 
                   return (
                     <div
                       key={activity.id || index}
                       style={{
-                        padding: '15px',
-                        borderBottom: index < activities.length - 1 ? '1px solid #f3f4f6' : 'none',
-                        backgroundColor: isBeingEdited ? '#f0f9ff' : 'transparent',
+                        padding: '16px',
+                        borderBottom: index < filteredArray.length - 1 ? '1px solid #f3f4f6' : 'none',
+                        backgroundColor: isBeingEdited ? '#f0f9ff' : 'white',
                         border: isBeingEdited ? '2px solid #0ea5e9' : 'none',
-                        borderRadius: isBeingEdited ? '8px' : '0'
+                        borderRadius: isBeingEdited ? '8px' : '0',
+                        cursor: isBeingEdited ? 'default' : 'pointer',
+                        transition: 'all 0.2s ease',
+                        position: 'relative'
+                      }}
+                      onClick={() => !isBeingEdited && startEditingActivity(activity)}
+                      onMouseEnter={(e) => {
+                        if (!isBeingEdited) {
+                          e.currentTarget.style.backgroundColor = '#f8fafc';
+                          e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isBeingEdited) {
+                          e.currentTarget.style.backgroundColor = 'white';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }
                       }}
                     >
+                      {!isBeingEdited && (
+                        // Event summary view
+                        <div>
+                          {/* Header row with event type and date */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                              <div
+                                style={{
+                                  width: '8px',
+                                  height: '8px',
+                                  backgroundColor: style.color,
+                                  borderRadius: '50%',
+                                  flexShrink: 0
+                                }}
+                              ></div>
+                              <span style={{ fontSize: '16px', flexShrink: 0 }}>{style.emoji}</span>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ 
+                                  fontWeight: '600', 
+                                  fontSize: '15px', 
+                                  color: '#374151',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap'
+                                }}>
+                                  {style.label}
+                                </div>
+                                <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '2px' }}>
+                                  {new Date(activity.event_date).toLocaleDateString('en-US', { 
+                                    weekday: 'short', 
+                                    month: 'short', 
+                                    day: 'numeric' 
+                                  })}
+                                  {activity.end_date && activity.end_date !== activity.event_date && (
+                                    <span> → {new Date(activity.end_date).toLocaleDateString('en-US', { 
+                                      month: 'short', 
+                                      day: 'numeric' 
+                                    })}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Quick action buttons */}
+                            <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexShrink: 0 }}>
+                              {activity.location_lat && activity.location_lng && (
+                                <a
+                                  href={`https://www.google.com/maps?q=${activity.location_lat},${activity.location_lng}&z=18`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  style={{
+                                    padding: '4px 8px',
+                                    backgroundColor: '#10b981',
+                                    color: 'white',
+                                    textDecoration: 'none',
+                                    borderRadius: '4px',
+                                    fontSize: '11px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '2px',
+                                    fontWeight: '500'
+                                  }}
+                                  title="View location on Google Maps"
+                                >
+                                  📍 Map
+                                </a>
+                              )}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteActivity(activity.id, style.label);
+                                }}
+                                style={{
+                                  padding: '4px 6px',
+                                  backgroundColor: '#ef4444',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontSize: '11px',
+                                  fontWeight: '500'
+                                }}
+                                title="Delete event"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Details row */}
+                          <div style={{ marginBottom: '6px' }}>
+                            {summaryDetails.length > 0 && (
+                              <div style={{ 
+                                fontSize: '13px', 
+                                color: '#475569',
+                                marginBottom: '4px',
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                gap: '8px'
+                              }}>
+                                {summaryDetails.map((detail, i) => (
+                                  <span key={i} style={{
+                                    backgroundColor: '#f1f5f9',
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    fontSize: '12px'
+                                  }}>
+                                    {detail}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            
+                            {blockNames && (
+                              <div style={{ 
+                                fontSize: '12px', 
+                                color: '#6b7280',
+                                marginBottom: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}>
+                                <span>🏷️ Blocks:</span>
+                                <span style={{
+                                  backgroundColor: '#e0f2fe',
+                                  padding: '1px 4px',
+                                  borderRadius: '3px',
+                                  fontWeight: '500'
+                                }}>
+                                  {blockNames}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Notes and location */}
+                          {(activity.notes || activity.location_name) && (
+                            <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                              {activity.notes && (
+                                <div style={{ 
+                                  marginBottom: '2px',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap'
+                                }}>
+                                  💬 {activity.notes}
+                                </div>
+                              )}
+                              {activity.location_name && (
+                                <div style={{
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}>
+                                  📍 {activity.location_name}
+                                  {activity.location_accuracy && (
+                                    <span style={{ fontSize: '10px', color: '#9ca3af' }}>
+                                      (±{Math.round(activity.location_accuracy)}m)
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* GDD info */}
+                          {cumulativeGDD > 0 && (
+                            <div style={{ 
+                              fontSize: '11px', 
+                              color: '#059669',
+                              marginTop: '6px',
+                              fontWeight: '500'
+                            }}>
+                              {cumulativeGDD} GDDs accumulated
+                            </div>
+                          )}
+
+                          {/* Click hint */}
+                          <div style={{
+                            position: 'absolute',
+                            top: '8px',
+                            right: '8px',
+                            fontSize: '10px',
+                            color: '#9ca3af',
+                            fontStyle: 'italic'
+                          }}>
+                            Click to edit
+                          </div>
+                        </div>
+                      )}
+
                       {isBeingEdited ? (
                         // Edit form
                         <div>
