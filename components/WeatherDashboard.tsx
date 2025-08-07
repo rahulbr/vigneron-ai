@@ -25,21 +25,30 @@ interface PhenologyEvent {
 
 interface WeatherDashboardProps {
   vineyardId: string;
-  locationName: string;
-  latitude: number;
-  longitude: number;
+  locationName?: string;
+  latitude?: number;
+  longitude?: number;
   onSaveEvent?: (eventData: any) => Promise<void>;
   onLoadEvents?: () => Promise<PhenologyEvent[]>;
 }
 
 export function WeatherDashboard({
   vineyardId,
-  locationName,
-  latitude,
-  longitude,
+  locationName = 'Unknown Location',
+  latitude = 0,
+  longitude = 0,
   onSaveEvent,
   onLoadEvents
 }: WeatherDashboardProps) {
+  // Early return if essential props are missing
+  if (!vineyardId) {
+    return (
+      <div style={{ padding: '20px', textAlign: 'center' }}>
+        <h2 style={{ color: '#dc2626' }}>⚠️ Configuration Error</h2>
+        <p>Vineyard ID is required to display the dashboard.</p>
+      </div>
+    );
+  }
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showActivityForm, setShowActivityForm] = useState(false);
   const [editingEvent, setEditingEvent] = useState<PhenologyEvent | null>(null);
@@ -249,7 +258,7 @@ export function WeatherDashboard({
               <h3 style={{ margin: '0 0 10px 0', color: '#15803d' }}>📍 Location</h3>
               <p style={{ margin: '0', fontSize: '14px', color: '#374151' }}>
                 {locationName}<br />
-                {latitude.toFixed(4)}, {longitude.toFixed(4)}
+                {typeof latitude === 'number' ? latitude.toFixed(4) : '0.0000'}, {typeof longitude === 'number' ? longitude.toFixed(4) : '0.0000'}
               </p>
             </div>
 
@@ -601,7 +610,7 @@ export function WeatherDashboard({
             <h3 style={{ margin: '0 0 15px 0', color: '#374151' }}>📍 Current Location</h3>
             <div style={{ fontSize: '16px', color: '#4b5563' }}>
               <strong>{locationName}</strong><br />
-              Coordinates: {latitude.toFixed(6)}, {longitude.toFixed(6)}
+              Coordinates: {typeof latitude === 'number' ? latitude.toFixed(6) : '0.000000'}, {typeof longitude === 'number' ? longitude.toFixed(6) : '0.000000'}
             </div>
           </div>
 
@@ -681,3 +690,6 @@ export function WeatherDashboard({
     </div>
   );
 }
+
+// Add default export for better import compatibility
+export default WeatherDashboard;
