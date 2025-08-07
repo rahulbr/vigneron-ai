@@ -2,7 +2,19 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWeather } from '../hooks/useWeather';
 import { googleGeocodingService, GeocodeResult } from '../lib/googleGeocodingService';
-import { saveWeatherData, getWeatherData, saveVineyardLocation } from '../lib/supabase';
+import { 
+  saveWeatherData, 
+  getWeatherData, 
+  saveVineyardLocation,
+  savePhenologyEvent,
+  getPhenologyEvents,
+  updatePhenologyEvent,
+  deletePhenologyEvent,
+  getVineyardDetails
+} from '../lib/supabase';
+import { GrowthCurveChart } from './GrowthCurveChart';
+import { EnhancedGDDChart } from './EnhancedGDDChart';
+import { ReportsModal } from './ReportsModal';
 
 interface WeatherDashboardProps {
   vineyardId?: string;
@@ -17,6 +29,17 @@ interface LocationState {
   latitude: number;
   longitude: number;
   name: string;
+}
+
+interface PhenologyEvent {
+  id?: string;
+  event_type: string;
+  event_date: string;
+  end_date?: string;
+  notes?: string;
+  harvest_block?: string;
+  created_at?: string;
+  [key: string]: any; // For additional event-specific fields
 }
 
 const WeatherDashboard: React.FC<WeatherDashboardProps> = ({ 
@@ -40,6 +63,48 @@ const WeatherDashboard: React.FC<WeatherDashboardProps> = ({
     endDate: new Date().toISOString().split('T')[0] // Today
   });
 
+  // Event Log State
+  const [phenologyEvents, setPhenologyEvents] = useState<PhenologyEvent[]>([]);
+  const [showAddEventForm, setShowAddEventForm] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<PhenologyEvent | null>(null);
+  const [eventForm, setEventForm] = useState({
+    event_type: '',
+    event_date: new Date().toISOString().split('T')[0],
+    end_date: '',
+    notes: '',
+    harvest_block: '',
+    spray_product: '',
+    spray_quantity: '',
+    spray_unit: 'gallons',
+    spray_target: '',
+    spray_equipment: '',
+    spray_conditions: '',
+    irrigation_amount: '',
+    irrigation_unit: 'gallons',
+    irrigation_method: '',
+    irrigation_duration: '',
+    fertilizer_type: '',
+    fertilizer_npk: '',
+    fertilizer_rate: '',
+    fertilizer_unit: 'lbs/acre',
+    fertilizer_method: '',
+    harvest_yield: '',
+    harvest_unit: 'tons',
+    harvest_brix: '',
+    harvest_ph: '',
+    harvest_ta: '',
+    canopy_activity: '',
+    canopy_intensity: '',
+    canopy_side: '',
+    canopy_stage: '',
+    scout_focus: '',
+    scout_severity: '',
+    scout_distribution: '',
+    scout_action: ''
+  });
+  const [showReportsModal, setShowReportsModal] = useState(false);
+  const [vineyard, setVineyard] = useState<any>(null);
+
   // Weather data hook
   const { 
     data: weatherData, 
@@ -54,6 +119,61 @@ const WeatherDashboard: React.FC<WeatherDashboardProps> = ({
     autoFetch: true
   });
 
+  // Load vineyard details
+  const loadVineyardDetails = useCallback(async () => {
+    if (!vineyardId) return;
+    
+    try {
+      const vineyardData = await getVineyardDetails(vineyardId);
+      if (vineyardData) {
+        setVineyard(vineyardData);
+        // Update location if vineyard has coordinates
+        if (vineyardData.latitude && vineyardData.longitude) {
+          setLocation({
+            latitude: vineyardData.latitude,
+            longitude: vineyardData.longitude,
+            name: vineyardData.location || vineyardData.name || location.name
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load vineyard details:', error);
+    }
+  }, [vineyardId, location.name]);
+
+  // Load phenology events
+  const loadPhenologyEvents = useCallback(async () => {
+    if (!vineyardId) return;
+
+    try {
+      const events = await getPhenologyEvents(vineyardId);
+      setPhenologyEvents(events || []);
+    } catch (error) {
+      console.error('Failed to load phenology events:', error);
+    }
+  }, [vineyardId]);
+
+  // Load data on mount and vineyard change
+  useEffect(() => {
+    loadVineyardDetails();
+    loadPhenologyEvents();
+  }, [loadVineyardDetails, loadPhenologyEvents]);
+
+  // Listen for chart date clicks
+  useEffect(() => {
+    const handleChartDateClick = (event: CustomEvent) => {
+      if (event.detail?.date) {
+        setEventForm(prev => ({ ...prev, event_date: event.detail.date }));
+        setShowAddEventForm(true);
+      }
+    };
+
+    window.addEventListener('chartDateClicked', handleChartDateClick as EventListener);
+    return () => {
+      window.removeEventListener('chartDateClicked', handleChartDateClick as EventListener);
+    };
+  }, []);
+
   // Search locations with Google Maps API
   const searchLocations = useCallback(async (query: string) => {
     if (!query || query.length < 2) {
@@ -65,7 +185,7 @@ const WeatherDashboard: React.FC<WeatherDashboardProps> = ({
     setIsSearching(true);
     try {
       const results = await googleGeocodingService.geocodeLocation(query);
-      setSearchResults(results.slice(0, 5)); // Show top 5 results
+      setSearchResults(results.slice(0, 5));
       setShowResults(true);
     } catch (error) {
       console.error('Search error:', error);
@@ -137,6 +257,157 @@ const WeatherDashboard: React.FC<WeatherDashboardProps> = ({
       dayCount: weatherData.length
     };
   }, [weatherData]);
+
+  // Handle event form submission
+  const handleEventSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!vineyardId) return;
+
+    try {
+      const eventData = {
+        ...eventForm,
+        notes: eventForm.notes || undefined,
+        end_date: eventForm.end_date || undefined,
+        harvest_block: eventForm.harvest_block || undefined
+      };
+
+      // Create structured data objects for different event types
+      const locationData = undefined; // Add location data if needed
+      const sprayData = eventForm.event_type === 'spray_application' ? {
+        product: eventForm.spray_product,
+        quantity: eventForm.spray_quantity,
+        unit: eventForm.spray_unit,
+        target: eventForm.spray_target,
+        equipment: eventForm.spray_equipment,
+        conditions: eventForm.spray_conditions
+      } : undefined;
+
+      const irrigationData = eventForm.event_type === 'irrigation' ? {
+        amount: eventForm.irrigation_amount,
+        unit: eventForm.irrigation_unit,
+        method: eventForm.irrigation_method,
+        duration: eventForm.irrigation_duration
+      } : undefined;
+
+      const fertilizationData = eventForm.event_type === 'fertilization' ? {
+        type: eventForm.fertilizer_type,
+        npk: eventForm.fertilizer_npk,
+        rate: eventForm.fertilizer_rate,
+        unit: eventForm.fertilizer_unit,
+        method: eventForm.fertilizer_method
+      } : undefined;
+
+      const harvestData = eventForm.event_type === 'harvest' ? {
+        yield: eventForm.harvest_yield,
+        unit: eventForm.harvest_unit,
+        brix: eventForm.harvest_brix,
+        ph: eventForm.harvest_ph,
+        ta: eventForm.harvest_ta,
+        block: eventForm.harvest_block
+      } : undefined;
+
+      const canopyData = eventForm.event_type === 'canopy_management' ? {
+        activity: eventForm.canopy_activity,
+        intensity: eventForm.canopy_intensity,
+        side: eventForm.canopy_side,
+        stage: eventForm.canopy_stage
+      } : undefined;
+
+      const scoutData = eventForm.event_type === 'scouting' ? {
+        focus: eventForm.scout_focus,
+        severity: eventForm.scout_severity,
+        distribution: eventForm.scout_distribution,
+        action: eventForm.scout_action
+      } : undefined;
+
+      if (editingEvent && editingEvent.id) {
+        // Update existing event
+        await updatePhenologyEvent(editingEvent.id, eventData);
+      } else {
+        // Create new event
+        await savePhenologyEvent(
+          vineyardId,
+          eventData.event_type,
+          eventData.event_date,
+          eventData.notes,
+          eventData.end_date,
+          eventData.harvest_block,
+          locationData,
+          sprayData,
+          irrigationData,
+          fertilizationData,
+          harvestData,
+          canopyData,
+          scoutData
+        );
+      }
+
+      // Reset form and reload events
+      setEventForm({
+        event_type: '',
+        event_date: new Date().toISOString().split('T')[0],
+        end_date: '',
+        notes: '',
+        harvest_block: '',
+        spray_product: '',
+        spray_quantity: '',
+        spray_unit: 'gallons',
+        spray_target: '',
+        spray_equipment: '',
+        spray_conditions: '',
+        irrigation_amount: '',
+        irrigation_unit: 'gallons',
+        irrigation_method: '',
+        irrigation_duration: '',
+        fertilizer_type: '',
+        fertilizer_npk: '',
+        fertilizer_rate: '',
+        fertilizer_unit: 'lbs/acre',
+        fertilizer_method: '',
+        harvest_yield: '',
+        harvest_unit: 'tons',
+        harvest_brix: '',
+        harvest_ph: '',
+        harvest_ta: '',
+        canopy_activity: '',
+        canopy_intensity: '',
+        canopy_side: '',
+        canopy_stage: '',
+        scout_focus: '',
+        scout_severity: '',
+        scout_distribution: '',
+        scout_action: ''
+      });
+      setShowAddEventForm(false);
+      setEditingEvent(null);
+      await loadPhenologyEvents();
+
+      // Dispatch event to notify chart
+      const changeEvent = new CustomEvent('phenologyEventsChanged', { detail: { vineyardId } });
+      window.dispatchEvent(changeEvent);
+
+    } catch (error) {
+      console.error('Failed to save event:', error);
+      alert('Failed to save event: ' + (error as Error).message);
+    }
+  };
+
+  // Handle event deletion
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!confirm('Are you sure you want to delete this event?')) return;
+
+    try {
+      await deletePhenologyEvent(eventId);
+      await loadPhenologyEvents();
+      
+      // Dispatch event to notify chart
+      const changeEvent = new CustomEvent('phenologyEventsChanged', { detail: { vineyardId } });
+      window.dispatchEvent(changeEvent);
+    } catch (error) {
+      console.error('Failed to delete event:', error);
+      alert('Failed to delete event: ' + (error as Error).message);
+    }
+  };
 
   // Auto-save weather data when it changes
   useEffect(() => {
@@ -244,7 +515,7 @@ const WeatherDashboard: React.FC<WeatherDashboardProps> = ({
   return (
     <div style={containerStyle}>
       <h1 style={headerStyle}>
-        🌤️ Weather Dashboard
+        🍇 {vineyard?.name || 'Vineyard'} Dashboard
       </h1>
 
       {/* Location Search */}
@@ -260,7 +531,6 @@ const WeatherDashboard: React.FC<WeatherDashboardProps> = ({
           style={searchInputStyle}
         />
 
-        {/* Search Results */}
         {showResults && searchResults.length > 0 && (
           <div style={resultsContainerStyle}>
             {searchResults.map((result, index) => (
@@ -353,6 +623,18 @@ const WeatherDashboard: React.FC<WeatherDashboardProps> = ({
         >
           Refresh Data
         </button>
+        <button 
+          onClick={() => setShowReportsModal(true)}
+          style={{...buttonStyle, backgroundColor: '#10b981'}}
+          onMouseEnter={(e) => {
+            (e.target as HTMLElement).style.backgroundColor = '#059669';
+          }}
+          onMouseLeave={(e) => {
+            (e.target as HTMLElement).style.backgroundColor = '#10b981';
+          }}
+        >
+          📊 Reports
+        </button>
       </div>
 
       {/* Loading State */}
@@ -393,137 +675,638 @@ const WeatherDashboard: React.FC<WeatherDashboardProps> = ({
 
       {/* Weather Data Display */}
       {weatherData && weatherData.length > 0 && (
-        <div style={gridStyle}>
-          {/* Summary Card */}
-          {weatherSummary && (
+        <>
+          <div style={gridStyle}>
+            {/* Summary Card */}
+            {weatherSummary && (
+              <div style={cardStyle}>
+                <h3 style={{ 
+                  margin: '0 0 16px 0', 
+                  color: '#1e293b', 
+                  fontSize: '20px' 
+                }}>
+                  📊 Weather Summary
+                </h3>
+                <div style={{ display: 'grid', gap: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>🌡️ Avg High:</span>
+                    <strong>{weatherSummary.avgTempHigh}°F</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>🌡️ Avg Low:</span>
+                    <strong>{weatherSummary.avgTempLow}°F</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>🔥 Max Temp:</span>
+                    <strong>{weatherSummary.maxTemp}°F</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>❄️ Min Temp:</span>
+                    <strong>{weatherSummary.minTemp}°F</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>🌱 Total GDD:</span>
+                    <strong>{weatherSummary.totalGDD}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>🌧️ Total Rainfall:</span>
+                    <strong>{weatherSummary.totalRainfall}"</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>📅 Days:</span>
+                    <strong>{weatherSummary.dayCount}</strong>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Recent Weather Card */}
             <div style={cardStyle}>
               <h3 style={{ 
                 margin: '0 0 16px 0', 
                 color: '#1e293b', 
                 fontSize: '20px' 
               }}>
-                📊 Weather Summary
+                🗓️ Recent Weather ({Math.min(7, weatherData.length)} days)
               </h3>
-              <div style={{ display: 'grid', gap: '8px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>🌡️ Avg High:</span>
-                  <strong>{weatherSummary.avgTempHigh}°F</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>🌡️ Avg Low:</span>
-                  <strong>{weatherSummary.avgTempLow}°F</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>🔥 Max Temp:</span>
-                  <strong>{weatherSummary.maxTemp}°F</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>❄️ Min Temp:</span>
-                  <strong>{weatherSummary.minTemp}°F</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>🌱 Total GDD:</span>
-                  <strong>{weatherSummary.totalGDD}</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>🌧️ Total Rainfall:</span>
-                  <strong>{weatherSummary.totalRainfall}"</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>📅 Days:</span>
-                  <strong>{weatherSummary.dayCount}</strong>
-                </div>
+              <div style={{ display: 'grid', gap: '12px' }}>
+                {weatherData.slice(-7).reverse().map((day, index) => (
+                  <div 
+                    key={day.date} 
+                    style={{ 
+                      padding: '12px', 
+                      backgroundColor: '#f8fafc', 
+                      borderRadius: '6px',
+                      display: 'grid',
+                      gridTemplateColumns: '1fr auto auto auto',
+                      gap: '8px',
+                      alignItems: 'center',
+                      fontSize: '14px'
+                    }}
+                  >
+                    <span style={{ fontWeight: '500' }}>
+                      {new Date(day.date).toLocaleDateString()}
+                    </span>
+                    <span>🌡️ {day.temp_high}°/{day.temp_low}°F</span>
+                    <span>🌱 {day.gdd} GDD</span>
+                    <span>🌧️ {day.rainfall}"</span>
+                  </div>
+                ))}
               </div>
             </div>
-          )}
 
-          {/* Recent Weather Card */}
-          <div style={cardStyle}>
-            <h3 style={{ 
-              margin: '0 0 16px 0', 
-              color: '#1e293b', 
-              fontSize: '20px' 
-            }}>
-              🗓️ Recent Weather ({Math.min(7, weatherData.length)} days)
-            </h3>
-            <div style={{ display: 'grid', gap: '12px' }}>
-              {weatherData.slice(-7).reverse().map((day, index) => (
-                <div 
-                  key={day.date} 
-                  style={{ 
-                    padding: '12px', 
-                    backgroundColor: '#f8fafc', 
-                    borderRadius: '6px',
-                    display: 'grid',
-                    gridTemplateColumns: '1fr auto auto auto',
-                    gap: '8px',
-                    alignItems: 'center',
-                    fontSize: '14px'
+            {/* Data Actions Card */}
+            <div style={cardStyle}>
+              <h3 style={{ 
+                margin: '0 0 16px 0', 
+                color: '#1e293b', 
+                fontSize: '20px' 
+              }}>
+                ⚙️ Data Actions
+              </h3>
+              <div style={{ display: 'grid', gap: '12px' }}>
+                <button 
+                  onClick={saveWeatherToDatabase}
+                  style={{
+                    ...buttonStyle,
+                    width: '100%',
+                    backgroundColor: '#10b981'
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.target as HTMLElement).style.backgroundColor = '#059669';
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.target as HTMLElement).style.backgroundColor = '#10b981';
                   }}
                 >
-                  <span style={{ fontWeight: '500' }}>
-                    {new Date(day.date).toLocaleDateString()}
-                  </span>
-                  <span>🌡️ {day.temp_high}°/{day.temp_low}°F</span>
-                  <span>🌱 {day.gdd} GDD</span>
-                  <span>🌧️ {day.rainfall}"</span>
-                </div>
-              ))}
+                  💾 Save to Database
+                </button>
+                <button 
+                  onClick={refetchWeather}
+                  style={{
+                    ...buttonStyle,
+                    width: '100%'
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.target as HTMLElement).style.backgroundColor = '#2563eb';
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.target as HTMLElement).style.backgroundColor = '#3b82f6';
+                  }}
+                >
+                  🔄 Refresh Weather Data
+                </button>
+              </div>
+              <div style={{ 
+                marginTop: '12px', 
+                fontSize: '12px', 
+                color: '#6b7280',
+                textAlign: 'center' 
+              }}>
+                {vineyardId ? `Vineyard ID: ${vineyardId}` : 'No vineyard selected'}
+              </div>
             </div>
           </div>
 
-          {/* Data Actions Card */}
-          <div style={cardStyle}>
-            <h3 style={{ 
-              margin: '0 0 16px 0', 
-              color: '#1e293b', 
-              fontSize: '20px' 
-            }}>
-              ⚙️ Data Actions
-            </h3>
-            <div style={{ display: 'grid', gap: '12px' }}>
-              <button 
-                onClick={saveWeatherToDatabase}
+          {/* Enhanced GDD Chart with Event Tracking */}
+          <div style={{ width: '100%', maxWidth: '1200px', marginTop: '30px' }}>
+            <EnhancedGDDChart
+              weatherData={weatherData}
+              locationName={location.name}
+              vineyardId={vineyardId}
+              onEventsChange={loadPhenologyEvents}
+              vineyardName={vineyard?.name}
+            />
+          </div>
+
+          {/* Event Log Section */}
+          <div 
+            data-event-log-section
+            style={{ 
+              width: '100%', 
+              maxWidth: '1200px', 
+              marginTop: '30px',
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '24px',
+              boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold' }}>
+                📅 Event Log ({phenologyEvents.length} events)
+              </h2>
+              <button
+                data-event-log-add-button
+                onClick={() => {
+                  setShowAddEventForm(!showAddEventForm);
+                  setEditingEvent(null);
+                  setEventForm({
+                    event_type: '',
+                    event_date: new Date().toISOString().split('T')[0],
+                    end_date: '',
+                    notes: '',
+                    harvest_block: '',
+                    spray_product: '',
+                    spray_quantity: '',
+                    spray_unit: 'gallons',
+                    spray_target: '',
+                    spray_equipment: '',
+                    spray_conditions: '',
+                    irrigation_amount: '',
+                    irrigation_unit: 'gallons',
+                    irrigation_method: '',
+                    irrigation_duration: '',
+                    fertilizer_type: '',
+                    fertilizer_npk: '',
+                    fertilizer_rate: '',
+                    fertilizer_unit: 'lbs/acre',
+                    fertilizer_method: '',
+                    harvest_yield: '',
+                    harvest_unit: 'tons',
+                    harvest_brix: '',
+                    harvest_ph: '',
+                    harvest_ta: '',
+                    canopy_activity: '',
+                    canopy_intensity: '',
+                    canopy_side: '',
+                    canopy_stage: '',
+                    scout_focus: '',
+                    scout_severity: '',
+                    scout_distribution: '',
+                    scout_action: ''
+                  });
+                }}
                 style={{
                   ...buttonStyle,
-                  width: '100%',
                   backgroundColor: '#10b981'
                 }}
-                onMouseEnter={(e) => {
-                  (e.target as HTMLElement).style.backgroundColor = '#059669';
-                }}
-                onMouseLeave={(e) => {
-                  (e.target as HTMLElement).style.backgroundColor = '#10b981';
-                }}
               >
-                💾 Save to Database
-              </button>
-              <button 
-                onClick={refetchWeather}
-                style={{
-                  ...buttonStyle,
-                  width: '100%'
-                }}
-                onMouseEnter={(e) => {
-                  (e.target as HTMLElement).style.backgroundColor = '#2563eb';
-                }}
-                onMouseLeave={(e) => {
-                  (e.target as HTMLElement).style.backgroundColor = '#3b82f6';
-                }}
-              >
-                🔄 Refresh Weather Data
+                {showAddEventForm ? '❌ Cancel' : '➕ Add Event'}
               </button>
             </div>
-            <div style={{ 
-              marginTop: '12px', 
-              fontSize: '12px', 
-              color: '#6b7280',
-              textAlign: 'center' 
-            }}>
-              {vineyardId ? `Vineyard ID: ${vineyardId}` : 'No vineyard selected'}
+
+            {/* Add/Edit Event Form */}
+            {showAddEventForm && (
+              <form onSubmit={handleEventSubmit} style={{ marginBottom: '30px', padding: '20px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
+                <h3 style={{ marginTop: 0 }}>
+                  {editingEvent ? '✏️ Edit Event' : '➕ Add New Event'}
+                </h3>
+                
+                {/* Basic Event Info */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Event Type:</label>
+                    <select
+                      value={eventForm.event_type}
+                      onChange={(e) => setEventForm({...eventForm, event_type: e.target.value})}
+                      required
+                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                    >
+                      <option value="">Select Event Type</option>
+                      <optgroup label="Phenology Stages">
+                        <option value="bud_break">🌱 Bud Break</option>
+                        <option value="bloom">🌸 Bloom</option>
+                        <option value="fruit_set">🫐 Fruit Set</option>
+                        <option value="veraison">🍇 Veraison</option>
+                        <option value="harvest">🍷 Harvest</option>
+                      </optgroup>
+                      <optgroup label="Management Activities">
+                        <option value="pruning">✂️ Pruning</option>
+                        <option value="spray_application">🌿 Spray Application</option>
+                        <option value="irrigation">💧 Irrigation</option>
+                        <option value="fertilization">🌱 Fertilization</option>
+                        <option value="canopy_management">🍃 Canopy Management</option>
+                        <option value="soil_work">🌍 Soil Work</option>
+                        <option value="equipment_maintenance">🔧 Equipment Maintenance</option>
+                      </optgroup>
+                      <optgroup label="Monitoring">
+                        <option value="scouting">🔍 Scouting</option>
+                        <option value="pest">🐞 Pest Observation</option>
+                        <option value="disease">🦠 Disease Observation</option>
+                      </optgroup>
+                      <optgroup label="Other">
+                        <option value="other">📝 Other</option>
+                      </optgroup>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Event Date:</label>
+                    <input
+                      type="date"
+                      value={eventForm.event_date}
+                      onChange={(e) => setEventForm({...eventForm, event_date: e.target.value})}
+                      required
+                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                    />
+                  </div>
+
+                  {(['bud_break', 'bloom', 'veraison'].includes(eventForm.event_type)) && (
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>End Date (optional):</label>
+                      <input
+                        type="date"
+                        value={eventForm.end_date}
+                        onChange={(e) => setEventForm({...eventForm, end_date: e.target.value})}
+                        style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Event-Specific Fields */}
+                {eventForm.event_type === 'spray_application' && (
+                  <div style={{ marginBottom: '16px' }}>
+                    <h4 style={{ marginBottom: '12px', color: '#374151' }}>🌿 Spray Application Details</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Product:</label>
+                        <input
+                          type="text"
+                          value={eventForm.spray_product}
+                          onChange={(e) => setEventForm({...eventForm, spray_product: e.target.value})}
+                          placeholder="Product name"
+                          style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Quantity:</label>
+                        <input
+                          type="text"
+                          value={eventForm.spray_quantity}
+                          onChange={(e) => setEventForm({...eventForm, spray_quantity: e.target.value})}
+                          placeholder="Amount"
+                          style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Unit:</label>
+                        <select
+                          value={eventForm.spray_unit}
+                          onChange={(e) => setEventForm({...eventForm, spray_unit: e.target.value})}
+                          style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                        >
+                          <option value="gallons">Gallons</option>
+                          <option value="liters">Liters</option>
+                          <option value="lbs">Pounds</option>
+                          <option value="oz">Ounces</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Target:</label>
+                        <input
+                          type="text"
+                          value={eventForm.spray_target}
+                          onChange={(e) => setEventForm({...eventForm, spray_target: e.target.value})}
+                          placeholder="Target pest/disease"
+                          style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Equipment:</label>
+                        <input
+                          type="text"
+                          value={eventForm.spray_equipment}
+                          onChange={(e) => setEventForm({...eventForm, spray_equipment: e.target.value})}
+                          placeholder="Sprayer type"
+                          style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Conditions:</label>
+                        <input
+                          type="text"
+                          value={eventForm.spray_conditions}
+                          onChange={(e) => setEventForm({...eventForm, spray_conditions: e.target.value})}
+                          placeholder="Weather conditions"
+                          style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {eventForm.event_type === 'harvest' && (
+                  <div style={{ marginBottom: '16px' }}>
+                    <h4 style={{ marginBottom: '12px', color: '#374151' }}>🍷 Harvest Details</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Yield:</label>
+                        <input
+                          type="text"
+                          value={eventForm.harvest_yield}
+                          onChange={(e) => setEventForm({...eventForm, harvest_yield: e.target.value})}
+                          placeholder="Amount"
+                          style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Unit:</label>
+                        <select
+                          value={eventForm.harvest_unit}
+                          onChange={(e) => setEventForm({...eventForm, harvest_unit: e.target.value})}
+                          style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                        >
+                          <option value="tons">Tons</option>
+                          <option value="lbs">Pounds</option>
+                          <option value="kg">Kilograms</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Brix:</label>
+                        <input
+                          type="text"
+                          value={eventForm.harvest_brix}
+                          onChange={(e) => setEventForm({...eventForm, harvest_brix: e.target.value})}
+                          placeholder="°Brix"
+                          style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>pH:</label>
+                        <input
+                          type="text"
+                          value={eventForm.harvest_ph}
+                          onChange={(e) => setEventForm({...eventForm, harvest_ph: e.target.value})}
+                          placeholder="pH level"
+                          style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>TA:</label>
+                        <input
+                          type="text"
+                          value={eventForm.harvest_ta}
+                          onChange={(e) => setEventForm({...eventForm, harvest_ta: e.target.value})}
+                          placeholder="Titratable acidity"
+                          style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Block:</label>
+                        <input
+                          type="text"
+                          value={eventForm.harvest_block}
+                          onChange={(e) => setEventForm({...eventForm, harvest_block: e.target.value})}
+                          placeholder="Block/section"
+                          style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Notes */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Notes:</label>
+                  <textarea
+                    value={eventForm.notes}
+                    onChange={(e) => setEventForm({...eventForm, notes: e.target.value})}
+                    placeholder="Additional notes..."
+                    rows={3}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px', resize: 'vertical' }}
+                  />
+                </div>
+
+                {/* Form Actions */}
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button
+                    type="submit"
+                    style={{
+                      ...buttonStyle,
+                      backgroundColor: '#10b981'
+                    }}
+                  >
+                    {editingEvent ? '💾 Update Event' : '➕ Add Event'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddEventForm(false);
+                      setEditingEvent(null);
+                    }}
+                    style={{
+                      ...buttonStyle,
+                      backgroundColor: '#6b7280'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Events List */}
+            <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+              {phenologyEvents.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+                  <div style={{ fontSize: '48px', marginBottom: '16px' }}>📅</div>
+                  <div>No events recorded yet.</div>
+                  <div style={{ fontSize: '14px', marginTop: '8px' }}>
+                    Click "Add Event" or click on the growth curve to get started.
+                  </div>
+                </div>
+              ) : (
+                phenologyEvents
+                  .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime())
+                  .map((event, index) => {
+                    const eventEmojis: { [key: string]: string } = {
+                      bud_break: '🌱',
+                      bloom: '🌸',
+                      fruit_set: '🫐',
+                      veraison: '🍇',
+                      harvest: '🍷',
+                      pruning: '✂️',
+                      spray_application: '🌿',
+                      irrigation: '💧',
+                      fertilization: '🌱',
+                      canopy_management: '🍃',
+                      soil_work: '🌍',
+                      equipment_maintenance: '🔧',
+                      scouting: '🔍',
+                      pest: '🐞',
+                      disease: '🦠',
+                      other: '📝'
+                    };
+
+                    return (
+                      <div
+                        key={event.id || index}
+                        style={{
+                          padding: '16px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          marginBottom: '12px',
+                          backgroundColor: '#ffffff'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                              <span style={{ fontSize: '20px' }}>
+                                {eventEmojis[event.event_type] || '📝'}
+                              </span>
+                              <h4 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>
+                                {event.event_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                              </h4>
+                              <span style={{ 
+                                padding: '2px 8px', 
+                                backgroundColor: '#e0f2fe', 
+                                borderRadius: '12px', 
+                                fontSize: '12px',
+                                color: '#0369a1'
+                              }}>
+                                {new Date(event.event_date).toLocaleDateString()}
+                              </span>
+                              {event.end_date && (
+                                <span style={{ 
+                                  padding: '2px 8px', 
+                                  backgroundColor: '#f0f9ff', 
+                                  borderRadius: '12px', 
+                                  fontSize: '12px',
+                                  color: '#0369a1'
+                                }}>
+                                  → {new Date(event.end_date).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+
+                            {event.notes && (
+                              <p style={{ margin: '8px 0', color: '#4b5563', lineHeight: '1.5' }}>
+                                {event.notes}
+                              </p>
+                            )}
+
+                            {/* Event-specific details */}
+                            {event.event_type === 'spray_application' && event.spray_product && (
+                              <div style={{ fontSize: '14px', color: '#6b7280', marginTop: '8px' }}>
+                                Product: {event.spray_product}
+                                {event.spray_quantity && ` • ${event.spray_quantity} ${event.spray_unit || ''}`}
+                                {event.spray_target && ` • Target: ${event.spray_target}`}
+                              </div>
+                            )}
+
+                            {event.event_type === 'harvest' && (
+                              <div style={{ fontSize: '14px', color: '#6b7280', marginTop: '8px' }}>
+                                {event.harvest_yield && `Yield: ${event.harvest_yield} ${event.harvest_unit || ''}`}
+                                {event.harvest_brix && ` • Brix: ${event.harvest_brix}°`}
+                                {event.harvest_ph && ` • pH: ${event.harvest_ph}`}
+                                {event.harvest_block && ` • Block: ${event.harvest_block}`}
+                              </div>
+                            )}
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '8px', marginLeft: '16px' }}>
+                            <button
+                              onClick={() => {
+                                setEditingEvent(event);
+                                setEventForm({
+                                  event_type: event.event_type,
+                                  event_date: event.event_date,
+                                  end_date: event.end_date || '',
+                                  notes: event.notes || '',
+                                  harvest_block: event.harvest_block || '',
+                                  spray_product: (event as any).spray_product || '',
+                                  spray_quantity: (event as any).spray_quantity || '',
+                                  spray_unit: (event as any).spray_unit || 'gallons',
+                                  spray_target: (event as any).spray_target || '',
+                                  spray_equipment: (event as any).spray_equipment || '',
+                                  spray_conditions: (event as any).spray_conditions || '',
+                                  irrigation_amount: (event as any).irrigation_amount || '',
+                                  irrigation_unit: (event as any).irrigation_unit || 'gallons',
+                                  irrigation_method: (event as any).irrigation_method || '',
+                                  irrigation_duration: (event as any).irrigation_duration || '',
+                                  fertilizer_type: (event as any).fertilizer_type || '',
+                                  fertilizer_npk: (event as any).fertilizer_npk || '',
+                                  fertilizer_rate: (event as any).fertilizer_rate || '',
+                                  fertilizer_unit: (event as any).fertilizer_unit || 'lbs/acre',
+                                  fertilizer_method: (event as any).fertilizer_method || '',
+                                  harvest_yield: (event as any).harvest_yield || '',
+                                  harvest_unit: (event as any).harvest_unit || 'tons',
+                                  harvest_brix: (event as any).harvest_brix || '',
+                                  harvest_ph: (event as any).harvest_ph || '',
+                                  harvest_ta: (event as any).harvest_ta || '',
+                                  canopy_activity: (event as any).canopy_activity || '',
+                                  canopy_intensity: (event as any).canopy_intensity || '',
+                                  canopy_side: (event as any).canopy_side || '',
+                                  canopy_stage: (event as any).canopy_stage || '',
+                                  scout_focus: (event as any).scout_focus || '',
+                                  scout_severity: (event as any).scout_severity || '',
+                                  scout_distribution: (event as any).scout_distribution || '',
+                                  scout_action: (event as any).scout_action || ''
+                                });
+                                setShowAddEventForm(true);
+                              }}
+                              style={{
+                                ...buttonStyle,
+                                backgroundColor: '#f59e0b',
+                                padding: '6px 12px',
+                                fontSize: '12px'
+                              }}
+                            >
+                              ✏️ Edit
+                            </button>
+                            <button
+                              onClick={() => event.id && handleDeleteEvent(event.id)}
+                              style={{
+                                ...buttonStyle,
+                                backgroundColor: '#ef4444',
+                                padding: '6px 12px',
+                                fontSize: '12px'
+                              }}
+                            >
+                              🗑️ Delete
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+              )}
             </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* No Data State */}
@@ -542,6 +1325,21 @@ const WeatherDashboard: React.FC<WeatherDashboardProps> = ({
             Try Loading Data
           </button>
         </div>
+      )}
+
+      {/* Reports Modal */}
+      {showReportsModal && vineyard && weatherData && (
+        <ReportsModal
+          isOpen={showReportsModal}
+          onClose={() => setShowReportsModal(false)}
+          vineyard={vineyard}
+          phenologyEvents={phenologyEvents}
+          weatherData={weatherData}
+          dateRange={{
+            start: selectedDateRange.startDate,
+            end: selectedDateRange.endDate
+          }}
+        />
       )}
     </div>
   );
