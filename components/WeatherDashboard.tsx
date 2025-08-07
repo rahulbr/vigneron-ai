@@ -4672,7 +4672,7 @@ export function WeatherDashboard({
                                 <input
                                   type="text"
                                   value={editActivityForm.spray_conditions}
-                                  onChange={(e) => setActivityForm(prev => ({ ...prev, spray_conditions: e.target.value }))}
+                                  onChange={(e) => setEditActivityForm(prev => ({ ...prev, spray_conditions: e.target.value }))}
                                   placeholder="e.g. Wind: 5mph SW, Temp: 72°F, Humidity: 65%"
                                   style={{
                                     width: '100%',
@@ -4871,7 +4871,7 @@ export function WeatherDashboard({
                                   <input
                                     type="text"
                                     value={editActivityForm.fertilizer_rate}
-                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, fertilizer_rate: e.target.value }))}
+                                    onChange={(e) => setActivityForm(prev => ({ ...prev, fertilizer_rate: e.target.value }))}
                                     placeholder="e.g. 50"
                                     style={{
                                       width: '100%',
@@ -4915,7 +4915,7 @@ export function WeatherDashboard({
                                   </label>
                                   <select
                                     value={editActivityForm.fertilizer_method}
-                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, fertilizer_method: e.target.value }))}
+                                    onChange={(e) => setActivityForm(prev => ({ ...prev, fertilizer_method: e.target.value }))}
                                     style={{
                                       width: '100%',
                                       padding: '6px 10px',
@@ -5378,7 +5378,7 @@ export function WeatherDashboard({
                                         Event Location
                                       </label>
                                       <span style={{
-                                        padding: '1px 6px',
+                                        padding:'1px 6px',
                                         backgroundColor: '#fbbf24',
                                         color: '#92400e',
                                         borderRadius: '10px',
