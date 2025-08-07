@@ -1395,9 +1395,9 @@ export function WeatherDashboard({
             </button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+          <div key="form-row-main" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
             <div key="event-type-field">
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
+              <label key="event-type-label" style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
                 Event Type *
               </label>
               <select
@@ -1422,7 +1422,7 @@ export function WeatherDashboard({
             </div>
 
             <div key="start-date-field">
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
+              <label key="start-date-label" style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
                 Date *
               </label>
               <input
@@ -1444,23 +1444,24 @@ export function WeatherDashboard({
 
           {/* Spray Application Details */}
           {activityForm.activity_type === 'Spray Application' && (
-            <div style={{
+            <div key="spray-details-section" style={{
               marginBottom: '16px',
               padding: '16px',
               backgroundColor: '#fef3c7',
               border: '2px solid #fbbf24',
               borderRadius: '8px'
             }}>
-              <h5 style={{ margin: '0 0 12px 0', color: '#92400e', fontSize: '16px', fontWeight: '700' }}>
+              <h5 key="spray-details-title" style={{ margin: '0 0 12px 0', color: '#92400e', fontSize: '16px', fontWeight: '700' }}>
                 🌿 Spray Application Details
               </h5>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+              <div key="spray-row-1" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '12px' }}>
+                <div key="spray-product-field">
+                  <label key="spray-product-label" style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
                     Product *
                   </label>
                   <select
+                    key="spray-product-select"
                     value={activityForm.spray_product}
                     onChange={(e) => setActivityForm(prev => ({ ...prev, spray_product: e.target.value }))}
                     style={{
@@ -1498,11 +1499,12 @@ export function WeatherDashboard({
                   </select>
                 </div>
 
-                <div>
-                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                <div key="spray-quantity-field">
+                  <label key="spray-quantity-label" style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
                     Quantity
                   </label>
                   <input
+                    key="spray-quantity-input"
                     type="text"
                     value={activityForm.spray_quantity}
                     onChange={(e) => setActivityForm(prev => ({ ...prev, spray_quantity: e.target.value }))}
@@ -1517,11 +1519,12 @@ export function WeatherDashboard({
                   />
                 </div>
 
-                <div>
-                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
+                <div key="spray-unit-field">
+                  <label key="spray-unit-label" style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
                     Unit
                   </label>
                   <select
+                    key="spray-unit-select"
                     value={activityForm.spray_unit}
                     onChange={(e) => setActivityForm(prev => ({ ...prev, spray_unit: e.target.value }))}
                     style={{
@@ -1615,23 +1618,24 @@ export function WeatherDashboard({
 
           {/* Irrigation Details */}
           {activityForm.activity_type === 'Irrigation' && (
-            <div style={{
+            <div key="irrigation-details-section" style={{
               marginBottom: '16px',
               padding: '16px',
               backgroundColor: '#e0f7fa',
               border: '2px solid #06b6d4',
               borderRadius: '8px'
             }}>
-              <h5 style={{ margin: '0 0 12px 0', color: '#0e7490', fontSize: '16px', fontWeight: '700' }}>
+              <h5 key="irrigation-details-title" style={{ margin: '0 0 12px 0', color: '#0e7490', fontSize: '16px', fontWeight: '700' }}>
                 💧 Irrigation Details
               </h5>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#0e7490' }}>
+              <div key="irrigation-row-1" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '12px' }}>
+                <div key="irrigation-amount-field">
+                  <label key="irrigation-amount-label" style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#0e7490' }}>
                     Amount *
                   </label>
                   <input
+                    key="irrigation-amount-input"
                     type="text"
                     value={activityForm.irrigation_amount}
                     onChange={(e) => setActivityForm(prev => ({ ...prev, irrigation_amount: e.target.value }))}
@@ -2492,8 +2496,8 @@ export function WeatherDashboard({
             </div>
           )}
 
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
+          <div key="notes-section" style={{ marginBottom: '16px' }}>
+            <label key="notes-label" style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
               Notes
             </label>
             <textarea
