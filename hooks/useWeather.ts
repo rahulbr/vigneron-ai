@@ -91,38 +91,25 @@ export function useWeather(options: UseWeatherOptions) {
       }));
 
     } catch (error) {
-      let errorCode = 'WEATHER_UNAVAILABLE';
-      let errorMessage = 'Weather data is currently unavailable';
+      let errorCode = 'UNKNOWN_ERROR';
+      let errorMessage = 'An unknown error occurred';
 
       if (error instanceof Error) {
-        const originalMessage = error.message;
+        errorMessage = error.message;
         
-        // Categorize errors with user-friendly messages
-        if (originalMessage.includes('Invalid coordinates')) {
+        // Categorize errors
+        if (errorMessage.includes('Invalid coordinates')) {
           errorCode = 'INVALID_COORDS';
-          errorMessage = 'Invalid location coordinates provided';
-        } else if (originalMessage.includes('Invalid date range')) {
+        } else if (errorMessage.includes('Invalid date range')) {
           errorCode = 'INVALID_DATE_RANGE';
-          errorMessage = 'Invalid date range specified';
-        } else if (originalMessage.includes('WEATHER_UNAVAILABLE') || originalMessage.includes('RATE_LIMITED')) {
-          errorCode = 'WEATHER_UNAVAILABLE';
-          errorMessage = 'Weather data is temporarily unavailable. Please try again later.';
-        } else if (originalMessage.includes('SERVER_ERROR')) {
-          errorCode = 'SERVER_ERROR';
-          errorMessage = 'Weather service is temporarily down. Please try again later.';
-        } else if (originalMessage.includes('FETCH_UNAVAILABLE')) {
-          errorCode = 'FETCH_UNAVAILABLE';
-          errorMessage = 'Weather service is not available in this environment';
-        } else if (originalMessage.includes('failed after') || originalMessage.includes('Failed to fetch')) {
+        } else if (errorMessage.includes('HTTP')) {
+          errorCode = 'API_ERROR';
+        } else if (errorMessage.includes('failed after')) {
           errorCode = 'NETWORK_ERROR';
-          errorMessage = 'Network connection issue. Please check your internet connection and try again.';
-        } else {
-          errorCode = 'WEATHER_UNAVAILABLE';
-          errorMessage = 'Weather data is currently unavailable. Please try again later.';
+        } else if (errorMessage.includes('Invalid API response')) {
+          errorCode = 'DATA_FORMAT_ERROR';
         }
       }
-
-      console.warn('⚠️ Weather fetch failed:', { errorCode, errorMessage });
 
       setState(prev => ({
         ...prev,

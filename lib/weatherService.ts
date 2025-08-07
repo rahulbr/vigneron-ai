@@ -90,60 +90,28 @@ export class WeatherService {
   }
 
   /**
-   * Fetch weather data with retry logic and proper error handling
+   * Fetch weather data with retry logic
    */
   private async fetchWithRetry(url: string, attempt: number = 1): Promise<WeatherAPIResponse> {
     try {
       console.log(`🌤️ Fetching weather data (attempt ${attempt}/${this.retryAttempts})`);
 
-      // Check if we're in a browser environment and if fetch is available
-      if (typeof fetch === 'undefined') {
-        throw new Error('FETCH_UNAVAILABLE: Weather data service is not available in this environment');
-      }
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-
-      const response = await fetch(url, { 
-        signal: controller.signal,
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'Mozilla/5.0 (compatible; VineyardApp/1.0)'
-        }
-      });
-
-      clearTimeout(timeoutId);
+      const response = await fetch(url);
 
       if (!response.ok) {
-        if (response.status === 429) {
-          throw new Error('RATE_LIMITED: Weather service temporarily unavailable due to rate limiting');
-        }
-        if (response.status >= 500) {
-          throw new Error('SERVER_ERROR: Weather service is temporarily down');
-        }
-        throw new Error(`API_ERROR: Weather service returned ${response.status}: ${response.statusText}`);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
       const data = await response.json();
 
       // Validate response structure
       if (!data.daily || !data.daily.time || !Array.isArray(data.daily.time)) {
-        throw new Error('INVALID_RESPONSE: Weather service returned invalid data format');
+        throw new Error('Invalid API response structure');
       }
 
       return data;
     } catch (error) {
       console.warn(`❌ Weather API attempt ${attempt} failed:`, error);
-
-      // Don't retry for certain types of errors
-      if (error instanceof Error) {
-        if (error.message.includes('FETCH_UNAVAILABLE') || 
-            error.message.includes('RATE_LIMITED') ||
-            error.name === 'AbortError') {
-          throw error;
-        }
-      }
 
       if (attempt < this.retryAttempts) {
         const delay = this.retryDelay * attempt; // Exponential backoff
@@ -152,9 +120,7 @@ export class WeatherService {
         return this.fetchWithRetry(url, attempt + 1);
       }
 
-      // Provide user-friendly error message
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      throw new Error(`WEATHER_UNAVAILABLE: Weather data is temporarily unavailable. ${errorMessage}`);
+      throw new Error(`Weather API failed after ${this.retryAttempts} attempts: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -199,7 +165,7 @@ export class WeatherService {
       const processedData: ProcessedWeatherData[] = [];
 
       if (!data.daily) {
-        throw new Error('WEATHER_UNAVAILABLE: No weather data available from service');
+        throw new Error('No daily weather data received');
       }
 
       const { time, temperature_2m_max, temperature_2m_min, precipitation_sum } = data.daily;
@@ -208,7 +174,7 @@ export class WeatherService {
       if (time.length !== temperature_2m_max.length || 
           time.length !== temperature_2m_min.length || 
           time.length !== precipitation_sum.length) {
-        throw new Error('WEATHER_UNAVAILABLE: Weather service returned inconsistent data');
+        throw new Error('Inconsistent weather data arrays');
       }
 
       for (let i = 0; i < time.length; i++) {
@@ -222,21 +188,25 @@ export class WeatherService {
           continue;
         }
 
-        // Validate temperature ranges (reasonable for wine regions)
-        if (tempHigh < -50 || tempHigh > 120 || tempLow < -50 || tempLow > 120) {
-          console.warn(`⚠️ Temperature out of reasonable range at index ${i}, skipping`);
-          continue;
-        }
+        // Validate data point and ensure date is not in the future
+        const isValidDataPoint = (point: any): boolean => {
+          const today = new Date();
+          today.setHours(23, 59, 59, 999); // End of today
+          const pointDate = new Date(point.date);
 
-        // Ensure date is not in the future
-        const today = new Date();
-        today.setHours(23, 59, 59, 999);
-        const pointDate = new Date(time[i]);
-
-        if (pointDate > today) {
-          console.warn(`⚠️ Future date detected at index ${i}, skipping`);
-          continue;
-        }
+          return (
+            point &&
+            typeof point.temp_high === 'number' &&
+            typeof point.temp_low === 'number' &&
+            !isNaN(point.temp_high) &&
+            !isNaN(point.temp_low) &&
+            point.temp_high >= -50 &&
+            point.temp_high <= 60 &&
+            point.temp_low >= -50 &&
+            point.temp_low <= 60 &&
+            pointDate <= today // Ensure date is not in the future
+          );
+        };
 
         // Calculate GDD
         const gdd = this.calculateGDD(tempHigh, tempLow, baseGDDTemp);
@@ -246,12 +216,12 @@ export class WeatherService {
           temp_high: Math.round(tempHigh * 10) / 10,
           temp_low: Math.round(tempLow * 10) / 10,
           gdd: gdd,
-          rainfall: Math.round(rainfall * 100) / 100
+          rainfall: Math.round(rainfall * 100) / 100 // Round to 2 decimal places
         });
       }
 
       if (processedData.length === 0) {
-        throw new Error('WEATHER_UNAVAILABLE: No valid weather data points could be processed');
+        throw new Error('No valid weather data points processed');
       }
 
       console.log(`✅ Successfully processed ${processedData.length} weather data points`);
@@ -259,13 +229,7 @@ export class WeatherService {
 
     } catch (error) {
       console.error('❌ Weather service error:', error);
-      
-      // Re-throw with user-friendly message if it doesn't already have one
-      if (error instanceof Error && error.message.includes('WEATHER_UNAVAILABLE')) {
-        throw error;
-      } else {
-        throw new Error('WEATHER_UNAVAILABLE: Weather data is currently unavailable. Please try again later.');
-      }
+      throw error;
     }
   }
 

@@ -16,11 +16,8 @@ interface WeatherDashboardProps {
   locationName?: string;
 }
 
-// Define SavedLocation type for better type safety
-interface SavedLocation extends GeocodeResult {}
-
-export function WeatherDashboard({
-  vineyardId: propVineyardId,
+export function WeatherDashboard({ 
+  vineyardId: propVineyardId, 
   initialLatitude = 37.3272, // La Honda, CA fallback
   initialLongitude = -122.2813,
   locationName = "La Honda, CA"
@@ -39,7 +36,7 @@ export function WeatherDashboard({
   const [dateRangeMode, setDateRangeMode] = useState<'current' | 'previous' | 'custom'>('current');
   const [showCustomRange, setShowCustomRange] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [savedLocations, setSavedLocations] = useState<SavedLocation[]>([]);
+  const [savedLocations, setSavedLocations] = useState<GeocodeResult[]>([]);
 
   // NEW: Auto-generated vineyard ID state
   const [vineyardId, setVineyardId] = useState<string>(propVineyardId || '');
@@ -143,7 +140,7 @@ export function WeatherDashboard({
 
   // Edit activity state
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
-
+  
   // Reports modal state
   const [showReportsModal, setShowReportsModal] = useState(false);
   const [editActivityForm, setEditActivityForm] = useState({
@@ -193,9 +190,6 @@ export function WeatherDashboard({
   });
   const [isUpdatingActivity, setIsUpdatingActivity] = useState(false);
 
-  // State to handle continuing without weather data
-  const [showWithoutWeather, setShowWithoutWeather] = useState(false);
-
   // Location services functions
   const getCurrentLocation = async () => {
     setIsGettingLocation(true);
@@ -219,7 +213,7 @@ export function WeatherDashboard({
       });
 
       const { latitude, longitude, accuracy } = position.coords;
-
+      
       // Update the form with current location
       setActivityForm(prev => ({
         ...prev,
@@ -234,7 +228,7 @@ export function WeatherDashboard({
     } catch (error: any) {
       console.error('❌ Location error:', error);
       let errorMessage = 'Failed to get location';
-
+      
       if (error.code === 1) {
         errorMessage = 'Location access denied. Please enable location permissions.';
       } else if (error.code === 2) {
@@ -244,7 +238,7 @@ export function WeatherDashboard({
       } else {
         errorMessage = error.message || 'Unknown location error';
       }
-
+      
       setLocationError(errorMessage);
     } finally {
       setIsGettingLocation(false);
@@ -277,7 +271,7 @@ export function WeatherDashboard({
     console.log('🗑️ Cleared location');
   };
 
-  // Filter state for events section
+  // Event filtering for Events section
   const [eventFilterTypes, setEventFilterTypes] = useState<string[]>([]);
   const [showEventFilterDropdown, setShowEventFilterDropdown] = useState(false);
 
@@ -297,118 +291,62 @@ export function WeatherDashboard({
 
   const { data, loading, error, lastUpdated, refetch, retry, clearError } = useWeather(weatherOptions);
 
-  // Function to initialize data, including vineyards and weather
-  const initializeData = async () => {
-    try {
-      // Load user's vineyards on component mount
-      await loadUserVineyards();
-
-      // Initialize date range
-      await initializeDateRange();
-
-      // Fetch weather data if available and initialized
-      if (isInitialized && dateRange.start && dateRange.end && latitude && longitude) {
-        console.log('🌤️ Auto-fetching weather data with:', {
-          latitude,
-          longitude,
-          dateRange
-        });
-        refetch();
-      }
-    } catch (err) {
-      console.error("Initialization error:", err);
-    }
-  };
-
   // Load user's vineyards on component mount
-  const loadUserVineyards = async () => {
-    try {
-      setIsLoadingVineyards(true);
-      console.log('🔍 Loading user vineyards...');
+  useEffect(() => {
+    const loadUserVineyards = async () => {
+      try {
+        setIsLoadingVineyards(true);
+        console.log('🔍 Loading user vineyards...');
 
-      // Get authenticated user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('👤 No authenticated user, using demo mode');
+        // Get authenticated user
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          console.log('👤 No authenticated user, using demo mode');
+          setIsLoadingVineyards(false);
+          return;
+        }
+
+        // Load user's vineyards
+        const { getUserVineyards } = await import('../lib/supabase');
+        const vineyards = await getUserVineyards();
+
+        console.log('🍇 Loaded user vineyards:', vineyards.length);
+        setUserVineyards(vineyards);
+
+        // Set current vineyard (use stored preference or first vineyard)
+        const storedVineyardId = localStorage.getItem('currentVineyardId');
+        let selectedVineyard = null;
+
+        if (storedVineyardId) {
+          selectedVineyard = vineyards.find(v => v.id === storedVineyardId);
+        }
+
+        if (!selectedVineyard && vineyards.length > 0) {
+          selectedVineyard = vineyards[0];
+        }
+
+        if (selectedVineyard) {
+          setCurrentVineyard(selectedVineyard);
+          setVineyardId(selectedVineyard.id);
+          setLatitude(selectedVineyard.latitude);
+          setLongitude(selectedVineyard.longitude);
+          setCustomLocation(selectedVineyard.name);
+          localStorage.setItem('currentVineyardId', selectedVineyard.id);
+          console.log('✅ Current vineyard set:', selectedVineyard.name);
+        } else {
+          console.log('🆕 No existing vineyards, user can create one');
+          setShowCreateVineyard(true);
+        }
+
+      } catch (error) {
+        console.error('❌ Error loading vineyards:', error);
+      } finally {
         setIsLoadingVineyards(false);
-        return;
       }
+    };
 
-      // Load user's vineyards
-      const { getUserVineyards } = await import('../lib/supabase');
-      const vineyards = await getUserVineyards();
-
-      console.log('🍇 Loaded user vineyards:', vineyards.length);
-      setUserVineyards(vineyards);
-
-      // Set current vineyard (use stored preference or first vineyard)
-      const storedVineyardId = localStorage.getItem('currentVineyardId');
-      let selectedVineyard = null;
-
-      if (storedVineyardId) {
-        selectedVineyard = vineyards.find(v => v.id === storedVineyardId);
-      }
-
-      if (!selectedVineyard && vineyards.length > 0) {
-        selectedVineyard = vineyards[0];
-      }
-
-      if (selectedVineyard) {
-        setCurrentVineyard(selectedVineyard);
-        setVineyardId(selectedVineyard.id);
-        setLatitude(selectedVineyard.latitude);
-        setLongitude(selectedVineyard.longitude);
-        setCustomLocation(selectedVineyard.name);
-        localStorage.setItem('currentVineyardId', selectedVineyard.id);
-        console.log('✅ Current vineyard set:', selectedVineyard.name);
-      } else {
-        console.log('🆕 No existing vineyards, user can create one');
-        setShowCreateVineyard(true);
-      }
-
-    } catch (error) {
-      console.error('❌ Error loading vineyards:', error);
-    } finally {
-      setIsLoadingVineyards(false);
-    }
-  };
-
-  // Initialize date range - start from April 1st (growing season)
-  const initializeDateRange = () => {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const today = now.toISOString().split('T')[0]; // YYYY-MM-DD format
-    const aprilFirst = new Date(currentYear, 3, 1); // April 1st
-
-    let actualStartDate: string;
-    let actualEndDate: string;
-
-    if (now < aprilFirst) {
-      // Use previous year's growing season (April 1 to October 31)
-      actualStartDate = `${currentYear - 1}-04-01`;
-      actualEndDate = `${currentYear - 1}-10-31`;
-    } else {
-      // Use current year from April 1 to today
-      actualStartDate = `${currentYear}-04-01`;
-      actualEndDate = today;
-    }
-
-    console.log('📅 Setting growing season date range:', {
-      actualStartDate,
-      actualEndDate,
-      year: currentYear,
-      note: 'Growing season data - never extends beyond today'
-    });
-
-    setDateRange({
-      start: actualStartDate,
-      end: actualEndDate
-    });
-
-    setDateRangeMode('current');
-    setIsInitialized(true);
-  };
-
+    loadUserVineyards();
+  }, []);
 
   // Create a new vineyard
   const createNewVineyard = async () => {
@@ -418,8 +356,8 @@ export function WeatherDashboard({
       const { createVineyard } = await import('../lib/supabase');
       const newVineyard = await createVineyard(
         customLocation || 'New Vineyard',
-        customLocation || 'Unknown Location',
-        latitude,
+        customLocation || 'Unknown Location', 
+        latitude, 
         longitude
       );
 
@@ -537,7 +475,7 @@ export function WeatherDashboard({
       }
 
       // Clear editing state
-      setEditingVinevineyardId(null);
+      setEditingVineyardId(null);
       setEditingVineyardName('');
 
       console.log('✅ Vineyard renamed successfully:', updatedVineyard.name);
@@ -604,17 +542,59 @@ export function WeatherDashboard({
     }
   }, []);
 
+  // Initialize date range - start from April 1st (growing season)
+  useEffect(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const today = now.toISOString().split('T')[0]; // YYYY-MM-DD format
+
+    // For current year: April 1 to today (growing season), but never in the future
+    const startDate = `${currentYear}-04-01`;
+    const aprilFirst = new Date(currentYear, 3, 1); // April 1st
+
+    // If we're before April 1st of current year, use previous year's full growing season
+    let actualStartDate: string;
+    let actualEndDate: string;
+
+    if (now < aprilFirst) {
+      // Use previous year's growing season (April 1 to October 31)
+      actualStartDate = `${currentYear - 1}-04-01`;
+      actualEndDate = `${currentYear - 1}-10-31`;
+    } else {
+      // Use current year from April 1 to today
+      actualStartDate = startDate;
+      actualEndDate = today;
+    }
+
+    console.log('📅 Setting growing season date range:', { 
+      actualStartDate, 
+      actualEndDate, 
+      year: currentYear,
+      note: 'Growing season data - never extends beyond today'
+    });
+
+    setDateRange({
+      start: actualStartDate,
+      end: actualEndDate
+    });
+
+    setDateRangeMode('current');
+    setIsInitialized(true);
+  }, []);
+
   // Auto-fetch weather data once dates are initialized
   useEffect(() => {
-    if (isInitialized && dateRange.start && dateRange.end && latitude && longitude && !showWithoutWeather) {
-      console.log('🌤️ Fetching weather data with:', {
+    if (isInitialized && dateRange.start && dateRange.end && latitude && longitude) {
+      console.log('🌤️ Auto-fetching weather data with:', {
         latitude,
         longitude,
         dateRange
       });
       refetch();
     }
-  }, [isInitialized, dateRange.start, dateRange.end, latitude, longitude, refetch, showWithoutWeather]);
+  }, [isInitialized, dateRange.start, dateRange.end, latitude, longitude, refetch]);
+
+  // Remove auto-generation of AI insights - only generate when button is clicked
 
   // Load activities for current vineyard
   const loadActivities = async () => {
@@ -670,10 +650,10 @@ export function WeatherDashboard({
   const calculateSafetyAlerts = () => {
     const alerts: any[] = [];
     const today = new Date();
-
+    
     // Check recent spray applications for re-entry and pre-harvest intervals
-    const sprayApplications = activities.filter(activity =>
-      activity.event_type === 'spray_application' &&
+    const sprayApplications = activities.filter(activity => 
+      activity.event_type === 'spray_application' && 
       activity.spray_product &&
       sprayDatabase[activity.spray_product as keyof typeof sprayDatabase]
     );
@@ -681,7 +661,7 @@ export function WeatherDashboard({
     sprayApplications.forEach(spray => {
       const sprayDate = new Date(spray.event_date);
       const productInfo = sprayDatabase[spray.spray_product as keyof typeof sprayDatabase];
-
+      
       if (!productInfo) return;
 
       // Calculate days since spray
@@ -709,7 +689,7 @@ export function WeatherDashboard({
       harvestEvents.forEach(harvest => {
         const harvestDate = new Date(harvest.event_date);
         const daysFromSprayToHarvest = Math.floor((harvestDate.getTime() - sprayDate.getTime()) / (1000 * 60 * 60 * 24));
-
+        
         if (daysFromSprayToHarvest >= 0 && daysFromSprayToHarvest < productInfo.preharvestDays) {
           alerts.push({
             id: `preharvest-${spray.id}-${harvest.id}`,
@@ -730,9 +710,9 @@ export function WeatherDashboard({
       if (productInfo.preharvestDays > 0) {
         const upcomingHarvestCutoff = new Date(sprayDate);
         upcomingHarvestCutoff.setDate(upcomingHarvestCutoff.getDate() + productInfo.preharvestDays);
-
+        
         const daysUntilSafeHarvest = Math.floor((upcomingHarvestCutoff.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
+        
         if (daysUntilSafeHarvest > 0 && daysUntilSafeHarvest <= 30) {
           alerts.push({
             id: `harvest-warning-${spray.id}`,
@@ -924,8 +904,8 @@ export function WeatherDashboard({
       // This will cause the EnhancedGDDChart component to reload its phenology events
       if (typeof window !== 'undefined') {
         // Set a flag that the chart component can listen for
-        window.dispatchEvent(new CustomEvent('phenologyEventsChanged', {
-          detail: { vineyardId }
+        window.dispatchEvent(new CustomEvent('phenologyEventsChanged', { 
+          detail: { vineyardId } 
         }));
       }
 
@@ -941,12 +921,12 @@ export function WeatherDashboard({
   // Start editing an activity
   const startEditingActivity = (activity: any) => {
     console.log('✏️ Starting to edit activity:', activity);
-
+    
     // Map database event_type back to display format
     const mapEventTypeToDisplay = (dbEventType: string): string => {
       const eventTypeMapping: { [key: string]: string } = {
         'bud_break': 'Bud Break',
-        'bloom': 'Bloom',
+        'bloom': 'Bloom', 
         'fruit_set': 'Fruit Set',
         'veraison': 'Veraison',
         'harvest': 'Harvest',
@@ -961,7 +941,7 @@ export function WeatherDashboard({
         'scouting': 'Scouting',
         'other': 'Other'
       };
-
+      
       // Handle the normalized event type from database
       const normalizedType = dbEventType?.toLowerCase().replace(/\s+/g, '_') || 'other';
       return eventTypeMapping[normalizedType] || 'Other';
@@ -1016,7 +996,7 @@ export function WeatherDashboard({
       scout_distribution: activity.scout_distribution || '',
       scout_action: activity.scout_action || ''
     });
-
+    
     console.log('✏️ Edit form populated with values:', {
       activity_type: displayEventType,
       start_date: activity.event_date,
@@ -1095,7 +1075,7 @@ export function WeatherDashboard({
         const displayMapping: { [key: string]: string } = {
           'Bud Break': 'bud_break',
           'Bloom': 'bloom',
-          'Fruit Set': 'fruit_set',
+          'Fruit Set': 'fruit_set', 
           'Veraison': 'veraison',
           'Harvest': 'harvest',
           'Pruning': 'pruning',
@@ -1109,7 +1089,7 @@ export function WeatherDashboard({
           'Scouting': 'scouting',
           'Other': 'other'
         };
-
+        
         return displayMapping[displayType] || 'other';
       };
 
@@ -1191,8 +1171,8 @@ export function WeatherDashboard({
 
       // Force the chart to refresh its events
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('phenologyEventsChanged', {
-          detail: { vineyardId }
+        window.dispatchEvent(new CustomEvent('phenologyEventsChanged', { 
+          detail: { vineyardId } 
         }));
       }
 
@@ -1224,8 +1204,8 @@ export function WeatherDashboard({
       // This will cause the EnhancedGDDChart component to reload its phenology events
       if (typeof window !== 'undefined') {
         // Set a flag that the chart component can listen for
-        window.dispatchEvent(new CustomEvent('phenologyEventsChanged', {
-          detail: { vineyardId }
+        window.dispatchEvent(new CustomEvent('phenologyEventsChanged', { 
+          detail: { vineyardId } 
         }));
       }
 
@@ -1381,8 +1361,8 @@ export function WeatherDashboard({
       // Calculate summary statistics
       const totalGDD = data.reduce((sum, day) => sum + day.gdd, 0);
       const totalRainfall = data.reduce((sum, day) => sum + day.rainfall, 0);
-      const avgTempHigh = data.length > 0 ? data.reduce((sum, day) => sum + day.temp_high, 0) / data.length : 0;
-      const avgTempLow = data.length > 0 ? data.reduce((sum, day) => sum + day.temp_low, 0) / data.length : 0;
+      const avgTempHigh = data.reduce((sum, day) => sum + day.temp_high, 0) / data.length;
+      const avgTempLow = data.reduce((sum, day) => sum + day.temp_low, 0) / data.length;
 
       const context: VineyardContext = {
         locationName: customLocation,
@@ -1549,14 +1529,14 @@ export function WeatherDashboard({
   const avgTempLow = data.length > 0 ? data.reduce((sum, day) => sum + day.temp_low, 0) / data.length : 0;
 
   // Calculate location statistics
-  const eventsWithLocation = activities.filter(activity =>
+  const eventsWithLocation = activities.filter(activity => 
     activity.location_lat && activity.location_lng
   );
-  const eventsWithoutLocation = activities.filter(activity =>
+  const eventsWithoutLocation = activities.filter(activity => 
     !activity.location_lat || !activity.location_lng
   );
-  const locationCoveragePercent = activities.length > 0
-    ? Math.round((eventsWithLocation.length / activities.length) * 100)
+  const locationCoveragePercent = activities.length > 0 
+    ? Math.round((eventsWithLocation.length / activities.length) * 100) 
     : 0;
 
   // Get icon for insight type (harvest-focused)
@@ -1584,157 +1564,46 @@ export function WeatherDashboard({
   // Get urgency styling
   const getUrgencyStyle = (urgency: string) => {
     switch (urgency) {
-      case 'high': return {
+      case 'high': return { 
         badge: { backgroundColor: '#dc2626', color: 'white' },
         border: '2px solid #dc2626'
       };
-      case 'medium': return {
+      case 'medium': return { 
         badge: { backgroundColor: '#f59e0b', color: 'white' },
         border: '1px solid #f59e0b'
       };
-      case 'low': return {
+      case 'low': return { 
         badge: { backgroundColor: '#6b7280', color: 'white' },
         border: '1px solid #e5e7eb'
       };
-      default: return {
+      default: return { 
         badge: { backgroundColor: '#6b7280', color: 'white' },
         border: '1px solid #e5e7eb'
       };
     }
   };
 
-  // Show loading state (but only if we haven't chosen to continue without weather)
-  if (loading && !isInitialized && !showWithoutWeather) {
+  // Don't render until initialized
+  if (!isInitialized) {
     return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        flexDirection: 'column',
-        gap: '20px'
-      }}>
-        <div style={{
-          width: '40px',
-          height: '40px',
-          border: '4px solid #f3f3f3',
-          borderTop: '4px solid #3498db',
+      <div style={{ padding: '20px', textAlign: 'center' }}>
+        <div style={{ 
+          width: '30px', 
+          height: '30px', 
+          border: '3px solid #f3f3f3',
+          borderTop: '3px solid #3498db',
           borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
+          animation: 'spin 1s linear infinite',
+          margin: '0 auto 10px'
         }}></div>
-        <div style={{ textAlign: 'center' }}>
-          <p style={{ margin: '0 0 8px 0' }}>Loading weather data...</p>
-          <p style={{ margin: '0', fontSize: '14px', color: '#666' }}>
-            {currentVineyard?.name || locationName}
-          </p>
-        </div>
+        <p>Initializing weather dashboard...</p>
       </div>
     );
   }
 
-  // Display error state
-  if (error && !data.length) {
-    const isWeatherUnavailable = error.code === 'WEATHER_UNAVAILABLE' ||
-                                 error.code === 'SERVER_ERROR' ||
-                                 error.code === 'RATE_LIMITED' ||
-                                 error.code === 'NETWORK_ERROR';
-
-    return (
-      <div style={{
-        padding: '40px 20px',
-        textAlign: 'center',
-        backgroundColor: '#fef9e7',
-        border: '1px solid #fed7aa',
-        borderRadius: '12px',
-        margin: '20px'
-      }}>
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>
-          {isWeatherUnavailable ? '🌤️' : '⚠️'}
-        </div>
-        <h2 style={{
-          color: isWeatherUnavailable ? '#d97706' : '#dc2626',
-          marginBottom: '8px'
-        }}>
-          {isWeatherUnavailable ? 'Weather Data Unavailable' : 'Configuration Error'}
-        </h2>
-        <p style={{
-          color: isWeatherUnavailable ? '#92400e' : '#7f1d1d',
-          marginBottom: '16px',
-          maxWidth: '400px',
-          margin: '0 auto 16px auto',
-          lineHeight: '1.5'
-        }}>
-          {isWeatherUnavailable
-            ? 'Weather data is currently unavailable. This may be due to network issues or the weather service being temporarily down.'
-            : error.message
-          }
-        </p>
-
-        {isWeatherUnavailable && (
-          <div style={{
-            backgroundColor: '#fef3c7',
-            border: '1px solid #fcd34d',
-            borderRadius: '6px',
-            padding: '12px',
-            marginBottom: '16px',
-            fontSize: '14px',
-            color: '#78350f'
-          }}>
-            ℹ️ You can still use the app to log vineyard activities and view historical data
-          </div>
-        )}
-
-        <button
-          onClick={retry}
-          disabled={loading}
-          style={{
-            padding: '12px 24px',
-            backgroundColor: loading ? '#d1d5db' : (isWeatherUnavailable ? '#d97706' : '#dc2626'),
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            fontSize: '16px',
-            marginRight: '10px'
-          }}
-        >
-          {loading ? 'Checking...' : 'Try Again'}
-        </button>
-
-        {isWeatherUnavailable && (
-          <button
-            onClick={() => {
-              // Continue without weather data
-              setShowWithoutWeather(true);
-              clearError();
-            }}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: 'transparent',
-              color: '#d97706',
-              border: '2px solid #d97706',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '16px'
-            }}
-          >
-            Continue Without Weather
-          </button>
-        )}
-      </div>
-    );
-  }
-
-  // Initialize data loading effect
-  useEffect(() => {
-    initializeData();
-  }, []);
-
-  // Calculate some key variables for the main dashboard
   const currentYear = new Date().getFullYear();
   const previousYear = currentYear - 1;
 
-  // If initialized, show the dashboard
   return (
     <div className="container section-spacing" style={{ padding: '1rem' }}>
       {/* Safety Alerts */}
@@ -1745,9 +1614,9 @@ export function WeatherDashboard({
               key={alert.id}
               style={{
                 padding: '15px 20px',
-                backgroundColor: alert.severity === 'critical' ? '#fef2f2' :
+                backgroundColor: alert.severity === 'critical' ? '#fef2f2' : 
                                 alert.severity === 'high' ? '#fffbeb' : '#f0f9ff',
-                border: `2px solid ${alert.severity === 'critical' ? '#ef4444' :
+                border: `2px solid ${alert.severity === 'critical' ? '#ef4444' : 
                                    alert.severity === 'high' ? '#f59e0b' : '#3b82f6'}`,
                 borderRadius: '8px',
                 marginBottom: '10px',
@@ -1756,34 +1625,34 @@ export function WeatherDashboard({
                 gap: '12px'
               }}
             >
-              <div style={{
+              <div style={{ 
                 fontSize: '20px',
                 marginTop: '2px',
-                color: alert.severity === 'critical' ? '#ef4444' :
+                color: alert.severity === 'critical' ? '#ef4444' : 
                        alert.severity === 'high' ? '#f59e0b' : '#3b82f6'
               }}>
                 {alert.severity === 'critical' ? '🚨' : alert.severity === 'high' ? '🚫' : '📅'}
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{
-                  fontWeight: '700',
-                  fontSize: '16px',
+                <div style={{ 
+                  fontWeight: '700', 
+                  fontSize: '16px', 
                   marginBottom: '4px',
-                  color: alert.severity === 'critical' ? '#991b1b' :
+                  color: alert.severity === 'critical' ? '#991b1b' : 
                          alert.severity === 'high' ? '#92400e' : '#1e40af'
                 }}>
                   {alert.title}
                 </div>
-                <div style={{
-                  fontSize: '14px',
+                <div style={{ 
+                  fontSize: '14px', 
                   marginBottom: '6px',
-                  color: alert.severity === 'critical' ? '#7f1d1d' :
+                  color: alert.severity === 'critical' ? '#7f1d1d' : 
                          alert.severity === 'high' ? '#78350f' : '#1e3a8a'
                 }}>
                   {alert.message}
                 </div>
-                <div style={{
-                  fontSize: '12px',
+                <div style={{ 
+                  fontSize: '12px', 
                   color: '#6b7280',
                   display: 'flex',
                   alignItems: 'center',
@@ -1818,7 +1687,7 @@ export function WeatherDashboard({
 
         {/* Current Vineyard Display */}
         {currentVineyard && (
-          <div style={{
+          <div style={{ 
             marginTop: '15px',
             padding: '12px 16px',
             backgroundColor: '#f0f9ff',
@@ -2008,10 +1877,10 @@ export function WeatherDashboard({
 
               {/* Search Results for new vineyard */}
               {showSearchResults && searchResults.length > 0 && (
-                <div style={{
-                  marginBottom: '15px',
-                  border: '1px solid #a7f3d0',
-                  borderRadius: '6px',
+                <div style={{ 
+                  marginBottom: '15px', 
+                  border: '1px solid #a7f3d0', 
+                  borderRadius: '6px', 
                   backgroundColor: 'white',
                   maxHeight: '200px',
                   overflowY: 'auto'
@@ -2247,10 +2116,10 @@ export function WeatherDashboard({
 
               {/* Search Results for editing */}
               {showSearchResults && searchResults.length > 0 && (
-                <div style={{
-                  marginBottom: '15px',
-                  border: '1px solid #bfdbfe',
-                  borderRadius: '6px',
+                <div style={{ 
+                  marginBottom: '15px', 
+                  border: '1px solid #bfdbfe', 
+                  borderRadius: '6px', 
                   backgroundColor: 'white',
                   maxHeight: '200px',
                   overflowY: 'auto'
@@ -2385,7 +2254,7 @@ export function WeatherDashboard({
             <div style={{ marginBottom: '15px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {userVineyards.map((vineyard) => (
-                  <div
+                  <div 
                     key={vineyard.id}
                     style={{
                       display: 'flex',
@@ -2544,7 +2413,7 @@ export function WeatherDashboard({
             }}>
               <div style={{ fontSize: '48px', marginBottom: '15px' }}>🍇</div>
               <h4 style={{ margin: '0 0 10px 0', color: '#374151', fontSize: '18px' }}>No Vineyards Yet</h4>
-              <p style={{ margin: '0', color: '#6b7280', fontSize: '14px' }}>
+              <p style={{ margin: '0 0 15px 0', color: '#6b7280', fontSize: '14px' }}>
                 Create your first vineyard to start tracking weather data and phenology events.
               </p>
               <button
@@ -2570,15 +2439,15 @@ export function WeatherDashboard({
           )}
 
           {/* Show vineyard count */}
-          <div style={{
-            fontSize: '13px',
+          <div style={{ 
+            fontSize: '13px', 
             color: '#6b7280',
             padding: '10px',
             backgroundColor: '#f1f5f9',
             borderRadius: '6px',
             textAlign: 'center'
           }}>
-            📊 {userVineyards.length === 0 ? 'No vineyards configured' :
+            📊 {userVineyards.length === 0 ? 'No vineyards configured' : 
                  `${userVineyards.length} vineyard${userVineyards.length !== 1 ? 's' : ''} configured`}
           </div>
         </div>
@@ -2586,10 +2455,10 @@ export function WeatherDashboard({
 
       {/* Connection Status */}
       <div className={`status-indicator section-spacing ${
-        isConnected === true ? 'status-success' :
-        isConnected === false ? 'status-error' :
+        isConnected === true ? 'status-success' : 
+        isConnected === false ? 'status-error' : 
         'status-warning'
-      }`} style={{
+      }`} style={{ 
         display: 'flex',
         alignItems: 'center',
         gap: '8px'
@@ -2608,11 +2477,11 @@ export function WeatherDashboard({
           <>
             <AlertCircle size={16} style={{ color: '#dc2626' }} />
             <span style={{ color: '#991b1b' }}>Weather API Connection Failed</span>
-            <button
+            <button 
               onClick={testConnection}
-              style={{
-                marginLeft: 'auto',
-                padding: '4px 8px',
+              style={{ 
+                marginLeft: 'auto', 
+                padding: '4px 8px', 
                 fontSize: '12px',
                 backgroundColor: '#dc2626',
                 color: 'white',
@@ -2637,10 +2506,10 @@ export function WeatherDashboard({
 
 
       {/* Date Range Controls - 3 Buttons */}
-      <div style={{
-        marginBottom: '20px',
-        padding: '20px',
-        backgroundColor: '#f8fafc',
+      <div style={{ 
+        marginBottom: '20px', 
+        padding: '20px', 
+        backgroundColor: '#f8fafc', 
         borderRadius: '12px',
         border: '1px solid #e2e8f0'
       }}>
@@ -2656,7 +2525,7 @@ export function WeatherDashboard({
             style={{
               padding: '8px 16px',
               backgroundColor: dateRangeMode === 'current' ? '#22c55e' : '#f3f4f6',
-              color: dateRangeMode === 'current' ? 'white' : '#374151',
+              color: dateRangeMode === 'current' ?'white' : '#374151',
               border: '1px solid #d1d5db',
               borderRadius: '6px',
               cursor: 'pointer',
@@ -2746,9 +2615,9 @@ export function WeatherDashboard({
         )}
 
         {/* Show current date range */}
-        <div style={{
-          padding: '10px',
-          backgroundColor: '#e0f2fe',
+        <div style={{ 
+          padding: '10px', 
+          backgroundColor: '#e0f2fe', 
           borderRadius: '6px',
           fontSize: '14px',
           color: '#0369a1'
@@ -2762,8 +2631,62 @@ export function WeatherDashboard({
         </div>
       </div>
 
+      {/* Error Display */}
+      {error && (
+        <div style={{ 
+          marginBottom: '20px', 
+          padding: '16px', 
+          backgroundColor: '#fef2f2',
+          border: '1px solid #fecaca',
+          borderRadius: '8px',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '12px'
+        }}>
+          <AlertCircle size={20} style={{ color: '#dc2626', marginTop: '2px' }} />
+          <div style={{ flex: 1 }}>
+            <h4 style={{ margin: '0 0 8px 0', color: '#991b1b', fontSize: '16px' }}>
+              Weather Data Error ({error.code})
+            </h4>
+            <p style={{ margin: '0 0 12px 0', color: '#7f1d1d' }}>
+              {error.message}
+            </p>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={retry}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: '#dc2626',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Retry
+              </button>
+              <button
+                onClick={clearError}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: 'transparent',
+                  color: '#dc2626',
+                  border: '1px solid #dc2626',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Weather Summary Stats */}
-      {(data.length > 0 || showWithoutWeather) && !loading && (
+      {data.length > 0 && (
         <div className="responsive-grid section-spacing">
           <div className="card">
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -2784,7 +2707,7 @@ export function WeatherDashboard({
               <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280' }}>Total Rainfall</span>
             </div>
             <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#3b82f6' }}>
-              {totalRainfall.toFixed(2)}&quot;
+              {totalRainfall.toFixed(2)}"
             </div>
             <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '4px' }}>
               Precipitation
@@ -2819,10 +2742,28 @@ export function WeatherDashboard({
         </div>
       )}
 
+      {/* Loading State */}
+      {loading && (
+        <div style={{ 
+          padding: '40px', 
+          textAlign: 'center',
+          backgroundColor: '#f8fafc',
+          borderRadius: '12px',
+          border: '2px dashed #cbd5e1',
+          marginBottom: '20px'
+        }}>
+          <RefreshCw size={32} style={{ color: '#64748b', animation: 'spin 1s linear infinite', marginBottom: '16px' }} />
+          <h3 style={{ margin: '0 0 8px 0', color: '#475569' }}>Loading Weather Data</h3>
+          <p style={{ margin: '0', color: '#64748b' }}>
+            Fetching weather data for {customLocation}...
+          </p>
+        </div>
+      )}
+
       {/* Enhanced GDD Chart - FIXED WITH VINEYARD ID */}
-      {(data.length > 0 || showWithoutWeather) && !loading && vineyardId && (
+      {data.length > 0 && !loading && vineyardId && (
         <div style={{ marginBottom: '20px' }}>
-          <EnhancedGDDChart
+          <EnhancedGDDChart 
             weatherData={data}
             locationName={customLocation}
             vineyardId={vineyardId}
@@ -2833,8 +2774,8 @@ export function WeatherDashboard({
 
       {/* Data Status Footer */}
       {lastUpdated && (
-        <div style={{
-          padding: '12px 16px',
+        <div style={{ 
+          padding: '12px 16px', 
           backgroundColor: '#f1f5f9',
           borderRadius: '8px',
           border: '1px solid #e2e8f0',
@@ -2900,13 +2841,13 @@ export function WeatherDashboard({
                         return `https://www.google.com/maps?q=${event.location_lat},${event.location_lng}&z=18`;
                       } else {
                         // For multiple locations, create a route
-                        const waypoints = filteredEventsWithLocation.slice(1, -1).map(event =>
+                        const waypoints = filteredEventsWithLocation.slice(1, -1).map(event => 
                           `${event.location_lat},${event.location_lng}`
                         ).join('|');
-
+                        
                         const origin = `${filteredEventsWithLocation[0].location_lat},${filteredEventsWithLocation[0].location_lng}`;
                         const destination = `${filteredEventsWithLocation[filteredEventsWithLocation.length - 1].location_lat},${filteredEventsWithLocation[filteredEventsWithLocation.length - 1].location_lng}`;
-
+                        
                         return waypoints.length > 0
                           ? `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}`
                           : `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
@@ -2926,7 +2867,7 @@ export function WeatherDashboard({
                       gap: '4px',
                       fontWeight: '500'
                     }}
-                    title={filteredEventsWithLocation.length === 1
+                    title={filteredEventsWithLocation.length === 1 
                       ? 'View event location on map'
                       : `Route through ${filteredEventsWithLocation.length} filtered event locations`
                     }
@@ -2935,7 +2876,7 @@ export function WeatherDashboard({
                   </a>
                 );
               })()}
-
+              
               {/* Reports Button */}
               <button
                 onClick={openReportsModal}
@@ -3201,7 +3142,7 @@ export function WeatherDashboard({
               </div>
 
               {/* Event Type Specific Details */}
-
+              
               {/* Irrigation Details */}
               {activityForm.activity_type === 'Irrigation' && (
                 <div style={{
@@ -3217,7 +3158,7 @@ export function WeatherDashboard({
                       Irrigation Details
                     </h5>
                   </div>
-
+                  
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '12px' }}>
                     <div>
                       <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#00695c' }}>
@@ -3328,7 +3269,7 @@ export function WeatherDashboard({
                       Fertilization Details
                     </h5>
                   </div>
-
+                  
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '12px' }}>
                     <div>
                       <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#365314' }}>
@@ -3470,7 +3411,7 @@ export function WeatherDashboard({
                       Harvest Details
                     </h5>
                   </div>
-
+                  
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '12px' }}>
                     <div>
                       <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#991b1b' }}>
@@ -3612,7 +3553,7 @@ export function WeatherDashboard({
                       Canopy Management Details
                     </h5>
                   </div>
-
+                  
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '12px' }}>
                     <div>
                       <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#065f46' }}>
@@ -3742,7 +3683,7 @@ export function WeatherDashboard({
                       {activityForm.activity_type === 'Pest' ? 'Pest Observation' : 'Scouting'} Details
                     </h5>
                   </div>
-
+                  
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '12px' }}>
                     <div>
                       <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#064e3b' }}>
@@ -3896,7 +3837,7 @@ export function WeatherDashboard({
                       Spray Application Details
                     </h5>
                   </div>
-
+                  
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '12px' }}>
                     <div>
                       <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '13px', color: '#92400e' }}>
@@ -4102,7 +4043,7 @@ export function WeatherDashboard({
                     color: '#475569',
                     marginTop: '8px'
                   }}>
-                    <strong>Safety Data Sources:</strong> EPA pesticide labels, University extension publications, industry standard practices.
+                    <strong>Safety Data Sources:</strong> EPA pesticide labels, University extension publications, industry standard practices. 
                     Always verify with current product labels and local regulations before application.
                   </div>
                 </div>
@@ -4115,7 +4056,7 @@ export function WeatherDashboard({
                 <textarea
                   value={activityForm.notes}
                   onChange={(e) => setActivityForm(prev => ({ ...prev, notes: e.target.value }))}
-                  placeholder={activityForm.activity_type === 'Spray Application' ?
+                  placeholder={activityForm.activity_type === 'Spray Application' ? 
                     "Additional notes about application conditions, coverage, any issues encountered..." :
                     "Add any details about this event..."
                   }
@@ -4131,7 +4072,7 @@ export function WeatherDashboard({
               </div>
 
               {/* Simplified Location Section */}
-              <div style={{
+              <div style={{ 
                 marginBottom: '16px',
                 padding: '12px',
                 backgroundColor: '#fefce8',
@@ -4469,7 +4410,7 @@ export function WeatherDashboard({
                           </div>
 
                           {/* Event Type Specific Details for Edit Form */}
-
+                          
                           {/* Spray Application Details */}
                           {editActivityForm.activity_type === 'Spray Application' && (
                             <div style={{
@@ -4485,7 +4426,7 @@ export function WeatherDashboard({
                                   Spray Application Details
                                 </h5>
                               </div>
-
+                              
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginBottom: '10px' }}>
                                 <div>
                                   <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#92400e' }}>
@@ -4583,47 +4524,44 @@ export function WeatherDashboard({
                                     <option value="total liters">total liters</option>
                                   </select>
                                 </div>
-                                <div style={{
-                                  gridColumn: '1 / -1' // Span across all columns if needed
-                                }}>
-                                  {/* Safety Information Display for Edit */}
-                                  {editActivityForm.spray_product && sprayDatabase[editActivityForm.spray_product as keyof typeof sprayDatabase] && (
-                                    <div style={{
-                                      padding: '10px',
-                                      backgroundColor: '#fef2f2',
-                                      border: '2px solid #f87171',
-                                      borderRadius: '6px',
-                                      marginBottom: '10px'
-                                    }}>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-                                        <span style={{ fontSize: '14px' }}>⚠️</span>
-                                        <span style={{ fontWeight: '700', color: '#991b1b', fontSize: '12px' }}>
-                                          SAFETY INFORMATION
-                                        </span>
-                                      </div>
-                                      {(() => {
-                                        const productInfo = sprayDatabase[editActivityForm.spray_product as keyof typeof sprayDatabase];
-                                        return (
-                                          <div style={{ fontSize: '11px', color: '#7f1d1d' }}>
-                                            <div style={{ marginBottom: '3px' }}>
-                                              <strong>Re-entry Interval:</strong> {productInfo.reentryHours} hours
-                                            </div>
-                                            <div style={{ marginBottom: '3px' }}>
-                                              <strong>Pre-harvest Interval:</strong> {productInfo.preharvestDays} days
-                                            </div>
-                                            <div style={{ marginBottom: '3px' }}>
-                                              <strong>Category:</strong> {productInfo.category} | <strong>Signal Word:</strong> {productInfo.signal}
-                                            </div>
-                                            <div style={{ fontStyle: 'italic', marginTop: '4px' }}>
-                                              Always follow label instructions and local regulations
-                                            </div>
-                                          </div>
-                                        );
-                                      })()}
-                                    </div>
-                                  )}
-                                </div>
                               </div>
+
+                              {/* Safety Information Display for Edit */}
+                              {editActivityForm.spray_product && sprayDatabase[editActivityForm.spray_product as keyof typeof sprayDatabase] && (
+                                <div style={{
+                                  padding: '10px',
+                                  backgroundColor: '#fef2f2',
+                                  border: '2px solid #f87171',
+                                  borderRadius: '6px',
+                                  marginBottom: '10px'
+                                }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                                    <span style={{ fontSize: '14px' }}>⚠️</span>
+                                    <span style={{ fontWeight: '700', color: '#991b1b', fontSize: '12px' }}>
+                                      SAFETY INFORMATION
+                                    </span>
+                                  </div>
+                                  {(() => {
+                                    const productInfo = sprayDatabase[editActivityForm.spray_product as keyof typeof sprayDatabase];
+                                    return (
+                                      <div style={{ fontSize: '11px', color: '#7f1d1d' }}>
+                                        <div style={{ marginBottom: '3px' }}>
+                                          <strong>Re-entry Interval:</strong> {productInfo.reentryHours} hours
+                                        </div>
+                                        <div style={{ marginBottom: '3px' }}>
+                                          <strong>Pre-harvest Interval:</strong> {productInfo.preharvestDays} days
+                                        </div>
+                                        <div style={{ marginBottom: '3px' }}>
+                                          <strong>Category:</strong> {productInfo.category} | <strong>Signal Word:</strong> {productInfo.signal}
+                                        </div>
+                                        <div style={{ fontStyle: 'italic', marginTop: '4px' }}>
+                                          Always follow label instructions and local regulations
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                              )}
 
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px', marginBottom: '10px' }}>
                                 <div>
@@ -4701,7 +4639,7 @@ export function WeatherDashboard({
                                   Irrigation Details
                                 </h5>
                               </div>
-
+                              
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '10px' }}>
                                 <div>
                                   <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#00695c' }}>
@@ -4812,7 +4750,7 @@ export function WeatherDashboard({
                                   Fertilization Details
                                 </h5>
                               </div>
-
+                              
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '10px' }}>
                                 <div>
                                   <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#365314' }}>
@@ -4871,7 +4809,7 @@ export function WeatherDashboard({
                                   <input
                                     type="text"
                                     value={editActivityForm.fertilizer_rate}
-                                    onChange={(e) => setActivityForm(prev => ({ ...prev, fertilizer_rate: e.target.value }))}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, fertilizer_rate: e.target.value }))}
                                     placeholder="e.g. 50"
                                     style={{
                                       width: '100%',
@@ -4889,7 +4827,7 @@ export function WeatherDashboard({
                                   </label>
                                   <select
                                     value={editActivityForm.fertilizer_unit}
-                                    onChange={(e) => setActivityForm(prev => ({ ...prev, fertilizer_unit: e.target.value }))}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, fertilizer_unit: e.target.value }))}
                                     style={{
                                       width: '100%',
                                       padding: '6px 10px',
@@ -4915,7 +4853,7 @@ export function WeatherDashboard({
                                   </label>
                                   <select
                                     value={editActivityForm.fertilizer_method}
-                                    onChange={(e) => setActivityForm(prev => ({ ...prev, fertilizer_method: e.target.value }))}
+                                    onChange={(e) => setEditActivityForm(prev => ({ ...prev, fertilizer_method: e.target.value }))}
                                     style={{
                                       width: '100%',
                                       padding: '6px 10px',
@@ -4954,7 +4892,7 @@ export function WeatherDashboard({
                                   Harvest Details
                                 </h5>
                               </div>
-
+                              
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '10px' }}>
                                 <div>
                                   <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#991b1b' }}>
@@ -5096,7 +5034,7 @@ export function WeatherDashboard({
                                   Canopy Management Details
                                 </h5>
                               </div>
-
+                              
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '10px' }}>
                                 <div>
                                   <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#065f46' }}>
@@ -5226,7 +5164,7 @@ export function WeatherDashboard({
                                   {editActivityForm.activity_type === 'Pest' ? 'Pest Observation' : 'Scouting'} Details
                                 </h5>
                               </div>
-
+                              
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '10px' }}>
                                 <div>
                                   <label style={{ display: 'block', marginBottom: '3px', fontWeight: '600', fontSize: '11px', color: '#064e3b' }}>
@@ -5361,389 +5299,25 @@ export function WeatherDashboard({
                                     <option value="lab analysis">Send for lab analysis</option>
                                   </select>
                                 </div>
-                                <div style={{
-                                  gridColumn: '1 / -1' // Span across all columns if needed
-                                }}>
-                                  {/* Location Edit Section */}
-                                  <div style={{
-                                    marginBottom: '15px',
-                                    padding: '12px',
-                                    backgroundColor: '#fffbeb',
-                                    border: '1px solid #fde68a',
-                                    borderRadius: '8px'
-                                  }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
-                                      <span style={{ fontSize: '16px' }}>📍</span>
-                                      <label style={{ fontWeight: '600', fontSize: '13px', color: '#a16207' }}>
-                                        Event Location
-                                      </label>
-                                      <span style={{
-                                        padding:'1px 6px',
-                                        backgroundColor: '#fbbf24',
-                                        color: '#92400e',
-                                        borderRadius: '10px',
-                                        fontSize: '10px',
-                                        fontWeight: '600',
-                                        textTransform: 'uppercase'
-                                      }}>
-                                        Optional
-                                      </span>
-                                    </div>
-
-                                    {/* Current Location Status */}
-                                    {editActivityForm.location_lat && editActivityForm.location_lng ? (
-                                      <div style={{
-                                        padding: '8px 10px',
-                                        backgroundColor: '#f0fdf4',
-                                        border: '1px solid #bbf7d0',
-                                        borderRadius: '6px',
-                                        marginBottom: '8px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between'
-                                      }}>
-                                        <div>
-                                          <div style={{ fontWeight: '500', color: '#065f46', fontSize: '12px', marginBottom: '1px' }}>
-                                            {editActivityForm.location_name || 'Location Set'}
-                                          </div>
-                                          <div style={{ fontSize: '11px', color: '#059669' }}>
-                                            {editActivityForm.location_lat.toFixed(6)}, {editActivityForm.location_lng.toFixed(6)}
-                                            {editActivityForm.location_accuracy && (
-                                              <span style={{ marginLeft: '6px' }}>
-                                                (±{Math.round(editActivityForm.location_accuracy)}m)
-                                              </span>
-                                            )}
-                                          </div>
-                                        </div>
-                                        <button
-                                          onClick={() => setEditActivityForm(prev => ({
-                                            ...prev,
-                                            location_lat: null,
-                                            location_lng: null,
-                                            location_accuracy: null,
-                                            location_name: ''
-                                          }))}
-                                          style={{
-                                            padding: '3px 6px',
-                                            backgroundColor: '#ef4444',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '3px',
-                                            cursor: 'pointer',
-                                            fontSize: '10px'
-                                          }}
-                                        >
-                                          ✕ Clear
-                                        </button>
-                                      </div>
-                                    ) : (
-                                      <div style={{
-                                        padding: '8px 10px',
-                                        backgroundColor: '#f8fafc',
-                                        border: '1px solid #e2e8f0',
-                                        borderRadius: '6px',
-                                        marginBottom: '8px',
-                                        textAlign: 'center'
-                                      }}>
-                                        <div style={{ fontSize: '11px', color: '#64748b' }}>
-                                          No location set for this event
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {/* Google Maps Location Search for Edit */}
-                                    <div style={{ marginBottom: '8px' }}>
-                                      <label style={{ display: 'block', marginBottom: '3px', fontWeight: '500', fontSize: '11px', color: '#374151' }}>
-                                        🗺️ Search Location (Google Maps):
-                                      </label>
-                                      <div style={{ display: 'flex', gap: '6px' }}>
-                                        <input
-                                          type="text"
-                                          value={locationSearch}
-                                          onChange={(e) => setLocationSearch(e.target.value)}
-                                          onKeyPress={(e) => e.key === 'Enter' && handleLocationSearch()}
-                                          placeholder="e.g., Block 5 North, Chardonnay Section..."
-                                          style={{
-                                            flex: 1,
-                                            padding: '5px 8px',
-                                            border: '1px solid #d1d5db',
-                                            borderRadius: '4px',
-                                            fontSize: '11px'
-                                          }}
-                                        />
-                                        <button
-                                          type="button"
-                                          onClick={handleLocationSearch}
-                                          disabled={isSearching || !locationSearch.trim()}
-                                          style={{
-                                            padding: '5px 8px',
-                                            backgroundColor: isSearching ? '#9ca3af' : '#4285f4',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '4px',
-                                            cursor: isSearching || !locationSearch.trim() ? 'not-allowed' : 'pointer',
-                                            fontSize: '10px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '3px'
-                                          }}
-                                        >
-                                          {isSearching ? <RefreshCw size={10} style={{ animation: 'spin 1s linear infinite' }} /> : <Search size={10} />}
-                                          Search
-                                        </button>
-                                      </div>
-                                    </div>
-
-                                    {/* Search Results for Edit */}
-                                    {showSearchResults && searchResults.length > 0 && (
-                                      <div style={{
-                                        marginBottom: '8px',
-                                        border: '1px solid #d1d5db',
-                                        borderRadius: '4px',
-                                        backgroundColor: 'white',
-                                        maxHeight: '120px',
-                                        overflowY: 'auto'
-                                      }}>
-                                        <div style={{ padding: '4px 8px', borderBottom: '1px solid #e5e7eb', fontWeight: '500', fontSize: '10px', backgroundColor: '#f9fafb', color: '#374151' }}>
-                                          Select Location:
-                                        </div>
-                                        {searchResults.map((result, index) => (
-                                          <div
-                                            key={result.placeId}
-                                            onClick={() => {
-                                              setEditActivityForm(prev => ({
-                                                ...prev,
-                                                location_lat: result.latitude,
-                                                location_lng: result.longitude,
-                                                location_name: result.name,
-                                                location_accuracy: null
-                                              }));
-                                              setLocationSearch('');
-                                              setShowSearchResults(false);
-                                              setLocationError('');
-                                            }}
-                                            style={{
-                                              padding: '6px 8px',
-                                              cursor: 'pointer',
-                                              borderBottom: index < searchResults.length - 1 ? '1px solid #f3f4f6' : 'none',
-                                              fontSize: '10px'
-                                            }}
-                                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
-                                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
-                                          >
-                                            <div style={{ fontWeight: '500', marginBottom: '1px' }}>{result.name}</div>
-                                            <div style={{ fontSize: '9px', color: '#6b7280', marginBottom: '1px' }}>
-                                              {result.formattedAddress}
-                                            </div>
-                                            <div style={{ fontSize: '8px', color: '#9ca3af' }}>
-                                              {result.latitude.toFixed(4)}, {result.longitude.toFixed(4)}
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-
-                                    {/* Location Error Display for Edit */}
-                                    {locationError && (
-                                      <div style={{
-                                        padding: '6px 8px',
-                                        backgroundColor: '#fef2f2',
-                                        border: '1px solid #fecaca',
-                                        borderRadius: '4px',
-                                        fontSize: '10px',
-                                        color: '#991b1b',
-                                        marginBottom: '8px'
-                                      }}>
-                                        {locationError}
-                                      </div>
-                                    )}
-
-                                    {/* Location Action Buttons for Edit */}
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '6px' }}>
-                                      <button
-                                        type="button"
-                                        onClick={async () => {
-                                          setIsGettingLocation(true);
-                                          setLocationError('');
-
-                                          try {
-                                            if (!navigator.geolocation) {
-                                              throw new Error('Geolocation is not supported by this browser');
-                                            }
-
-                                            const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-                                              navigator.geolocation.getCurrentPosition(
-                                                resolve,
-                                                reject,
-                                                {
-                                                  enableHighAccuracy: true,
-                                                  timeout: 10000,
-                                                  maximumAge: 30000
-                                                }
-                                              );
-                                            });
-
-                                            const { latitude, longitude, accuracy } = position.coords;
-
-                                            setEditActivityForm(prev => ({
-                                              ...prev,
-                                              location_lat: latitude,
-                                              location_lng: longitude,
-                                              location_accuracy: accuracy,
-                                              location_name: `📍 Current Location (±${Math.round(accuracy)}m)`
-                                            }));
-
-                                          } catch (error: any) {
-                                            let errorMessage = 'Failed to get location';
-                                            if (error.code === 1) {
-                                              errorMessage = 'Location access denied. Please enable location permissions.';
-                                            } else if (error.code === 2) {
-                                              errorMessage = 'Location unavailable. Please try again.';
-                                            } else if (error.code === 3) {
-                                              errorMessage = 'Location request timed out. Please try again.';
-                                            }
-                                            setLocationError(errorMessage);
-                                          } finally {
-                                            setIsGettingLocation(false);
-                                          }
-                                        }}
-                                        disabled={isGettingLocation}
-                                        style={{
-                                          padding: '8px 10px',
-                                          backgroundColor: isGettingLocation ? '#9ca3af' : '#10b981',
-                                          color: 'white',
-                                          border: 'none',
-                                          borderRadius: '6px',
-                                          cursor: isGettingLocation ? 'not-allowed' : 'pointer',
-                                          fontSize: '11px',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                          gap: '4px',
-                                          fontWeight: '500'
-                                        }}
-                                      >
-                                        {isGettingLocation ? (
-                                          <>
-                                            <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} />
-                                            Getting GPS...
-                                          </>
-                                        ) : (
-                                          <>
-                                            📍 Check In Here
-                                          </>
-                                        )}
-                                      </button>
-
-                                      {currentVineyard && (
-                                        <button
-                                          type="button"
-                                          onClick={() => setEditActivityForm(prev => ({
-                                            ...prev,
-                                            location_lat: currentVineyard.latitude,
-                                            location_lng: currentVineyard.longitude,
-                                            location_accuracy: null,
-                                            location_name: `🍇 ${currentVineyard.name}`
-                                          }))}
-                                          style={{
-                                            padding: '8px 10px',
-                                            backgroundColor: '#3b82f6',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '6px',
-                                            cursor: 'pointer',
-                                            fontSize: '11px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            gap: '4px',
-                                            fontWeight: '500'
-                                          }}
-                                        >
-                                          🍇 Use Vineyard Location
-                                        </button>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div style={{ marginBottom: '10px' }}>
-                                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '12px', color: '#374151' }}>
-                                  Notes (Optional)
-                                </label>
-                                <textarea
-                                  value={editActivityForm.notes}
-                                  onChange={(e) => setEditActivityForm(prev => ({ ...prev, notes: e.target.value }))}
-                                  placeholder="Add any additional details about this event..."
-                                  style={{
-                                    width: '100%',
-                                    padding: '6px 10px',
-                                    border: '1px solid #d1d5db',
-                                    borderRadius: '6px',
-                                    minHeight: '60px',
-                                    resize: 'vertical',
-                                    fontSize: '13px'
-                                  }}
-                                />
-                              </div>
-
-                              <div style={{ display: 'flex', gap: '8px' }}>
-                                <button
-                                  onClick={() => updateActivity(activity.id)}
-                                  disabled={isUpdatingActivity || !editActivityForm.activity_type || !editActivityForm.start_date}
-                                  style={{
-                                    padding: '6px 12px',
-                                    backgroundColor: isUpdatingActivity || !editActivityForm.activity_type || !editActivityForm.start_date ? '#9ca3af' :'#22c55e',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '6px',
-                                    cursor: isUpdatingActivity || !editActivityForm.activity_type || !editActivityForm.start_date ? 'not-allowed' : 'pointer',
-                                    fontSize: '12px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    fontWeight: '500'
-                                  }}
-                                >
-                                  {isUpdatingActivity ? <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} /> : '💾'}
-                                  {isUpdatingActivity ? 'Updating...' : 'Save Changes'}
-                                </button>
-
-                                <button
-                                  onClick={cancelEditingActivity}
-                                  disabled={isUpdatingActivity}
-                                  style={{
-                                    padding: '6px 12px',
-                                    backgroundColor: '#6b7280',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '6px',
-                                    cursor: isUpdatingActivity ? 'not-allowed' : 'pointer',
-                                    fontSize: '12px'
-                                  }}
-                                >
-                                  Cancel
-                                </button>
                               </div>
                             </div>
                           )}
 
                           {/* Location Edit Section */}
-                          <div style={{
+                          <div style={{ 
                             marginBottom: '15px',
                             padding: '12px',
                             backgroundColor: '#fffbeb',
-                            border: '1px solid #fde68a',
+                            border: '1px solid #fed7aa',
                             borderRadius: '8px'
                           }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
-                              <span style={{ fontSize:'16px' }}>📍</span>
+                              <span style={{ fontSize: '16px' }}>📍</span>
                               <label style={{ fontWeight: '600', fontSize: '13px', color: '#a16207' }}>
                                 Event Location
                               </label>
                               <span style={{
-                                padding:'1px 6px',
+                                padding: '1px 6px',
                                 backgroundColor: '#fbbf24',
                                 color: '#92400e',
                                 borderRadius: '10px',
@@ -5861,10 +5435,10 @@ export function WeatherDashboard({
 
                             {/* Search Results for Edit */}
                             {showSearchResults && searchResults.length > 0 && (
-                              <div style={{
-                                marginBottom: '8px',
-                                border: '1px solid #d1d5db',
-                                borderRadius: '4px',
+                              <div style={{ 
+                                marginBottom: '8px', 
+                                border: '1px solid #d1d5db', 
+                                borderRadius: '4px', 
                                 backgroundColor: 'white',
                                 maxHeight: '120px',
                                 overflowY: 'auto'
@@ -5949,7 +5523,7 @@ export function WeatherDashboard({
                                     });
 
                                     const { latitude, longitude, accuracy } = position.coords;
-
+                                    
                                     setEditActivityForm(prev => ({
                                       ...prev,
                                       location_lat: latitude,
@@ -6030,329 +5604,330 @@ export function WeatherDashboard({
                               )}
                             </div>
                           </div>
-                        </div>
 
-                        <div style={{ marginBottom: '10px' }}>
-                          <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '12px', color: '#374151' }}>
-                            Notes (Optional)
-                          </label>
-                          <textarea
-                            value={editActivityForm.notes}
-                            onChange={(e) => setEditActivityForm(prev => ({ ...prev, notes: e.target.value }))}
-                            placeholder="Add any additional details about this event..."
-                            style={{
-                              width: '100%',
-                              padding: '6px 10px',
-                              border: '1px solid #d1d5db',
-                              borderRadius: '6px',
-                              minHeight: '60px',
-                              resize: 'vertical',
-                              fontSize: '13px'
-                            }}
-                          />
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <button
-                            onClick={() => updateActivity(activity.id)}
-                            disabled={isUpdatingActivity || !editActivityForm.activity_type || !editActivityForm.start_date}
-                            style={{
-                              padding: '6px 12px',
-                              backgroundColor: isUpdatingActivity || !editActivityForm.activity_type || !editActivityForm.start_date ? '#9ca3af' :'#22c55e',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '6px',
-                              cursor: isUpdatingActivity || !editActivityForm.activity_type || !editActivityForm.start_date ? 'not-allowed' : 'pointer',
-                              fontSize: '12px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              fontWeight: '500'
-                            }}
-                          >
-                            {isUpdatingActivity ? <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} /> : '💾'}
-                            {isUpdatingActivity ? 'Updating...' : 'Save Changes'}
-                          </button>
-
-                          <button
-                            onClick={cancelEditingActivity}
-                            disabled={isUpdatingActivity}
-                            style={{
-                              padding: '6px 12px',
-                              backgroundColor: '#6b7280',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '6px',
-                              cursor: isUpdatingActivity ? 'not-allowed' : 'pointer',
-                              fontSize: '12px'
-                            }}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      // Normal display
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                            <div
+                          <div style={{ marginBottom: '10px' }}>
+                            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '12px', color: '#374151' }}>
+                              Notes (Optional)
+                            </label>
+                            <textarea
+                              value={editActivityForm.notes}
+                              onChange={(e) => setEditActivityForm(prev => ({ ...prev, notes: e.target.value }))}
+                              placeholder="Add any additional details about this event..."
                               style={{
-                                width: '12px',
-                                height: '12px',
-                                backgroundColor: style.color,
-                                borderRadius: '50%',
+                                width: '100%',
+                                padding: '6px 10px',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '6px',
+                                minHeight: '60px',
+                                resize: 'vertical',
+                                fontSize: '13px'
                               }}
-                            ></div>
-                            <span style={{ fontSize: '16px', marginRight: '4px' }}>{style.emoji}</span>
-                            <span style={{ fontWeight: '600', color: '#374151', fontSize: '14px' }}>
-                              {style.label}
-                            </span>
-                            <span style={{
-                              fontSize: '11px',
-                              color: '#6b7280',
-                              padding: '2px 6px',
-                              backgroundColor: '#f1f5f9',
-                              borderRadius: '10px'
-                            }}>
-                              {new Date(activity.event_date).toLocaleDateString()}
-                            </span>
-                            {cumulativeGDD > 0 && (
-                              <span style={{
-                                fontSize: '11px',
-                                color: '#059669',
-                                padding: '2px 6px',
-                                backgroundColor: '#ecfdf5',
-                                borderRadius: '10px',
+                            />
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              onClick={() => updateActivity(activity.id)}
+                              disabled={isUpdatingActivity || !editActivityForm.activity_type || !editActivityForm.start_date}
+                              style={{
+                                padding: '6px 12px',
+                                backgroundColor: isUpdatingActivity || !editActivityForm.activity_type || !editActivityForm.start_date ? '#9ca3af' :'#22c55e',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: isUpdatingActivity || !editActivityForm.activity_type || !editActivityForm.start_date ? 'not-allowed' : 'pointer',
+                                fontSize: '12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
                                 fontWeight: '500'
-                              }}>
-                                {Math.round(cumulativeGDD)} GDDs
+                              }}
+                            >
+                              {isUpdatingActivity ? <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} /> : '💾'}
+                              {isUpdatingActivity ? 'Updating...' : 'Save Changes'}
+                            </button>
+
+                            <button
+                              onClick={cancelEditingActivity}
+                              disabled={isUpdatingActivity}
+                              style={{
+                                padding: '6px 12px',
+                                backgroundColor: '#6b7280',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: isUpdatingActivity ? 'not-allowed' : 'pointer',
+                                fontSize: '12px'
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        // Normal display
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                              <div
+                                style={{
+                                  width: '12px',
+                                  height: '12px',
+                                  backgroundColor: style.color,
+                                  borderRadius: '50%',
+                                }}
+                              ></div>
+                              <span style={{ fontSize: '16px', marginRight: '4px' }}>{style.emoji}</span>
+                              <span style={{ fontWeight: '600', color: '#374151', fontSize: '14px' }}>
+                                {style.label}
                               </span>
+                              <span style={{ 
+                                fontSize: '11px', 
+                                color: '#6b7280',
+                                padding: '2px 6px',
+                                backgroundColor: '#f1f5f9',
+                                borderRadius: '10px'
+                              }}>
+                                {new Date(activity.event_date).toLocaleDateString()}
+                              </span>
+                              {cumulativeGDD > 0 && (
+                                <span style={{
+                                  fontSize: '11px',
+                                  color: '#059669',
+                                  padding: '2px 6px',
+                                  backgroundColor: '#ecfdf5',
+                                  borderRadius: '10px',
+                                  fontWeight: '500'
+                                }}>
+                                  {Math.round(cumulativeGDD)} GDDs
+                                </span>
+                              )}
+                            </div>
+
+                            {activity.end_date && (
+                              <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                                Duration: {activity.event_date} to {activity.end_date}
+                              </div>
+                            )}
+
+                            {activity.harvest_block && (
+                              <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                                Block: {activity.harvest_block}
+                              </div>
+                            )}
+
+                            {/* Location Status */}
+                            {(activity.location_lat && activity.location_lng) ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                <div style={{ fontSize: '12px', color: '#059669', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  📍 
+                                  {activity.location_name ? (
+                                    <span>{activity.location_name}</span>
+                                  ) : (
+                                    <span>{activity.location_lat.toFixed(4)}, {activity.location_lng.toFixed(4)}</span>
+                                  )}
+                                  {activity.location_accuracy && (
+                                    <span style={{ fontSize: '11px', color: '#9ca3af' }}>
+                                      (±{Math.round(activity.location_accuracy)}m)
+                                    </span>
+                                  )}
+                                </div>
+                                <a
+                                  href={`https://www.google.com/maps?q=${activity.location_lat},${activity.location_lng}&z=18`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    padding: '2px 6px',
+                                    backgroundColor: '#10b981',
+                                    color: 'white',
+                                    textDecoration: 'none',
+                                    borderRadius: '4px',
+                                    fontSize: '10px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '2px',
+                                    fontWeight: '500'
+                                  }}
+                                  title="View location on Google Maps"
+                                >
+                                  🗺️ Map
+                                </a>
+                              </div>
+                            ) : (
+                              <div style={{ fontSize: '12px', color: '#dc2626', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                ⚠️ No location recorded
+                              </div>
+                            )}
+
+                            {/* Spray Application Details */}
+                            {activity.event_type === 'spray_application' && activity.spray_product && (
+                              <div style={{
+                                margin: '8px 0',
+                                padding: '10px',
+                                backgroundColor: '#fef3c7',
+                                border: '1px solid #fbbf24',
+                                borderRadius: '6px'
+                              }}>
+                                <div style={{ 
+                                  fontWeight: '600', 
+                                  fontSize: '13px', 
+                                  color: '#92400e',
+                                  marginBottom: '6px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px'
+                                }}>
+                                  🌿 Spray Application Details
+                                  {(() => {
+                                    const productInfo = sprayDatabase[activity.spray_product as keyof typeof sprayDatabase];
+                                    if (productInfo) {
+                                      const sprayDate = new Date(activity.event_date);
+                                      const today = new Date();
+                                      const hoursSinceSpray = Math.floor((today.getTime() - sprayDate.getTime()) / (1000 * 60 * 60));
+                                      
+                                      if (hoursSinceSpray < productInfo.reentryHours) {
+                                        return (
+                                          <span style={{
+                                            padding: '2px 6px',
+                                            backgroundColor: '#ef4444',
+                                            color: 'white',
+                                            borderRadius: '10px',
+                                            fontSize: '10px',
+                                            fontWeight: '700',
+                                            textTransform: 'uppercase'
+                                          }}>
+                                            RE-ENTRY ACTIVE
+                                          </span>
+                                        );
+                                      }
+                                    }
+                                    return null;
+                                  })()}
+                                </div>
+                                <div style={{ fontSize: '12px', color: '#78350f' }}>
+                                  <div style={{ marginBottom: '3px' }}>
+                                    <strong>Product:</strong> {activity.spray_product}
+                                    {activity.spray_quantity && activity.spray_unit && (
+                                      <span> • <strong>Rate:</strong> {activity.spray_quantity} {activity.spray_unit}</span>
+                                    )}
+                                  </div>
+                                  {activity.spray_target && (
+                                    <div style={{ marginBottom: '3px' }}>
+                                      <strong>Target:</strong> {activity.spray_target}
+                                    </div>
+                                  )}
+                                  {activity.spray_equipment && (
+                                    <div style={{ marginBottom: '3px' }}>
+                                      <strong>Equipment:</strong> {activity.spray_equipment}
+                                    </div>
+                                  )}
+                                  {activity.spray_conditions && (
+                                    <div style={{ marginBottom: '3px' }}>
+                                      <strong>Conditions:</strong> {activity.spray_conditions}
+                                    </div>
+                                  )}
+                                  {(() => {
+                                    const productInfo = sprayDatabase[activity.spray_product as keyof typeof sprayDatabase];
+                                    if (productInfo) {
+                                      return (
+                                        <div style={{ 
+                                          marginTop: '6px', 
+                                          padding: '4px 6px',
+                                          backgroundColor: '#fecaca',
+                                          borderRadius: '4px',
+                                          fontSize: '11px',
+                                          color: '#991b1b'
+                                        }}>
+                                          <strong>Safety:</strong> {productInfo.reentryHours}h re-entry, {productInfo.preharvestDays}d pre-harvest
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
+                                </div>
+                              </div>
+                            )}
+
+                            {activity.notes && (
+                              <div style={{ fontSize: '13px', color: '#4b5563', lineHeight: '1.4' }}>
+                                {activity.notes}
+                              </div>
                             )}
                           </div>
 
-                          {activity.end_date && (
-                            <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
-                              Duration: {activity.event_date} to {activity.end_date}
-                            </div>
-                          )}
-
-                          {activity.harvest_block && (
-                            <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
-                              Block: {activity.harvest_block}
-                            </div>
-                          )}
-
-                          {/* Location Status */}
-                          {(activity.location_lat && activity.location_lng) ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                              <div style={{ fontSize: '12px', color: '#059669', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                📍
-                                {activity.location_name ? (
-                                  <span>{activity.location_name}</span>
-                                ) : (
-                                  <span>{activity.location_lat.toFixed(4)}, {activity.location_lng.toFixed(4)}</span>
-                                )}
-                                {activity.location_accuracy && (
-                                  <span style={{ fontSize: '11px', color: '#9ca3af' }}>
-                                    (±{Math.round(activity.location_accuracy)}m)
-                                  </span>
-                                )}
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginLeft: '15px', gap: '6px' }}>
+                            {activity.created_at && (
+                              <div style={{ fontSize: '11px', color: '#9ca3af' }}>
+                                Logged: {new Date(activity.created_at).toLocaleDateString()}
                               </div>
-                              <a
-                                href={`https://www.google.com/maps?q=${activity.location_lat},${activity.location_lng}&z=18`}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                            )}
+
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              {/* Edit button */}
+                              <button
+                                onClick={() => startEditingActivity(activity)}
                                 style={{
-                                  padding: '2px 6px',
-                                  backgroundColor: '#10b981',
+                                  padding: '4px 8px',
+                                  backgroundColor: '#f59e0b',
                                   color: 'white',
-                                  textDecoration: 'none',
+                                  border: 'none',
                                   borderRadius: '4px',
-                                  fontSize: '10px',
+                                  cursor: 'pointer',
+                                  fontSize: '11px',
                                   display: 'flex',
                                   alignItems: 'center',
-                                  gap: '2px',
+                                  gap: '4px',
+                                  transition: 'all 0.2s ease',
                                   fontWeight: '500'
                                 }}
-                                title="View location on Google Maps"
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d97706'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f59e0b'}
+                                title={`Edit this ${style.label} event`}
                               >
-                                🗺️ Map
-                              </a>
+                                ✏️ Edit
+                              </button>
+
+                              {/* Delete button */}
+                              <button
+                                onClick={() => deleteActivity(activity.id, style.label)}
+                                style={{
+                                  padding: '4px 8px',
+                                  backgroundColor: '#ef4444',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontSize: '11px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  transition: 'all 0.2s ease'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
+                                title={`Delete this ${style.label} event`}
+                              >
+                                🗑️ Delete
+                              </button>
                             </div>
-                          ) : (
-                            <div style={{ fontSize: '12px', color: '#dc2626', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              ⚠️ No location recorded
-                            </div>
-                          )}
-
-                          {/* Spray Application Details */}
-                          {activity.event_type === 'spray_application' && activity.spray_product && (
-                            <div style={{
-                              margin: '8px 0',
-                              padding: '10px',
-                              backgroundColor: '#fef3c7',
-                              border: '1px solid #fbbf24',
-                              borderRadius: '6px'
-                            }}>
-                              <div style={{
-                                fontWeight: '600',
-                                fontSize: '13px',
-                                color: '#92400e',
-                                marginBottom: '6px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px'
-                              }}>
-                                🌿 Spray Application Details
-                                {(() => {
-                                  const productInfo = sprayDatabase[activity.spray_product as keyof typeof sprayDatabase];
-                                  if (productInfo) {
-                                    const sprayDate = new Date(activity.event_date);
-                                    const today = new Date();
-                                    const hoursSinceSpray = Math.floor((today.getTime() - sprayDate.getTime()) / (1000 * 60 * 60));
-
-                                    if (hoursSinceSpray < productInfo.reentryHours) {
-                                      return (
-                                        <span style={{
-                                          padding: '2px 6px',
-                                          backgroundColor: '#ef4444',
-                                          color: 'white',
-                                          borderRadius: '10px',
-                                          fontSize: '10px',
-                                          fontWeight: '700',
-                                          textTransform: 'uppercase'
-                                        }}>
-                                          RE-ENTRY ACTIVE
-                                        </span>
-                                      );
-                                    }
-                                  }
-                                  return null;
-                                })()}
-                              </div>
-                              <div style={{ fontSize: '12px', color: '#78350f' }}>
-                                <div style={{ marginBottom: '3px' }}>
-                                  <strong>Product:</strong> {activity.spray_product}
-                                  {activity.spray_quantity && activity.spray_unit && (
-                                    <span> • <strong>Rate:</strong> {activity.spray_quantity} {activity.spray_unit}</span>
-                                  )}
-                                </div>
-                                {activity.spray_target && (
-                                  <div style={{ marginBottom: '3px' }}>
-                                    <strong>Target:</strong> {activity.spray_target}
-                                  </div>
-                                )}
-                                {activity.spray_equipment && (
-                                  <div style={{ marginBottom: '3px' }}>
-                                    <strong>Equipment:</strong> {activity.spray_equipment}
-                                  </div>
-                                )}
-                                {activity.spray_conditions && (
-                                  <div style={{ marginBottom: '3px' }}>
-                                    <strong>Conditions:</strong> {activity.spray_conditions}
-                                  </div>
-                                )}
-                                {(() => {
-                                  const productInfo = sprayDatabase[activity.spray_product as keyof typeof sprayDatabase];
-                                  if (productInfo) {
-                                    return (
-                                      <div style={{
-                                        marginTop: '6px',
-                                        padding: '4px 6px',
-                                        backgroundColor: '#fecaca',
-                                        borderRadius: '4px',
-                                        fontSize: '11px',
-                                        color: '#991b1b'
-                                      }}>
-                                        <strong>Safety:</strong> {productInfo.reentryHours}h re-entry, {productInfo.preharvestDays}d pre-harvest
-                                      </div>
-                                    );
-                                  }
-                                  return null;
-                                })()}
-                              </div>
-                            </div>
-                          )}
-
-                          {activity.notes && (
-                            <div style={{ fontSize: '13px', color: '#4b5563', lineHeight: '1.4' }}>
-                              {activity.notes}
-                            </div>
-                          )}
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginLeft: '15px', gap: '6px' }}>
-                          {activity.created_at && (
-                            <div style={{ fontSize: '11px', color: '#9ca3af' }}>
-                              Logged: {new Date(activity.created_at).toLocaleDateString()}
-                            </div>
-                          )}
-
-                          <div style={{ display: 'flex', gap: '6px' }}>
-                            {/* Edit button */}
-                            <button
-                              onClick={() => startEditingActivity(activity)}
-                              style={{
-                                padding: '4px 8px',
-                                backgroundColor: '#f59e0b',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                fontSize: '11px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                transition: 'all 0.2s ease',
-                                fontWeight: '500'
-                              }}
-                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d97706'}
-                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f59e0b'}
-                              title={`Edit this ${style.label} event`}
-                            >
-                              ✏️ Edit
-                            </button>
-
-                            {/* Delete button */}
-                            <button
-                              onClick={() => deleteActivity(activity.id, style.label)}
-                              style={{
-                                padding: '4px 8px',
-                                backgroundColor: '#ef4444',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                fontSize: '11px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                transition: 'all 0.2s ease'
-                              }}
-                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
-                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
-                              title={`Delete this ${style.label} event`}
-                            >
-                              🗑️ Delete
-                            </button>
                           </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
         </div>
       )}
 
       {/* Generate AI Insights Button */}
       {data.length > 0 && !isGeneratingInsights && (
-        <div style={{
+        <div style={{ 
           marginTop: '30px',
-          marginBottom: '20px',
+          marginBottom: '20px', 
           textAlign: 'center'
         }}>
           <button
@@ -6386,11 +5961,11 @@ export function WeatherDashboard({
 
       {/* AI Insights Panel - Moved to Bottom */}
       {showAIPanel && (
-        <div style={{
+        <div style={{ 
           marginTop: '20px',
-          marginBottom: '20px',
-          padding: '20px',
-          backgroundColor: '#fefce8',
+          marginBottom: '20px', 
+          padding: '20px', 
+          backgroundColor: '#fefce8', 
           borderRadius: '12px',
           border: '1px solid #fde68a'
         }}>
@@ -6424,7 +5999,7 @@ export function WeatherDashboard({
           </div>
 
           {isGeneratingInsights ? (
-            <div style={{ textAlign: 'center' }}>
+            <div style={{ textAlign: 'center', padding: '20px' }}>
               <div style={{ marginBottom: '10px' }}>🤖 AI is analyzing your vineyard data...</div>
               <div style={{ fontSize: '14px', color: '#92400e' }}>
                 This may take a few seconds
@@ -6445,11 +6020,11 @@ export function WeatherDashboard({
                         const urgencyOrder = { high: 3, medium: 2, low: 1 };
                         const typeOrder = { harvest_timing: 4, action_required: 3, opportunity: 2, monitor: 1 };
 
-                        const urgencyDiff = (urgencyOrder[b.urgency as keyof typeof urgencyOrder] || 1) -
+                        const urgencyDiff = (urgencyOrder[b.urgency as keyof typeof urgencyOrder] || 1) - 
                                           (urgencyOrder[a.urgency as keyof typeof urgencyOrder] || 1);
                         if (urgencyDiff !== 0) return urgencyDiff;
 
-                        return (typeOrder[b.type as keyof typeof typeOrder] || 1) -
+                        return (typeOrder[b.type as keyof typeof typeOrder] || 1) - 
                                (typeOrder[a.type as keyof typeof typeOrder] || 1);
                       })
                       .map((insight) => {
@@ -6476,7 +6051,7 @@ export function WeatherDashboard({
                                   <div style={{ fontWeight: '600', fontSize: '15px', color: colors.text }}>
                                     {insight.title}
                                   </div>
-                                  <div style={{
+                                  <div style={{ 
                                     ...urgencyStyle.badge,
                                     padding: '2px 8px',
                                     borderRadius: '12px',
