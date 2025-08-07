@@ -201,6 +201,27 @@ export function WeatherDashboard({
   const [showCreateOrganization, setShowCreateOrganization] = useState(false);
   const [showCreateProperty, setShowCreateProperty] = useState(false);
 
+  // Load organizations on mount
+  useEffect(() => {
+    const loadOrganizations = async () => {
+      try {
+        const orgs = await getUserOrganizations();
+        setOrganizations(orgs);
+        if (orgs.length > 0) {
+          setSelectedOrganization(orgs[0]);
+          const props = await getOrganizationProperties(orgs[0].id);
+          setProperties(props);
+          if (props.length > 0) {
+            setSelectedProperty(props[0]);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading organizations:', error);
+      }
+    };
+    loadOrganizations();
+  }, []);
+
   // Location services functions
   const getCurrentLocation = async () => {
     setIsGettingLocation(true);
@@ -3207,6 +3228,18 @@ export function WeatherDashboard({
                   />
                 </div>
               </div>
+
+              {/* Block Selection - Required for certain event types */}
+              {selectedProperty && (activityForm.activity_type === 'Harvest' || activityForm.activity_type === 'Spray Application' || activityForm.activity_type === 'Canopy Management' || activityForm.activity_type === 'Irrigation' || activityForm.activity_type === 'Fertilization') && (
+                <div style={{ marginBottom: '16px' }}>
+                  <BlockSelector
+                    propertyId={selectedProperty.id}
+                    selectedBlockIds={selectedBlockIds}
+                    onBlocksChange={setSelectedBlockIds}
+                    disabled={isSavingActivity}
+                  />
+                </div>
+              )}
 
               {/* Event Type Specific Details */}
 
