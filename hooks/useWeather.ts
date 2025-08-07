@@ -1,14 +1,11 @@
 // hooks/useWeather.ts
-import { useState, useEffect, useCallback } from 'react';
-import { weatherService } from '../lib/weatherService';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { WeatherData } from '../lib/weather';
+import { WeatherService } from '../lib/weatherService';
 
-interface WeatherData {
-  date: string;
-  temp_high: number;
-  temp_low: number;
-  gdd: number;
-  rainfall: number;
-}
+// In-memory cache for weather data
+const weatherCache = new Map<string, { data: WeatherData[]; timestamp: number }>();
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
 interface WeatherError {
   code: string;
@@ -33,12 +30,10 @@ interface UseWeatherOptions {
 }
 
 export function useWeather(options: UseWeatherOptions) {
-  const [state, setState] = useState<UseWeatherState>({
-    data: [],
-    loading: false,
-    error: null,
-    lastUpdated: null
-  });
+  const [data, setData] = useState<WeatherData[]>([]);
+  const [loading, setIsLoading] = useState(false);
+  const [error, setError] = useState<WeatherError | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const { latitude, longitude, startDate, endDate, baseGDDTemp = 50, autoFetch = true } = options;
 
@@ -48,17 +43,34 @@ export function useWeather(options: UseWeatherOptions) {
     timestamp: new Date()
   });
 
-  const fetchWeatherData = useCallback(async () => {
-    // Don't fetch if coordinates are invalid
-    if (!latitude || !longitude) {
-      setState(prev => ({
-        ...prev,
-        error: createError('INVALID_COORDS', 'Latitude and longitude are required')
-      }));
-      return;
+  // Debounce timer ref
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const DEBOUNCE_DELAY = 500; // ms
+
+  const fetchWeatherData = useCallback(async (lat: number, lon: number, startDate?: string, endDate?: string) => {
+    // Create cache key
+    const cacheKey = `${lat.toFixed(4)}-${lon.toFixed(4)}-${startDate || 'null'}-${endDate || 'null'}`;
+    const cached = weatherCache.get(cacheKey);
+
+    // Return cached data if still valid
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      console.log('🚀 Using cached weather data');
+      setData(cached.data);
+      setIsLoading(false);
+      setLastUpdated(new Date(cached.timestamp)); // Reflect the cached timestamp
+      setError(null); // Clear any previous errors
+      return cached.data;
     }
 
-    setState(prev => ({ ...prev, loading: true, error: null }));
+    // Don't fetch if coordinates are invalid
+    if (!lat || !lon) {
+      setError(createError('INVALID_COORDS', 'Latitude and longitude are required'));
+      setIsLoading(false);
+      return [];
+    }
+
+    setIsLoading(true);
+    setError(null);
 
     try {
       let weatherData: WeatherData[];
@@ -66,29 +78,31 @@ export function useWeather(options: UseWeatherOptions) {
       if (startDate && endDate) {
         // Fetch specific date range
         weatherData = await weatherService.getHistoricalWeather(
-          latitude, 
-          longitude, 
-          startDate, 
-          endDate, 
+          lat,
+          lon,
+          startDate,
+          endDate,
           baseGDDTemp
         );
       } else {
         // Fetch current growing season
         weatherData = await weatherService.getCurrentSeasonWeather(
-          latitude, 
-          longitude, 
-          new Date().getFullYear(), 
+          lat,
+          lon,
+          new Date().getFullYear(),
           baseGDDTemp
         );
       }
 
-      setState(prev => ({
-        ...prev,
-        data: weatherData,
-        loading: false,
-        error: null,
-        lastUpdated: new Date()
-      }));
+      console.log('✅ Successfully processed', weatherData.length, 'weather data points');
+
+      // Cache the successful response
+      weatherCache.set(cacheKey, { data: weatherData, timestamp: Date.now() });
+
+      setData(weatherData);
+      setIsLoading(false);
+      setLastUpdated(new Date());
+      return weatherData;
 
     } catch (error) {
       let errorCode = 'UNKNOWN_ERROR';
@@ -96,7 +110,7 @@ export function useWeather(options: UseWeatherOptions) {
 
       if (error instanceof Error) {
         errorMessage = error.message;
-        
+
         // Categorize errors for farmers
         if (errorMessage.includes('Invalid coordinates')) {
           errorCode = 'INVALID_COORDS';
@@ -122,32 +136,58 @@ export function useWeather(options: UseWeatherOptions) {
       // Log the error for debugging
       console.error('Weather service error:', { errorCode, errorMessage });
 
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: createError(errorCode, errorMessage)
-      }));
+      setError(createError(errorCode, errorMessage));
+      setIsLoading(false);
+      return [];
     }
-  }, [latitude, longitude, startDate, endDate, baseGDDTemp]);
+  }, [baseGDDTemp]); // baseGDDTemp is now a dependency
 
-  const retry = useCallback(() => {
-    fetchWeatherData();
+  // Debounced fetch function
+  const debouncedFetchWeatherData = useCallback((lat: number, lon: number, startDate?: string, endDate?: string) => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      fetchWeatherData(lat, lon, startDate, endDate);
+    }, DEBOUNCE_DELAY);
   }, [fetchWeatherData]);
 
+  const retry = useCallback(() => {
+    debouncedFetchWeatherData(latitude, longitude, startDate, endDate);
+  }, [debouncedFetchWeatherData, latitude, longitude, startDate, endDate]);
+
   const clearError = useCallback(() => {
-    setState(prev => ({ ...prev, error: null }));
+    setError(null);
   }, []);
 
-  // Auto-fetch on mount and when dependencies change
+  // Auto-fetch on mount and when dependencies change, using the debounced function
   useEffect(() => {
     if (autoFetch && latitude && longitude) {
-      fetchWeatherData();
+      debouncedFetchWeatherData(latitude, longitude, startDate, endDate);
     }
-  }, [autoFetch, fetchWeatherData]);
+    // Cleanup the timer on unmount
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [autoFetch, debouncedFetchWeatherData, latitude, longitude, startDate, endDate]);
+
+  // Refetch function that bypasses debounce
+  const refetch = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    fetchWeatherData(latitude, longitude, startDate, endDate);
+  }, [fetchWeatherData, latitude, longitude, startDate, endDate]);
+
 
   return {
-    ...state,
-    refetch: fetchWeatherData,
+    data,
+    loading,
+    error,
+    lastUpdated,
+    refetch,
     retry,
     clearError
   };
@@ -161,7 +201,7 @@ export function useWeatherConnection() {
   const testConnection = useCallback(async () => {
     setTesting(true);
     try {
-      const result = await weatherService.testConnection();
+      const result = await WeatherService.testConnection(); // Use WeatherService directly
       setIsConnected(result);
       if (!result) {
         console.warn('❌ Weather service connection failed - check API key configuration');
