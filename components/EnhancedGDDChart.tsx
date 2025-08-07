@@ -186,27 +186,22 @@ export function EnhancedGDDChart({
   const getDisplayedEvents = () => {
     if (!weatherData.length || !phenologyEvents.length) return [];
 
-    const startDate = weatherData[0]?.date;
-
-    // Calculate chart date range - use actual weather data range, don't extend to today
+    // Calculate chart date range - use actual weather data range
     const chartStartDate = chartData.length > 0 ? chartData[0].date : '';
     const chartEndDate = chartData.length > 0 ? chartData[chartData.length - 1].date : '';
 
-    // Use the actual chart end date, not extended to today
-    const actualEndDate = chartEndDate;
-
-    console.log('📊 Chart date range:', { startDate: chartStartDate, endDate: chartEndDate, actualEndDate });
+    console.log('📊 Chart date range:', { startDate: chartStartDate, endDate: chartEndDate });
 
     return phenologyEvents
       .filter(event => {
         // Filter by date range - be more inclusive with date comparison
         const eventDate = event.event_date;
-        const isInRange = eventDate >= chartStartDate && eventDate <= actualEndDate;
-        console.log('📊 Event date check:', { eventDate, startDate: chartStartDate, endDate: actualEndDate, isInRange });
+        const isInRange = eventDate >= chartStartDate && eventDate <= chartEndDate;
+        console.log('📊 Event date check:', { eventDate, startDate: chartStartDate, endDate: chartEndDate, isInRange });
 
         if (!isInRange) return false;
 
-        // Apply event type filter if active
+        // Apply event type filter if active - if no filter is set, show all events
         if (eventTypeFilter.length > 0) {
           let eventType = event.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
 
@@ -217,7 +212,7 @@ export function EnhancedGDDChart({
           return eventTypeFilter.includes(eventType);
         }
 
-        return true;
+        return true; // Show all events when no filter is applied
       })
       .map(event => {
         // Calculate cumulative GDD at event date
@@ -753,16 +748,14 @@ export function EnhancedGDDChart({
             const chartStartDate = chartData.length > 0 ? chartData[0].date : '';
             const chartEndDate = chartData.length > 0 ? chartData[chartData.length - 1].date : '';
 
-            // Use the actual chart end date from weather data
-            const actualEndDate = chartEndDate;
-
             const eventDate = event.event_date;
-            const isInDateRange = eventDate >= chartStartDate && eventDate <= actualEndDate;
+            const isInDateRange = eventDate >= chartStartDate && eventDate <= chartEndDate;
 
             if (!isInDateRange) return false;
 
-            // Apply event type filter
+            // Apply event type filter - show all events when no filter is set
             if (eventTypeFilter.length === 0) return true;
+            
             let eventType = event.event_type?.toLowerCase().replace(/\s+/g, '_') || 'other';
 
             // Handle any legacy mapping issues

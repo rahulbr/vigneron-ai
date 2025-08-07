@@ -638,7 +638,7 @@ export async function getPhenologyEvents(vineyardId: string): Promise<PhenologyE
 
     let query = supabase
       .from('phenology_events')
-      .select('id,vineyard_id,user_id,event_type,event_date,end_date,notes,harvest_block,is_actual,created_at,location_lat,location_lng,location_name')
+      .select('id,vineyard_id,user_id,event_type,event_date,end_date,notes,harvest_block,created_at,location_lat,location_lng,location_name')
       .eq('vineyard_id', validVineyardId)
       .order('event_date', { ascending: true });
 
