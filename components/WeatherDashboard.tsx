@@ -1,6 +1,6 @@
 // components/WeatherDashboard.tsx - Phase 1: Tab-Based Navigation Implementation
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useWeather, useWeatherConnection } from '../hooks/useWeather';
 import { EnhancedGDDChart } from './EnhancedGDDChart';
 import { googleGeocodingService, GeocodeResult } from '../lib/googleGeocodingService';
@@ -370,6 +370,22 @@ export function WeatherDashboard({
     }
     setShowReportsModal(true);
   };
+
+  // Stable form handlers to prevent cursor jumping
+  const handleNotesChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setActivityForm(prev => ({ ...prev, notes: value }));
+  }, []);
+
+  const handleActivityTypeChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setActivityForm(prev => ({ ...prev, activity_type: value }));
+  }, []);
+
+  const handleStartDateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setActivityForm(prev => ({ ...prev, start_date: value }));
+  }, []);
 
   const saveActivity = async () => {
     if (!vineyardId || !activityForm.activity_type || !activityForm.start_date) {
@@ -1161,86 +1177,193 @@ export function WeatherDashboard({
         </p>
       </div>
 
-      {/* Quick Action Buttons */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
-        gap: '12px',
-        marginBottom: '24px'
-      }}>
-        {[
-          { type: 'Spray Application', emoji: '🌿', color: '#f59e0b', bg: '#fef3c7' },
-          { type: 'Irrigation', emoji: '💧', color: '#06b6d4', bg: '#e0f7fa' },
-          { type: 'Harvest', emoji: '🍷', color: '#ef4444', bg: '#fef2f2' },
-          { type: 'Scouting', emoji: '🔍', color: '#059669', bg: '#f0f9ff' }
-        ].map((eventType) => (
-          <button
-            key={eventType.type}
-            onClick={() => {
-              setActivityForm(prev => ({ 
-                ...prev, 
-                activity_type: eventType.type,
-                start_date: new Date().toISOString().split('T')[0]
-              }));
-              setShowActivityForm(true);
-            }}
-            style={{
-              padding: '16px',
-              backgroundColor: eventType.bg,
-              border: `2px solid ${eventType.color}`,
-              borderRadius: '12px',
-              cursor: 'pointer',
-              textAlign: 'center',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          >
-            <div style={{ fontSize: '24px', marginBottom: '8px' }}>{eventType.emoji}</div>
-            <div style={{ fontSize: '14px', fontWeight: '600', color: eventType.color }}>
-              {eventType.type}
-            </div>
-          </button>
-        ))}
+      {/* Enhanced Event Type Grid - All Major Types */}
+      <div style={{ marginBottom: '24px' }}>
+        <h4 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600', color: '#374151' }}>
+          🍇 Phenology Events
+        </h4>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', 
+          gap: '8px',
+          marginBottom: '20px'
+        }}>
+          {[
+            { type: 'Bud Break', emoji: '🌱', color: '#22c55e', bg: '#f0fdf4' },
+            { type: 'Bloom', emoji: '🌸', color: '#ec4899', bg: '#fdf2f8' },
+            { type: 'Fruit Set', emoji: '🍇', color: '#8b5cf6', bg: '#faf5ff' },
+            { type: 'Veraison', emoji: '🍷', color: '#dc2626', bg: '#fef2f2' }
+          ].map((eventType) => (
+            <button
+              key={eventType.type}
+              onClick={() => {
+                setActivityForm(prev => ({ 
+                  ...prev, 
+                  activity_type: eventType.type,
+                  start_date: new Date().toISOString().split('T')[0]
+                }));
+                setShowActivityForm(true);
+              }}
+              style={{
+                padding: '12px 8px',
+                backgroundColor: eventType.bg,
+                border: `1px solid ${eventType.color}`,
+                borderRadius: '8px',
+                cursor: 'pointer',
+                textAlign: 'center',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              <div style={{ fontSize: '20px', marginBottom: '4px' }}>{eventType.emoji}</div>
+              <div style={{ fontSize: '12px', fontWeight: '600', color: eventType.color }}>
+                {eventType.type}
+              </div>
+            </button>
+          ))}
+        </div>
+
+        <h4 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600', color: '#374151' }}>
+          🌿 Management Activities
+        </h4>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', 
+          gap: '8px',
+          marginBottom: '20px'
+        }}>
+          {[
+            { type: 'Spray Application', emoji: '🌿', color: '#f59e0b', bg: '#fef3c7' },
+            { type: 'Irrigation', emoji: '💧', color: '#06b6d4', bg: '#e0f7fa' },
+            { type: 'Fertilization', emoji: '🌱', color: '#16a34a', bg: '#f0fdf4' },
+            { type: 'Pruning', emoji: '✂️', color: '#ea580c', bg: '#fff7ed' }
+          ].map((eventType) => (
+            <button
+              key={eventType.type}
+              onClick={() => {
+                setActivityForm(prev => ({ 
+                  ...prev, 
+                  activity_type: eventType.type,
+                  start_date: new Date().toISOString().split('T')[0]
+                }));
+                setShowActivityForm(true);
+              }}
+              style={{
+                padding: '12px 8px',
+                backgroundColor: eventType.bg,
+                border: `1px solid ${eventType.color}`,
+                borderRadius: '8px',
+                cursor: 'pointer',
+                textAlign: 'center',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              <div style={{ fontSize: '20px', marginBottom: '4px' }}>{eventType.emoji}</div>
+              <div style={{ fontSize: '12px', fontWeight: '600', color: eventType.color }}>
+                {eventType.type}
+              </div>
+            </button>
+          ))}
+        </div>
+
+        <h4 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600', color: '#374151' }}>
+          📊 Monitoring & Other
+        </h4>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', 
+          gap: '8px',
+          marginBottom: '20px'
+        }}>
+          {[
+            { type: 'Scouting', emoji: '🔍', color: '#059669', bg: '#f0f9ff' },
+            { type: 'Harvest', emoji: '🍇', color: '#dc2626', bg: '#fef2f2' },
+            { type: 'Soil Work', emoji: '🌍', color: '#ca8a04', bg: '#fefce8' },
+            { type: 'Other', emoji: '📝', color: '#6b7280', bg: '#f8fafc' }
+          ].map((eventType) => (
+            <button
+              key={eventType.type}
+              onClick={() => {
+                setActivityForm(prev => ({ 
+                  ...prev, 
+                  activity_type: eventType.type,
+                  start_date: new Date().toISOString().split('T')[0]
+                }));
+                setShowActivityForm(true);
+              }}
+              style={{
+                padding: '12px 8px',
+                backgroundColor: eventType.bg,
+                border: `1px solid ${eventType.color}`,
+                borderRadius: '8px',
+                cursor: 'pointer',
+                textAlign: 'center',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              <div style={{ fontSize: '20px', marginBottom: '4px' }}>{eventType.emoji}</div>
+              <div style={{ fontSize: '12px', fontWeight: '600', color: eventType.color }}>
+                {eventType.type}
+              </div>
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* All Event Types Button */}
+      {/* Custom Event Button (for edge cases) */}
       <button
         onClick={() => setShowActivityForm(true)}
         style={{
           width: '100%',
-          padding: '16px',
-          backgroundColor: '#22c55e',
-          color: 'white',
-          border: 'none',
-          borderRadius: '12px',
+          padding: '12px',
+          backgroundColor: '#f3f4f6',
+          color: '#374151',
+          border: '1px solid #d1d5db',
+          borderRadius: '8px',
           cursor: 'pointer',
-          fontSize: '16px',
-          fontWeight: '600',
+          fontSize: '14px',
+          fontWeight: '500',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '8px',
+          gap: '6px',
           marginBottom: '24px',
           transition: 'all 0.2s ease'
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = '#16a34a';
+          e.currentTarget.style.backgroundColor = '#e5e7eb';
           e.currentTarget.style.transform = 'translateY(-1px)';
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor = '#22c55e';
+          e.currentTarget.style.backgroundColor = '#f3f4f6';
           e.currentTarget.style.transform = 'translateY(0)';
         }}
       >
-        <Plus size={20} />
-        Log Other Event Types
+        <Plus size={16} />
+        Custom Event / Advanced Form
       </button>
 
       {/* Event Form */}
@@ -1279,7 +1402,7 @@ export function WeatherDashboard({
               </label>
               <select
                 value={activityForm.activity_type}
-                onChange={(e) => setActivityForm(prev => ({ ...prev, activity_type: e.target.value }))}
+                onChange={handleActivityTypeChange}
                 style={{
                   width: '100%',
                   padding: '12px',
@@ -1304,7 +1427,7 @@ export function WeatherDashboard({
               <input
                 type="date"
                 value={activityForm.start_date}
-                onChange={(e) => setActivityForm(prev => ({ ...prev, start_date: e.target.value }))}
+                onChange={handleStartDateChange}
                 style={{
                   width: '100%',
                   padding: '12px',
@@ -2373,7 +2496,7 @@ export function WeatherDashboard({
             </label>
             <textarea
               value={activityForm.notes}
-              onChange={(e) => setActivityForm(prev => ({ ...prev, notes: e.target.value }))}
+              onChange={handleNotesChange}
               placeholder="Add details about this event..."
               style={{
                 width: '100%',
