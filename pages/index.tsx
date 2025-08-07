@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import WeatherDashboard from '../components/WeatherDashboard';
+import { WeatherDashboard } from '../components/WeatherDashboard';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
