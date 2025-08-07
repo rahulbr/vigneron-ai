@@ -1240,7 +1240,7 @@ export function WeatherDashboard({
         }}
       >
         <Plus size={20} />
-        View All Event Types
+        Log Other Event Types
       </button>
 
       {/* Event Form */}
