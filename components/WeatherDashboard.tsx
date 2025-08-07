@@ -8,6 +8,8 @@ import { openaiService, VineyardContext, AIInsight } from '../lib/openaiService'
 import { supabase } from '../lib/supabase'; // Added for user authentication
 import { AlertCircle, RefreshCw, MapPin, Calendar, Thermometer, CloudRain, TrendingUp, Search, Brain, Lightbulb, AlertTriangle, CheckCircle, Info, FileText } from 'lucide-react';
 import { ReportsModal } from './ReportsModal';
+import { savePhenologyEvent, PhenologyEvent, saveWeatherData, getWeatherData, getUserOrganizations, getOrganizationProperties, getPropertyBlocks, createOrganization, createProperty, Organization, Property, Block } from '../lib/supabase';
+import BlockSelector from './BlockSelector';
 
 interface WeatherDashboardProps {
   vineyardId?: string;
@@ -189,6 +191,15 @@ export function WeatherDashboard({
     scout_action: ''
   });
   const [isUpdatingActivity, setIsUpdatingActivity] = useState(false);
+
+  // Organization/Property/Block state
+  const [organizations, setOrganizations] = useState<(Organization & { role: string })[]>([]);
+  const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const [selectedBlockIds, setSelectedBlockIds] = useState<string[]>([]);
+  const [showCreateOrganization, setShowCreateOrganization] = useState(false);
+  const [showCreateProperty, setShowCreateProperty] = useState(false);
 
   // Location services functions
   const getCurrentLocation = async () => {
@@ -759,19 +770,15 @@ export function WeatherDashboard({
       alert('Please fill in activity type and start date');
       return;
     }
+    if (activityForm.activity_type === 'Harvest' && selectedBlockIds.length === 0) {
+      alert('Please select at least one block for Harvest events.');
+      return;
+    }
+
 
     setIsSavingActivity(true);
     try {
       console.log('💾 Saving activity:', activityForm);
-
-      const { savePhenologyEvent } = await import('../lib/supabase');
-
-      const locationData = (activityForm.location_lat && activityForm.location_lng) ? {
-        latitude: activityForm.location_lat,
-        longitude: activityForm.location_lng,
-        locationName: activityForm.location_name,
-        accuracy: activityForm.location_accuracy || undefined
-      } : undefined;
 
       // Prepare event type specific data
       let sprayData = undefined;
@@ -818,7 +825,7 @@ export function WeatherDashboard({
           brix: activityForm.harvest_brix,
           ph: activityForm.harvest_ph,
           ta: activityForm.harvest_ta,
-          block: activityForm.harvest_block
+          block: activityForm.harvest_block // This is now handled by selectedBlockIds
         };
       }
 
@@ -841,13 +848,14 @@ export function WeatherDashboard({
       }
 
       await savePhenologyEvent(
-        vineyardId,
+        vineyardId!,
         activityForm.activity_type.toLowerCase().replace(' ', '_'),
         activityForm.start_date,
         activityForm.notes,
         activityForm.end_date || undefined,
-        activityForm.harvest_block || undefined, // harvestBlock for harvest events
-        locationData,
+        activityForm.harvest_block || undefined, // This field might be redundant now with selectedBlockIds
+        selectedBlockIds, // Add selected blocks
+        { latitude: latitude, longitude: longitude, locationName: customLocation },
         sprayData,
         irrigationData,
         fertilizationData,
@@ -856,7 +864,7 @@ export function WeatherDashboard({
         scoutData
       );
 
-      // Reset form
+      // Reset form and state
       setActivityForm({
         activity_type: '',
         start_date: new Date().toISOString().split('T')[0],
@@ -886,7 +894,7 @@ export function WeatherDashboard({
         harvest_brix: '',
         harvest_ph: '',
         harvest_ta: '',
-        harvest_block: '',
+        harvest_block: '', // Reset to empty
         canopy_activity: '',
         canopy_intensity: '',
         canopy_side: '',
@@ -896,6 +904,7 @@ export function WeatherDashboard({
         scout_distribution: '',
         scout_action: ''
       });
+      setSelectedBlockIds([]); // Reset selected blocks
       setShowActivityForm(false);
 
       // Reload activities
@@ -998,6 +1007,13 @@ export function WeatherDashboard({
       scout_action: activity.scout_action || ''
     });
 
+    // If it's a harvest event, pre-select the blocks
+    if (activity.event_type === 'harvest' && activity.blocks && Array.isArray(activity.blocks)) {
+      setSelectedBlockIds(activity.blocks.map((block: any) => block.id));
+    } else {
+      setSelectedBlockIds([]); // Clear block selection if not a harvest event or no blocks are associated
+    }
+
     console.log('✏️ Edit form populated with values:', {
       activity_type: displayEventType,
       start_date: activity.event_date,
@@ -1055,12 +1071,17 @@ export function WeatherDashboard({
       scout_distribution: '',
       scout_action: ''
     });
+    setSelectedBlockIds([]); // Clear selected blocks when cancelling edit
   };
 
   // Update an activity
   const updateActivity = async (activityId: string) => {
     if (!vineyardId || !editActivityForm.activity_type || !editActivityForm.start_date) {
       alert('Please fill in activity type and start date');
+      return;
+    }
+    if (editActivityForm.activity_type === 'Harvest' && selectedBlockIds.length === 0) {
+      alert('Please select at least one block for Harvest events.');
       return;
     }
 
@@ -1103,7 +1124,7 @@ export function WeatherDashboard({
         event_date: editActivityForm.start_date,
         notes: editActivityForm.notes || '',
         end_date: editActivityForm.end_date || null,
-        harvest_block: editActivityForm.harvest_block || null
+        // harvest_block: editActivityForm.harvest_block || null // This field might be redundant now with selectedBlockIds
       };
 
       // Add location data if provided
@@ -1170,14 +1191,14 @@ export function WeatherDashboard({
         updateData.harvest_brix = editActivityForm.harvest_brix || null;
         updateData.harvest_ph = editActivityForm.harvest_ph || null;
         updateData.harvest_ta = editActivityForm.harvest_ta || null;
-        updateData.harvest_block = editActivityForm.harvest_block || null;
+        // updateData.harvest_block = editActivityForm.harvest_block || null; // This field might be redundant now with selectedBlockIds
       } else {
         updateData.harvest_yield = null;
         updateData.harvest_unit = null;
         updateData.harvest_brix = null;
         updateData.harvest_ph = null;
         updateData.harvest_ta = null;
-        updateData.harvest_block = null;
+        // updateData.harvest_block = null;
       }
 
       if (editActivityForm.activity_type === 'Canopy Management') {
@@ -1203,6 +1224,9 @@ export function WeatherDashboard({
         updateData.scout_distribution = null;
         updateData.scout_action = null;
       }
+
+      // Update the blocks association
+      updateData.blocks = selectedBlockIds.length > 0 ? selectedBlockIds : null;
 
       await updatePhenologyEvent(activityId, updateData);
 

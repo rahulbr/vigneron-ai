@@ -60,6 +60,49 @@ export interface UserProfile {
   created_at?: string
 }
 
+export interface Organization {
+  id: string
+  name: string
+  description?: string
+  created_at: string
+  updated_at?: string
+}
+
+export interface Property {
+  id: string
+  organization_id: string
+  name: string
+  location?: string
+  latitude?: number
+  longitude?: number
+  property_type: string
+  created_at: string
+  updated_at?: string
+}
+
+export interface Block {
+  id: string
+  property_id: string
+  name: string
+  varietal?: string
+  planted_year?: number
+  area_acres?: number
+  row_count?: number
+  vine_spacing?: number
+  row_spacing?: number
+  notes?: string
+  created_at: string
+  updated_at?: string
+}
+
+export interface UserOrganization {
+  id: string
+  user_id: string
+  organization_id: string
+  role: string
+  created_at: string
+}
+
 // ========================================
 // VINEYARD OPERATIONS (YOUR EXISTING + ENHANCED)
 // ========================================
@@ -397,6 +440,7 @@ export async function savePhenologyEvent(
   notes: string = '', 
   endDate?: string, 
   harvestBlock?: string,
+  blockIds?: string[], // NEW: Array of block IDs
   locationData?: {
     latitude?: number;
     longitude?: number;
@@ -614,8 +658,16 @@ export async function savePhenologyEvent(
       throw new Error('Failed to save phenology event');
     }
 
-    console.log('✅ Phenology event saved successfully:', data[0]);
-    return data[0];
+    const savedEvent = data[0];
+    
+    // Associate event with blocks if provided
+    if (blockIds && blockIds.length > 0) {
+      await associateEventWithBlocks(savedEvent.id, blockIds);
+      console.log('✅ Event associated with blocks:', blockIds);
+    }
+
+    console.log('✅ Phenology event saved successfully:', savedEvent);
+    return savedEvent;
   } catch (error) {
     console.error('❌ Failed to save phenology event:', error);
     throw error;
@@ -758,6 +810,227 @@ export function validateAndFixVineyardId(vineyardId: string): string {
   // Generate a new UUID if the provided ID is not valid
   console.log('⚠️ Invalid vineyard ID detected, generating new UUID:', vineyardId);
   return crypto.randomUUID();
+}
+
+// ========================================
+// ORGANIZATION MANAGEMENT FUNCTIONS
+// ========================================
+
+export async function getUserOrganizations(): Promise<(Organization & { role: string })[]> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return []
+
+    const { data, error } = await supabase
+      .from('user_organizations')
+      .select(`
+        role,
+        organizations (
+          id,
+          name,
+          description,
+          created_at,
+          updated_at
+        )
+      `)
+      .eq('user_id', user.id)
+
+    if (error) throw error
+
+    return data?.map(item => ({
+      ...item.organizations,
+      role: item.role
+    })) || []
+  } catch (error) {
+    console.error('Error fetching user organizations:', error)
+    return []
+  }
+}
+
+export async function createOrganization(name: string, description?: string): Promise<Organization> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Not authenticated')
+
+    const { data: orgData, error: orgError } = await supabase
+      .from('organizations')
+      .insert([{ name, description }])
+      .select()
+      .single()
+
+    if (orgError) throw orgError
+
+    // Add user as admin of the organization
+    const { error: userOrgError } = await supabase
+      .from('user_organizations')
+      .insert([{
+        user_id: user.id,
+        organization_id: orgData.id,
+        role: 'admin'
+      }])
+
+    if (userOrgError) throw userOrgError
+
+    return orgData
+  } catch (error) {
+    console.error('Error creating organization:', error)
+    throw error
+  }
+}
+
+export async function getOrganizationProperties(organizationId: string): Promise<Property[]> {
+  try {
+    const { data, error } = await supabase
+      .from('properties')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .order('name')
+
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error('Error fetching properties:', error)
+    return []
+  }
+}
+
+export async function createProperty(
+  organizationId: string,
+  name: string,
+  location?: string,
+  latitude?: number,
+  longitude?: number,
+  propertyType: string = 'vineyard'
+): Promise<Property> {
+  try {
+    const { data, error } = await supabase
+      .from('properties')
+      .insert([{
+        organization_id: organizationId,
+        name,
+        location,
+        latitude,
+        longitude,
+        property_type: propertyType
+      }])
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('Error creating property:', error)
+    throw error
+  }
+}
+
+export async function getPropertyBlocks(propertyId: string): Promise<Block[]> {
+  try {
+    const { data, error } = await supabase
+      .from('blocks')
+      .select('*')
+      .eq('property_id', propertyId)
+      .order('name')
+
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error('Error fetching blocks:', error)
+    return []
+  }
+}
+
+export async function createBlock(
+  propertyId: string,
+  name: string,
+  varietal?: string,
+  plantedYear?: number,
+  areaAcres?: number,
+  rowCount?: number,
+  vineSpacing?: number,
+  rowSpacing?: number,
+  notes?: string
+): Promise<Block> {
+  try {
+    const { data, error } = await supabase
+      .from('blocks')
+      .insert([{
+        property_id: propertyId,
+        name,
+        varietal,
+        planted_year: plantedYear,
+        area_acres: areaAcres,
+        row_count: rowCount,
+        vine_spacing: vineSpacing,
+        row_spacing: rowSpacing,
+        notes
+      }])
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('Error creating block:', error)
+    throw error
+  }
+}
+
+export async function associateEventWithBlocks(eventId: string, blockIds: string[]): Promise<void> {
+  try {
+    // Clear existing associations
+    await supabase
+      .from('event_blocks')
+      .delete()
+      .eq('event_id', eventId)
+
+    // Add new associations
+    if (blockIds.length > 0) {
+      const associations = blockIds.map(blockId => ({
+        event_id: eventId,
+        block_id: blockId
+      }))
+
+      const { error } = await supabase
+        .from('event_blocks')
+        .insert(associations)
+
+      if (error) throw error
+    }
+  } catch (error) {
+    console.error('Error associating event with blocks:', error)
+    throw error
+  }
+}
+
+export async function getEventBlocks(eventId: string): Promise<Block[]> {
+  try {
+    const { data, error } = await supabase
+      .from('event_blocks')
+      .select(`
+        blocks (
+          id,
+          property_id,
+          name,
+          varietal,
+          planted_year,
+          area_acres,
+          row_count,
+          vine_spacing,
+          row_spacing,
+          notes,
+          created_at,
+          updated_at
+        )
+      `)
+      .eq('event_id', eventId)
+
+    if (error) throw error
+    return data?.map(item => item.blocks) || []
+  } catch (error) {
+    console.error('Error fetching event blocks:', error)
+    return []
+  }
 }
 
 // ========================================
