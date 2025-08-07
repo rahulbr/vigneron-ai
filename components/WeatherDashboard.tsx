@@ -1,6 +1,6 @@
 // components/WeatherDashboard.tsx - Phase 1: Tab-Based Navigation Implementation
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { useWeather, useWeatherConnection } from '../hooks/useWeather';
 import { EnhancedGDDChart } from './EnhancedGDDChart';
 import { googleGeocodingService, GeocodeResult } from '../lib/googleGeocodingService';
@@ -386,6 +386,26 @@ export function WeatherDashboard({
     const value = e.target.value;
     setActivityForm(prev => ({ ...prev, start_date: value }));
   }, []);
+
+  // Memoized form handlers for other fields
+  const handleFormFieldChange = useCallback((field: string) => {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+      const value = e.target.value;
+      setActivityForm(prev => ({ ...prev, [field]: value }));
+    };
+  }, []);
+
+  // Memoized handlers
+  const handleSprayProductChange = useMemo(() => handleFormFieldChange('spray_product'), [handleFormFieldChange]);
+  const handleSprayQuantityChange = useMemo(() => handleFormFieldChange('spray_quantity'), [handleFormFieldChange]);
+  const handleSprayUnitChange = useMemo(() => handleFormFieldChange('spray_unit'), [handleFormFieldChange]);
+  const handleSprayTargetChange = useMemo(() => handleFormFieldChange('spray_target'), [handleFormFieldChange]);
+  const handleSprayConditionsChange = useMemo(() => handleFormFieldChange('spray_conditions'), [handleFormFieldChange]);
+  const handleSprayEquipmentChange = useMemo(() => handleFormFieldChange('spray_equipment'), [handleFormFieldChange]);
+  const handleIrrigationAmountChange = useMemo(() => handleFormFieldChange('irrigation_amount'), [handleFormFieldChange]);
+  const handleIrrigationUnitChange = useMemo(() => handleFormFieldChange('irrigation_unit'), [handleFormFieldChange]);
+  const handleIrrigationMethodChange = useMemo(() => handleFormFieldChange('irrigation_method'), [handleFormFieldChange]);
+  const handleIrrigationDurationChange = useMemo(() => handleFormFieldChange('irrigation_duration'), [handleFormFieldChange]);
 
   const saveActivity = async () => {
     if (!vineyardId || !activityForm.activity_type || !activityForm.start_date) {
@@ -785,7 +805,7 @@ export function WeatherDashboard({
 
   const phenologyPredictions = useMemo(getPhenologyPredictions, [data, activities, totalGDD]);
 
-  const DashboardTab = React.memo(() => (
+  const DashboardTab = memo(() => (
     <div style={{ padding: '0 1rem 1rem 1rem' }}>
       {/* Safety Alerts */}
       {safetyAlerts.length > 0 && (
@@ -1165,7 +1185,7 @@ export function WeatherDashboard({
     </div>
   ));
 
-  const LogEventTab = React.memo(() => {
+  const LogEventTab = memo(() => {
     return (
     <div style={{ padding: '0 1rem 1rem 1rem' }}>
       <div style={{ marginBottom: '20px' }}>
@@ -1463,7 +1483,7 @@ export function WeatherDashboard({
                   <select
                     key="spray-product-select"
                     value={activityForm.spray_product}
-                    onChange={(e) => setActivityForm(prev => ({ ...prev, spray_product: e.target.value }))}
+                    onChange={handleSprayProductChange}
                     style={{
                       width: '100%',
                       padding: '8px 12px',
@@ -1507,7 +1527,7 @@ export function WeatherDashboard({
                     key="spray-quantity-input"
                     type="text"
                     value={activityForm.spray_quantity}
-                    onChange={(e) => setActivityForm(prev => ({ ...prev, spray_quantity: e.target.value }))}
+                    onChange={handleSprayQuantityChange}
                     placeholder="e.g. 2.5"
                     style={{
                       width: '100%',
@@ -1526,7 +1546,7 @@ export function WeatherDashboard({
                   <select
                     key="spray-unit-select"
                     value={activityForm.spray_unit}
-                    onChange={(e) => setActivityForm(prev => ({ ...prev, spray_unit: e.target.value }))}
+                    onChange={handleSprayUnitChange}
                     style={{
                       width: '100%',
                       padding: '8px 12px',
@@ -1554,7 +1574,7 @@ export function WeatherDashboard({
                   <input
                     type="text"
                     value={activityForm.spray_target}
-                    onChange={(e) => setActivityForm(prev => ({ ...prev, spray_target: e.target.value }))}
+                    onChange={handleSprayTargetChange}
                     placeholder="e.g. Powdery mildew, aphids"
                     style={{
                       width: '100%',
@@ -1572,7 +1592,7 @@ export function WeatherDashboard({
                   </label>
                   <select
                     value={activityForm.spray_equipment}
-                    onChange={(e) => setActivityForm(prev => ({ ...prev, spray_equipment: e.target.value }))}
+                    onChange={handleSprayEquipmentChange}
                     style={{
                       width: '100%',
                       padding: '8px 12px',
@@ -1600,7 +1620,7 @@ export function WeatherDashboard({
                 </label>
                 <textarea
                   value={activityForm.spray_conditions}
-                  onChange={(e) => setActivityForm(prev => ({ ...prev, spray_conditions: e.target.value }))}
+                  onChange={handleSprayConditionsChange}
                   placeholder="e.g. Temp: 68°F, Wind: 3mph N, Humidity: 45%, Clear skies"
                   style={{
                     width: '100%',
@@ -1638,7 +1658,7 @@ export function WeatherDashboard({
                     key="irrigation-amount-input"
                     type="text"
                     value={activityForm.irrigation_amount}
-                    onChange={(e) => setActivityForm(prev => ({ ...prev, irrigation_amount: e.target.value }))}
+                    onChange={handleIrrigationAmountChange}
                     placeholder="e.g. 1.5"
                     style={{
                       width: '100%',
@@ -1656,7 +1676,7 @@ export function WeatherDashboard({
                   </label>
                   <select
                     value={activityForm.irrigation_unit}
-                    onChange={(e) => setActivityForm(prev => ({ ...prev, irrigation_unit: e.target.value }))}
+                    onChange={handleIrrigationUnitChange}
                     style={{
                       width: '100%',
                       padding: '8px 12px',
@@ -1682,7 +1702,7 @@ export function WeatherDashboard({
                   </label>
                   <select
                     value={activityForm.irrigation_method}
-                    onChange={(e) => setActivityForm(prev => ({ ...prev, irrigation_method: e.target.value }))}
+                    onChange={handleIrrigationMethodChange}
                     style={{
                       width: '100%',
                       padding: '8px 12px',
@@ -1710,7 +1730,7 @@ export function WeatherDashboard({
                   <input
                     type="text"
                     value={activityForm.irrigation_duration}
-                    onChange={(e) => setActivityForm(prev => ({ ...prev, irrigation_duration: e.target.value }))}
+                    onChange={handleIrrigationDurationChange}
                     placeholder="e.g. 4 hours, 30 minutes"
                     style={{
                       width: '100%',
@@ -2725,7 +2745,7 @@ export function WeatherDashboard({
   );
   });
 
-  const HistoryTab = React.memo(() => {
+  const HistoryTab = memo(() => {
     const filteredActivities = eventTypeFilter === 'all' 
       ? activities 
       : activities.filter(activity => activity.event_type === eventTypeFilter);
@@ -3210,7 +3230,7 @@ export function WeatherDashboard({
     );
   });
 
-  const SettingsTab = React.memo(() => (
+  const SettingsTab = memo(() => (
     <div style={{ padding: '0 1rem 1rem 1rem' }}>
       <div style={{ marginBottom: '20px' }}>
         <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700', color: '#374151' }}>
