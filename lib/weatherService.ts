@@ -1,28 +1,12 @@
-
 // lib/weatherService.ts
-interface OpenWeatherResponse {
-  list?: Array<{
-    dt: number;
-    main: {
-      temp_max: number;
-      temp_min: number;
-    };
-    weather: Array<{
-      main: string;
-      description: string;
-    }>;
-    rain?: {
-      '1h'?: number;
-    };
-    snow?: {
-      '1h'?: number;
-    };
-  }>;
-  city?: {
-    name: string;
-    country: string;
+interface WeatherAPIResponse {
+  daily?: {
+    time: string[];
+    temperature_2m_max: number[];
+    temperature_2m_min: number[];
+    precipitation_sum: number[];
   };
-  message?: string;
+  error?: string;
 }
 
 interface ProcessedWeatherData {
@@ -35,8 +19,7 @@ interface ProcessedWeatherData {
 
 export class WeatherService {
   private static instance: WeatherService;
-  private baseURL = 'https://api.openweathermap.org/data/2.5';
-  private historicalURL = 'https://history.openweathermap.org/data/2.5/history/city';
+  private baseURL = 'https://archive-api.open-meteo.com/v1/era5';
   private retryAttempts = 3;
   private retryDelay = 1000; // 1 second
 
@@ -48,32 +31,12 @@ export class WeatherService {
   }
 
   /**
-   * Get API key from environment variables
-   */
-  private getAPIKey(): string {
-    const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY || process.env.OPENWEATHER_API_KEY;
-    
-    if (!apiKey) {
-      throw new Error('OpenWeatherMap API key not found. Please set NEXT_PUBLIC_OPENWEATHER_API_KEY or OPENWEATHER_API_KEY in your environment variables.');
-    }
-    
-    return apiKey;
-  }
-
-  /**
    * Calculate Growing Degree Days using the standard formula
    */
   private calculateGDD(tempHigh: number, tempLow: number, baseTemp: number = 50): number {
     const avgTemp = (tempHigh + tempLow) / 2;
     const gdd = Math.max(0, avgTemp - baseTemp);
     return Math.round(gdd * 10) / 10; // Round to 1 decimal place
-  }
-
-  /**
-   * Convert Kelvin to Fahrenheit
-   */
-  private kelvinToFahrenheit(kelvin: number): number {
-    return (kelvin - 273.15) * 9/5 + 32;
   }
 
   /**
@@ -129,149 +92,40 @@ export class WeatherService {
   /**
    * Fetch weather data with retry logic
    */
-  private async fetchWithRetry(url: string, attempt: number = 1): Promise<OpenWeatherResponse> {
+  private async fetchWithRetry(url: string, attempt: number = 1): Promise<WeatherAPIResponse> {
     try {
-      console.log(`🌤️ Fetching weather data from OpenWeatherMap (attempt ${attempt}/${this.retryAttempts})`);
+      console.log(`🌤️ Fetching weather data (attempt ${attempt}/${this.retryAttempts})`);
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-      const response = await fetch(url, { 
-        signal: controller.signal,
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'VigneronAI/1.0'
-        }
-      });
-
-      clearTimeout(timeoutId);
+      const response = await fetch(url);
 
       if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('Invalid OpenWeatherMap API key. Please check your API key configuration.');
-        }
-        if (response.status === 429) {
-          throw new Error('OpenWeatherMap API rate limit exceeded. Please try again later.');
-        }
-        throw new Error(`OpenWeatherMap API error ${response.status}: ${response.statusText}`);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
       const data = await response.json();
 
-      if (data.message && data.message.includes('Invalid API key')) {
-        throw new Error('Invalid OpenWeatherMap API key. Please check your API key configuration.');
+      // Validate response structure
+      if (!data.daily || !data.daily.time || !Array.isArray(data.daily.time)) {
+        throw new Error('Invalid API response structure');
       }
 
       return data;
     } catch (error) {
-      console.warn(`❌ OpenWeatherMap API attempt ${attempt} failed:`, error);
+      console.warn(`❌ Weather API attempt ${attempt} failed:`, error);
 
       if (attempt < this.retryAttempts) {
-        const delay = this.retryDelay * Math.pow(2, attempt - 1); // Exponential backoff
+        const delay = this.retryDelay * attempt; // Exponential backoff
         console.log(`⏳ Retrying in ${delay}ms...`);
         await this.sleep(delay);
         return this.fetchWithRetry(url, attempt + 1);
       }
 
-      throw error;
+      throw new Error(`Weather API failed after ${this.retryAttempts} attempts: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   /**
-   * Get current weather data (last 5 days) - OpenWeatherMap's free tier limitation
-   */
-  async getCurrentWeather(
-    latitude: number, 
-    longitude: number, 
-    baseGDDTemp: number = 50
-  ): Promise<ProcessedWeatherData[]> {
-    
-    // Input validation
-    if (!this.validateCoordinates(latitude, longitude)) {
-      throw new Error(`Invalid coordinates: latitude must be -90 to 90, longitude must be -180 to 180`);
-    }
-
-    const apiKey = this.getAPIKey();
-
-    // OpenWeatherMap's free tier only provides current weather and 5-day forecast
-    // For historical data, we'd need a paid subscription
-    const url = `${this.baseURL}/forecast?lat=${latitude}&lon=${longitude}&appid=${apiKey}&units=imperial`;
-
-    try {
-      const data = await this.fetchWithRetry(url);
-
-      if (!data.list || data.list.length === 0) {
-        throw new Error('No weather data received from OpenWeatherMap');
-      }
-
-      // Process the forecast data into daily summaries
-      const dailyData = new Map<string, {
-        tempHigh: number;
-        tempLow: number;
-        rainfall: number;
-        date: string;
-      }>();
-
-      data.list.forEach(item => {
-        const date = new Date(item.dt * 1000);
-        const dateStr = date.toISOString().split('T')[0];
-        
-        const existing = dailyData.get(dateStr);
-        const rainfall = (item.rain?.['1h'] || 0) + (item.snow?.['1h'] || 0);
-        
-        if (!existing) {
-          dailyData.set(dateStr, {
-            tempHigh: item.main.temp_max,
-            tempLow: item.main.temp_min,
-            rainfall: rainfall,
-            date: dateStr
-          });
-        } else {
-          existing.tempHigh = Math.max(existing.tempHigh, item.main.temp_max);
-          existing.tempLow = Math.min(existing.tempLow, item.main.temp_min);
-          existing.rainfall += rainfall;
-        }
-      });
-
-      const processedData: ProcessedWeatherData[] = [];
-
-      dailyData.forEach(dayData => {
-        const gdd = this.calculateGDD(dayData.tempHigh, dayData.tempLow, baseGDDTemp);
-        
-        processedData.push({
-          date: dayData.date,
-          temp_high: Math.round(dayData.tempHigh * 10) / 10,
-          temp_low: Math.round(dayData.tempLow * 10) / 10,
-          gdd: gdd,
-          rainfall: Math.round(dayData.rainfall * 100) / 100
-        });
-      });
-
-      processedData.sort((a, b) => a.date.localeCompare(b.date));
-
-      console.log(`✅ Successfully processed ${processedData.length} weather data points from OpenWeatherMap`);
-      return processedData;
-
-    } catch (error) {
-      console.error('❌ OpenWeatherMap service error:', error);
-      
-      // Instead of generating fallback data, inform the user
-      if (error instanceof Error) {
-        if (error.message.includes('API key')) {
-          throw new Error('Weather data unavailable: Invalid or missing OpenWeatherMap API key. Please contact support.');
-        }
-        if (error.message.includes('rate limit')) {
-          throw new Error('Weather data temporarily unavailable: API rate limit exceeded. Please try again in a few minutes.');
-        }
-        throw new Error(`Weather data unavailable: ${error.message}`);
-      }
-      
-      throw new Error('Weather data unavailable: Unable to connect to weather service. Please check your internet connection and try again.');
-    }
-  }
-
-  /**
-   * Get historical weather data - requires paid OpenWeatherMap subscription
+   * Get historical weather data for a location and date range
    */
   async getHistoricalWeather(
     latitude: number, 
@@ -290,17 +144,97 @@ export class WeatherService {
       throw new Error(`Invalid date range: dates must be valid, start before end, not in future, and within 2 years`);
     }
 
-    const apiKey = this.getAPIKey();
+    // Construct API URL
+    const params = new URLSearchParams({
+      latitude: latitude.toString(),
+      longitude: longitude.toString(),
+      start_date: startDate,
+      end_date: endDate,
+      daily: 'temperature_2m_max,temperature_2m_min,precipitation_sum',
+      temperature_unit: 'fahrenheit',
+      precipitation_unit: 'inch',
+      timezone: 'auto'
+    });
 
-    console.log('⚠️ Historical weather data requires OpenWeatherMap paid subscription');
-    console.log('🔄 Attempting to use current weather data instead...');
+    const url = `${this.baseURL}?${params.toString()}`;
 
-    // Since historical data requires paid subscription, use current weather
-    return this.getCurrentWeather(latitude, longitude, baseGDDTemp);
+    try {
+      const data = await this.fetchWithRetry(url);
+
+      // Process the weather data
+      const processedData: ProcessedWeatherData[] = [];
+
+      if (!data.daily) {
+        throw new Error('No daily weather data received');
+      }
+
+      const { time, temperature_2m_max, temperature_2m_min, precipitation_sum } = data.daily;
+
+      // Validate arrays have same length
+      if (time.length !== temperature_2m_max.length || 
+          time.length !== temperature_2m_min.length || 
+          time.length !== precipitation_sum.length) {
+        throw new Error('Inconsistent weather data arrays');
+      }
+
+      for (let i = 0; i < time.length; i++) {
+        const tempHigh = temperature_2m_max[i];
+        const tempLow = temperature_2m_min[i];
+        const rainfall = precipitation_sum[i];
+
+        // Validate individual data points
+        if (typeof tempHigh !== 'number' || typeof tempLow !== 'number' || typeof rainfall !== 'number') {
+          console.warn(`⚠️ Invalid data point at index ${i}, skipping`);
+          continue;
+        }
+
+        // Validate data point and ensure date is not in the future
+        const isValidDataPoint = (point: any): boolean => {
+          const today = new Date();
+          today.setHours(23, 59, 59, 999); // End of today
+          const pointDate = new Date(point.date);
+
+          return (
+            point &&
+            typeof point.temp_high === 'number' &&
+            typeof point.temp_low === 'number' &&
+            !isNaN(point.temp_high) &&
+            !isNaN(point.temp_low) &&
+            point.temp_high >= -50 &&
+            point.temp_high <= 60 &&
+            point.temp_low >= -50 &&
+            point.temp_low <= 60 &&
+            pointDate <= today // Ensure date is not in the future
+          );
+        };
+
+        // Calculate GDD
+        const gdd = this.calculateGDD(tempHigh, tempLow, baseGDDTemp);
+
+        processedData.push({
+          date: time[i],
+          temp_high: Math.round(tempHigh * 10) / 10,
+          temp_low: Math.round(tempLow * 10) / 10,
+          gdd: gdd,
+          rainfall: Math.round(rainfall * 100) / 100 // Round to 2 decimal places
+        });
+      }
+
+      if (processedData.length === 0) {
+        throw new Error('No valid weather data points processed');
+      }
+
+      console.log(`✅ Successfully processed ${processedData.length} weather data points`);
+      return processedData;
+
+    } catch (error) {
+      console.error('❌ Weather service error:', error);
+      throw error;
+    }
   }
 
   /**
-   * Get current growing season data (limited by API availability)
+   * Get current growing season data (March 1 to November 30)
    */
   async getCurrentSeasonWeather(
     latitude: number, 
@@ -309,12 +243,14 @@ export class WeatherService {
     baseGDDTemp: number = 50
   ): Promise<ProcessedWeatherData[]> {
 
-    console.log('ℹ️ Growing season weather limited to current forecast data due to API constraints');
-    return this.getCurrentWeather(latitude, longitude, baseGDDTemp);
+    const startDate = `${year}-03-01`;
+    const endDate = `${year}-11-30`;
+
+    return this.getHistoricalWeather(latitude, longitude, startDate, endDate, baseGDDTemp);
   }
 
   /**
-   * Get weather data for a specific month (limited by API availability)
+   * Get weather data for a specific month
    */
   async getMonthlyWeather(
     latitude: number, 
@@ -328,39 +264,30 @@ export class WeatherService {
       throw new Error('Month must be between 1 and 12');
     }
 
-    console.log('ℹ️ Monthly weather limited to current forecast data due to API constraints');
-    return this.getCurrentWeather(latitude, longitude, baseGDDTemp);
+    const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
+
+    // Calculate last day of month
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDate = `${year}-${month.toString().padStart(2, '0')}-${lastDay.toString().padStart(2, '0')}`;
+
+    return this.getHistoricalWeather(latitude, longitude, startDate, endDate, baseGDDTemp);
   }
 
   /**
-   * Test OpenWeatherMap API connectivity
+   * Test API connectivity
    */
   async testConnection(): Promise<boolean> {
     try {
-      console.log('🔗 Testing OpenWeatherMap API connectivity...');
-      
-      const apiKey = this.getAPIKey();
-      
-      // Test with a simple current weather request
-      const testUrl = `${this.baseURL}/weather?lat=37.7749&lon=-122.4194&appid=${apiKey}`;
+      // Test with a simple request for recent data
+      const testDate = new Date();
+      testDate.setDate(testDate.getDate() - 7); // 7 days ago
+      const startDate = testDate.toISOString().split('T')[0];
+      const endDate = new Date().toISOString().split('T')[0];
 
-      const response = await fetch(testUrl, {
-        signal: AbortSignal.timeout(5000) // 5 second timeout
-      });
-
-      if (response.ok) {
-        console.log('✅ OpenWeatherMap API connection successful');
-        return true;
-      } else if (response.status === 401) {
-        console.log('❌ OpenWeatherMap API: Invalid API key');
-        return false;
-      } else {
-        console.log(`❌ OpenWeatherMap API error: ${response.status}`);
-        return false;
-      }
-
+      await this.getHistoricalWeather(37.7749, -122.4194, startDate, endDate); // San Francisco
+      return true;
     } catch (error) {
-      console.warn('❌ OpenWeatherMap API connection test failed:', error);
+      console.error('Weather API connection test failed:', error);
       return false;
     }
   }
