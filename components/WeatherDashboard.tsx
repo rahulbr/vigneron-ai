@@ -217,6 +217,10 @@ export function WeatherDashboard({
         }
       } catch (error) {
         console.error('Error loading organizations:', error);
+        // If tables don't exist yet, just continue without block management
+        if (error.code === 'PGRST200') {
+          console.log('Block management tables not yet created - please run the SQL migration');
+        }
       }
     };
     loadOrganizations();
