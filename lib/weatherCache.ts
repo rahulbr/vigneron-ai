@@ -136,6 +136,8 @@ export class WeatherCache {
 
   // Store cache in localStorage for persistence
   persist(): void {
+    if (typeof window === 'undefined') return; // Skip on server side
+    
     try {
       const cacheData = Array.from(this.cache.entries()).map(([key, entry]) => [key, entry]);
       localStorage.setItem('weather_cache', JSON.stringify(cacheData));
@@ -147,6 +149,8 @@ export class WeatherCache {
 
   // Load cache from localStorage
   restore(): void {
+    if (typeof window === 'undefined') return; // Skip on server side
+    
     try {
       const cacheData = localStorage.getItem('weather_cache');
       const statsData = localStorage.getItem('weather_cache_stats');
@@ -174,11 +178,12 @@ export class WeatherCache {
 
 export const weatherCache = WeatherCache.getInstance();
 
-// Restore cache on module load
-weatherCache.restore();
-
-// Persist cache periodically
+// Initialize cache only on client side
 if (typeof window !== 'undefined') {
+  // Restore cache on module load
+  weatherCache.restore();
+
+  // Persist cache periodically
   setInterval(() => {
     weatherCache.persist();
   }, 5 * 60 * 1000); // Every 5 minutes

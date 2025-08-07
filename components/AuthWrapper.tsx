@@ -69,6 +69,80 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
     )
   }
 
+  import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+
+interface AuthWrapperProps {
+  children: React.ReactNode;
+}
+
+export const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    // Check if user is already logged in
+    const checkUser = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setUser(user);
+      } catch (error) {
+        console.error('Error checking user:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkUser();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user || null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      if (isSignUp) {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        alert('Check your email for the confirmation link!');
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      }
+    } catch (error: any) {
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#f3f4f6'
+      }}>
+        <div>Loading...</div>
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <div style={{ 
@@ -85,8 +159,7 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
           padding: '2rem',
           backgroundColor: 'white',
           borderRadius: '16px',
-          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)',
-          animation: 'fadeIn 0.5s ease-in'
+          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)'
         }}>
           <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
             <h2 style={{ 
@@ -112,7 +185,112 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
                 <label htmlFor="email" style={{ 
                   display: 'block', 
                   fontSize: '0.875rem', 
-                  fontWeight: '600', 
+                  fontWeight: '600',
+                  marginBottom: '0.5rem',
+                  color: '#374151'
+                }}>
+                  Email
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.5rem',
+                    fontSize: '1rem'
+                  }}
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="password" style={{ 
+                  display: 'block', 
+                  fontSize: '0.875rem', 
+                  fontWeight: '600',
+                  marginBottom: '0.5rem',
+                  color: '#374151'
+                }}>
+                  Password
+                </label>
+                <input
+                  type="password"
+                  id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.5rem',
+                    fontSize: '1rem'
+                  }}
+                />
+              </div>
+            </div>
+
+            {error && (
+              <div style={{
+                padding: '0.75rem',
+                backgroundColor: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: '0.5rem',
+                color: '#991b1b',
+                fontSize: '0.875rem'
+              }}>
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                backgroundColor: loading ? '#9ca3af' : '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '0.5rem',
+                fontSize: '1rem',
+                fontWeight: '600',
+                cursor: loading ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {loading ? 'Loading...' : (isSignUp ? 'Sign Up' : 'Sign In')}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsSignUp(!isSignUp)}
+              style={{
+                width: '100%',
+                padding: '0.5rem',
+                backgroundColor: 'transparent',
+                color: '#3b82f6',
+                border: 'none',
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+                textDecoration: 'underline'
+              }}
+            >
+              {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+};
+
+export default AuthWrapper;0', 
                   color: '#374151',
                   marginBottom: '0.5rem'
                 }}>
