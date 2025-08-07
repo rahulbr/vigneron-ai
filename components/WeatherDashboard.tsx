@@ -28,6 +28,8 @@ interface WeatherDashboardProps {
   locationName?: string;
   latitude?: number;
   longitude?: number;
+  initialLatitude?: number;  // Support both prop names for backward compatibility
+  initialLongitude?: number; // Support both prop names for backward compatibility
   onSaveEvent?: (eventData: any) => Promise<void>;
   onLoadEvents?: () => Promise<PhenologyEvent[]>;
 }
@@ -35,11 +37,16 @@ interface WeatherDashboardProps {
 export function WeatherDashboard({
   vineyardId,
   locationName = 'Unknown Location',
-  latitude = 0,
-  longitude = 0,
+  latitude,
+  longitude,
+  initialLatitude,
+  initialLongitude,
   onSaveEvent,
   onLoadEvents
 }: WeatherDashboardProps) {
+  // Use either latitude/longitude or initialLatitude/initialLongitude
+  const finalLatitude = latitude ?? initialLatitude ?? 0;
+  const finalLongitude = longitude ?? initialLongitude ?? 0;
   // Early return if essential props are missing
   if (!vineyardId) {
     return (
@@ -74,8 +81,8 @@ export function WeatherDashboard({
   const { isConnected, testing, testConnection } = useWeatherConnection();
 
   const weatherOptions = {
-    latitude,
-    longitude,
+    latitude: finalLatitude,
+    longitude: finalLongitude,
     autoFetch: true
   };
 
@@ -258,7 +265,7 @@ export function WeatherDashboard({
               <h3 style={{ margin: '0 0 10px 0', color: '#15803d' }}>📍 Location</h3>
               <p style={{ margin: '0', fontSize: '14px', color: '#374151' }}>
                 {locationName}<br />
-                {typeof latitude === 'number' ? latitude.toFixed(4) : '0.0000'}, {typeof longitude === 'number' ? longitude.toFixed(4) : '0.0000'}
+                {finalLatitude.toFixed(4)}, {finalLongitude.toFixed(4)}
               </p>
             </div>
 
@@ -610,7 +617,7 @@ export function WeatherDashboard({
             <h3 style={{ margin: '0 0 15px 0', color: '#374151' }}>📍 Current Location</h3>
             <div style={{ fontSize: '16px', color: '#4b5563' }}>
               <strong>{locationName}</strong><br />
-              Coordinates: {typeof latitude === 'number' ? latitude.toFixed(6) : '0.000000'}, {typeof longitude === 'number' ? longitude.toFixed(6) : '0.000000'}
+              Coordinates: {finalLatitude.toFixed(6)}, {finalLongitude.toFixed(6)}
             </div>
           </div>
 

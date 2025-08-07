@@ -109,13 +109,37 @@ export default function Home() {
     );
   }
 
+  // Don't render the dashboard until we have vineyard data
+  if (!vineyard) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        flexDirection: 'column',
+        gap: '20px'
+      }}>
+        <div style={{
+          width: '40px',
+          height: '40px',
+          border: '4px solid #f3f3f3',
+          borderTop: '4px solid #3498db',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }}></div>
+        <p>No vineyard data available. Loading...</p>
+      </div>
+    );
+  }
+
   return (
     <div>
       <WeatherDashboard
-        vineyardId={vineyard?.id}
-        initialLatitude={vineyard?.latitude}
-        initialLongitude={vineyard?.longitude}
-        locationName={vineyard?.location}
+        vineyardId={vineyard.id}
+        latitude={vineyard.latitude}
+        longitude={vineyard.longitude}
+        locationName={vineyard.location}
       />
     </div>
   );
