@@ -12,6 +12,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.50.2",
     "@types/recharts": "^1.8.29",
+    "critters": "^0.0.23",
     "lucide-react": "^0.516.0",
     "next": "14.0.4",
     "react": "^18.3.1",
