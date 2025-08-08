@@ -803,8 +803,13 @@ export function WeatherDashboard({
 
   // Calculate safety alerts when activities change
   useEffect(() => {
-    calculateSafetyAlerts();
-  }, [activities]);
+    if (currentVineyard) {
+      const vineyardActivities = activities.filter(activity => activity.vineyard_id === currentVineyard.id);
+      calculateSafetyAlerts(vineyardActivities);
+    } else {
+      setSafetyAlerts([]);
+    }
+  }, [activities, currentVineyard]);
 
   // Open reports modal with current vineyard data
   const openReportsModal = () => {
@@ -817,12 +822,12 @@ export function WeatherDashboard({
   };
 
   // Calculate safety alerts for spray applications
-  const calculateSafetyAlerts = () => {
+  const calculateSafetyAlerts = (vineyardSpecificActivities = activities) => {
     const alerts: any[] = [];
     const today = new Date();
 
     // Check recent spray applications for re-entry and pre-harvest intervals
-    const sprayApplications = activities.filter(activity =>
+    const sprayApplications = vineyardSpecificActivities.filter(activity =>
       activity.event_type === 'spray_application' &&
       activity.spray_product &&
       sprayDatabase[activity.spray_product as keyof typeof sprayDatabase]
@@ -855,7 +860,7 @@ export function WeatherDashboard({
       }
 
       // Pre-harvest interval check (if harvest events exist)
-      const harvestEvents = activities.filter(activity => activity.event_type === 'harvest');
+      const harvestEvents = vineyardSpecificActivities.filter(activity => activity.event_type === 'harvest');
       harvestEvents.forEach(harvest => {
         const harvestDate = new Date(harvest.event_date);
         const daysFromSprayToHarvest = Math.floor((harvestDate.getTime() - sprayDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -1645,9 +1650,8 @@ export function WeatherDashboard({
 
   // Fetch weather data using existing refetchWithCache function
   const fetchWeatherData = useCallback(async () => {
-    if (!vineyardId || !isInitialized || !dateRange.start || !dateRange.end) return;
+    if (!isInitialized || !dateRange.start || !dateRange.end) return;
 
-    setProgressiveLoading(prev => ({ ...prev, weather: true }));
     console.log('🌤️ Fetching weather data:', { latitude, longitude, dateRange });
 
     try {
@@ -1655,10 +1659,8 @@ export function WeatherDashboard({
       console.log('✅ Weather data refreshed');
     } catch (err) {
       console.error('❌ Error fetching weather data:', err);
-    } finally {
-      setProgressiveLoading(prev => ({ ...prev, weather: false }));
     }
-  }, [vineyardId, isInitialized, dateRange, latitude, longitude, refetchWithCache]);
+  }, [isInitialized, dateRange, latitude, longitude, refetchWithCache]);
 
   // Re-fetch weather data if initialization or date range changes
   useEffect(() => {
@@ -1672,11 +1674,7 @@ export function WeatherDashboard({
     }
   }, [isInitialized, dateRange.start, dateRange.end, latitude, longitude, fetchWeatherData]);
 
-  // Calculate summary statistics
-  const totalGDD = data.reduce((sum, day) => sum + day.gdd, 0);
-  const totalRainfall = data.reduce((sum, day) => sum + day.rainfall, 0);
-  const avgTempHigh = data.length > 0 ? data.reduce((sum, day) => sum + day.temp_high, 0) / data.length : 0;
-  const avgTempLow = data.length > 0 ? data.reduce((sum, day) => sum + day.temp_low, 0) / data.length : 0;
+  // Statistics are now calculated inline using vineyard-specific data
 
   // Calculate location statistics
   const eventsWithLocation = activities.filter(activity =>
@@ -1723,6 +1721,14 @@ export function WeatherDashboard({
 
   // Tab content renderer
   const renderTabContent = () => {
+    // Filter activities by current vineyard
+    const vineyardActivities = currentVineyard 
+      ? activities.filter(activity => activity.vineyard_id === currentVineyard.id)
+      : [];
+
+    // Filter weather data by current vineyard coordinates
+    const vineyardWeatherData = currentVineyard && data.length > 0 ? data : [];
+
     switch (activeTab) {
       case 'activities':
         return (
@@ -1754,9 +1760,9 @@ export function WeatherDashboard({
               </div>
             )}
             <ActivitiesTab
-              vineyardId={vineyardId || ''}
+              vineyardId={currentVineyard?.id || ''}
               currentVineyard={currentVineyard}
-              activities={activities}
+              activities={vineyardActivities}
               onActivitiesChange={loadActivities}
               selectedOrganization={selectedOrganization}
               selectedProperty={selectedProperty}
@@ -1795,12 +1801,12 @@ export function WeatherDashboard({
               </div>
             )}
             <InsightsTab
-              data={data}
+              data={vineyardWeatherData}
               loading={loading || progressiveLoading.weather}
-              vineyardId={vineyardId || ''}
+              vineyardId={currentVineyard?.id || ''}
               currentVineyard={currentVineyard}
-              customLocation={customLocation}
-              activities={activities}
+              customLocation={currentVineyard?.name || customLocation}
+              activities={vineyardActivities}
               onActivitiesChange={loadActivities}
               dateRange={dateRange}
               fetchData={fetchWeatherData}
@@ -1863,8 +1869,8 @@ export function WeatherDashboard({
         return (
           <ReportsTab
             currentVineyard={currentVineyard}
-            activities={activities}
-            weatherData={data}
+            activities={vineyardActivities}
+            weatherData={vineyardWeatherData}
           />
         );
       default: // dashboard
@@ -1897,7 +1903,7 @@ export function WeatherDashboard({
             )}
 
             {/* Weather Summary Stats */}
-            {data.length > 0 && (
+            {vineyardWeatherData.length > 0 && currentVineyard && (
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -1916,10 +1922,10 @@ export function WeatherDashboard({
                     <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280' }}>Total GDD</span>
                   </div>
                   <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#059669' }}>
-                    {Math.round(totalGDD)} GDDs
+                    {Math.round(vineyardWeatherData.reduce((sum, day) => sum + day.gdd, 0))} GDDs
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '4px' }}>
-                    {data.length} days
+                    {vineyardWeatherData.length} days
                   </div>
                 </div>
 
@@ -1935,7 +1941,7 @@ export function WeatherDashboard({
                     <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280' }}>Total Rainfall</span>
                   </div>
                   <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#3b82f6' }}>
-                    {totalRainfall.toFixed(2)}
+                    {vineyardWeatherData.reduce((sum, day) => sum + day.rainfall, 0).toFixed(2)}
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '4px' }}>
                     Precipitation
@@ -1954,7 +1960,7 @@ export function WeatherDashboard({
                     <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280' }}>Avg High Temp</span>
                   </div>
                   <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#ef4444' }}>
-                    {avgTempHigh.toFixed(1)}°F
+                    {vineyardWeatherData.length > 0 ? (vineyardWeatherData.reduce((sum, day) => sum + day.temp_high, 0) / vineyardWeatherData.length).toFixed(1) : '0.0'}°F
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '4px' }}>
                     Daily average
@@ -2018,7 +2024,7 @@ export function WeatherDashboard({
             </div>
 
             {/* Recent Activities Preview */}
-            {activities.length > 0 && (
+            {vineyardActivities.length > 0 && currentVineyard && (
               <div style={{
                 backgroundColor: 'white',
                 borderRadius: '12px',
@@ -2029,7 +2035,7 @@ export function WeatherDashboard({
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                   <h3 style={{ margin: '0', fontSize: '1.125rem', color: '#374151' }}>
-                    Recent Activities
+                    Recent Activities - {currentVineyard.name}
                   </h3>
                   <button
                     onClick={() => setActiveTab('activities')}
@@ -2048,7 +2054,7 @@ export function WeatherDashboard({
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {activities.slice(0, 3).map((activity, index) => {
+                  {vineyardActivities.slice(0, 3).map((activity, index) => {
                     const eventStyles: { [key: string]: { color: string, emoji: string } } = {
                       bud_break: { color: "#22c55e", emoji: "🌱" },
                       bloom: { color: "#f59e0b", emoji: "🌸" },
