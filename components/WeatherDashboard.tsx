@@ -7,6 +7,8 @@ import { googleGeocodingService, GeocodeResult } from '../lib/googleGeocodingSer
 import { supabase } from '../lib/supabase';
 import { AlertCircle, RefreshCw, MapPin, Calendar, Thermometer, CloudRain, TrendingUp, Search, FileText } from 'lucide-react';
 import { TabNavigation } from './TabNavigation';
+import { MobileBottomTabs } from './MobileBottomTabs';
+import { MobileRefresh } from './MobileRefresh';
 import { ActivitiesTab } from './ActivitiesTab';
 import { InsightsTab } from './InsightsTab';
 import { VineyardsTab } from './VineyardsTab';
@@ -910,7 +912,7 @@ export function WeatherDashboard({
 
     window.addEventListener('chartDateClicked', handleChartDateClicked as EventListener);
     window.addEventListener('switchToTab', handleTabSwitch as EventListener);
-    
+
     return () => {
       window.removeEventListener('chartDateClicked', handleChartDateClicked as EventListener);
       window.removeEventListener('switchToTab', handleTabSwitch as EventListener);
@@ -2056,14 +2058,7 @@ export function WeatherDashboard({
       )}
 
       {/* Header */}
-      <div className="fade-in" style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '2rem', fontWeight: '700', margin: '0 0 0.5rem 0', color: '#1f2937' }}>
-          🌱 Vineyard Analytics
-        </h1>
-        <p style={{ color: '#6b7280', margin: '0', fontSize: '1rem' }}>
-          Advanced weather tracking and phenology management for your vineyards
-        </p>
-      </div>
+      {/* Removed the title and subtitle as per the request */}
 
       {/* Tab Navigation */}
       <TabNavigation
@@ -2073,9 +2068,19 @@ export function WeatherDashboard({
       />
 
       {/* Tab Content */}
-      {renderTabContent()}
-
-
+      {/* Wrap tab content in MobileRefresh for pull-to-refresh */}
+      <MobileRefresh
+        onRefresh={async () => {
+          console.log('🔄 Triggering pull-to-refresh...');
+          // Reload weather data and activities
+          refetchWithCache();
+          await loadActivities();
+          console.log('🔄 Pull-to-refresh complete.');
+        }}
+        style={{ flexGrow: 1, overflowY: 'auto' }} // Allow scrolling within the refreshable area
+      >
+        {renderTabContent()}
+      </MobileRefresh>
 
       {/* Loading State */}
       {loading && (

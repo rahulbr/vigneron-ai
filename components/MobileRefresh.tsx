@@ -36,6 +36,10 @@ export function MobileRefresh({ onRefresh, children }: MobileRefreshProps) {
       setIsRefreshing(true);
       try {
         await onRefresh();
+        // Small delay to show completion
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (error) {
+        console.error('Refresh failed:', error);
       } finally {
         setIsRefreshing(false);
       }
@@ -77,14 +81,16 @@ export function MobileRefresh({ onRefresh, children }: MobileRefreshProps) {
           borderRadius: '50%',
           padding: '12px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-          opacity: pullDistance > 30 || isRefreshing ? 1 : pullDistance / 30
+          opacity: pullDistance > 30 || isRefreshing ? 1 : pullDistance / 30,
+          transition: isRefreshing ? 'none' : 'all 0.2s ease'
         }}>
           <RefreshCw 
             size={20} 
             style={{ 
               color: pullDistance > 60 || isRefreshing ? '#22c55e' : '#6b7280',
               animation: isRefreshing ? 'spin 1s linear infinite' : 'none',
-              transform: `rotate(${Math.min(pullDistance * 3, 180)}deg)`
+              transform: isRefreshing ? 'none' : `rotate(${Math.min(pullDistance * 3, 180)}deg)`,
+              transition: 'color 0.2s ease'
             }} 
           />
         </div>
