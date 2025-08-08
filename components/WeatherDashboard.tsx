@@ -779,7 +779,7 @@ export function WeatherDashboard({
       setIsLoadingActivities(false);
       setProgressiveLoading(prev => ({ ...prev, activities: false }));
     }
-  }, [vineyardId]);
+  }, []);
 
   // Auto-load activities when vineyard changes
   useEffect(() => {
@@ -789,7 +789,7 @@ export function WeatherDashboard({
     } else {
       console.log('⚠️ No vineyard ID available');
     }
-  }, [vineyardId, loadActivities]);
+  }, [vineyardId]);
 
   // Force load activities when component mounts
   useEffect(() => {
@@ -800,7 +800,7 @@ export function WeatherDashboard({
         loadActivities();
       }, 1000); // Small delay to ensure vineyard ID is set
     }
-  }, [currentVineyard, loadActivities]);
+  }, [currentVineyard]);
 
   // Calculate safety alerts when activities change
   useEffect(() => {
@@ -1870,121 +1870,120 @@ export function WeatherDashboard({
         return (
           <ReportsTab
             currentVineyard={currentVineyard}
-            activities={activities}
+            activities={vineyardActivities}
             weatherData={vineyardWeatherData}
           />
         );
       default: // dashboard
         return (
-          <div style={{ padding: '1rem' }}>
-            {/* Current vineyard display */}
+          <div className="mobile-touch-spacing" style={{ padding: '12px' }}>
+            {/* Current vineyard display - Mobile optimized */}
             {currentVineyard && (
               <div style={{
-                marginBottom: '20px',
-                padding: '12px 16px',
+                marginBottom: '16px',
+                padding: '12px',
                 backgroundColor: '#f0f9ff',
                 border: '1px solid #bae6fd',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between'
+                borderRadius: '12px',
+                fontSize: '14px'
               }}>
-                <div>
-                  <span style={{ fontSize: '14px', fontWeight: '600', color: '#0369a1' }}>
-                    📍 Currently Viewing: {currentVineyard.name}
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '4px' 
+                }}>
+                  <span style={{ fontWeight: '600', color: '#0369a1' }}>
+                    📍 {currentVineyard.name}
                   </span>
-                  <span style={{ fontSize: '12px', color: '#0284c7', marginLeft: '10px' }}>
-                    ({currentVineyard.latitude.toFixed(4)}, {currentVineyard.longitude.toFixed(4)})
+                  <span style={{ fontSize: '12px', color: '#0284c7' }}>
+                    {currentVineyard.latitude.toFixed(3)}, {currentVineyard.longitude.toFixed(3)}
                   </span>
                 </div>
-                <span style={{ fontSize: '11px', color: '#6b7280' }}>
-                  ID: {vineyardId?.slice(0, 8)}...
-                </span>
               </div>
             )}
 
-            {/* Weather Summary Stats */}
+            {/* Weather Summary Stats - Mobile optimized single column */}
             {vineyardWeatherData.length > 0 && currentVineyard && (
               <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: '1rem',
-                marginBottom: '2rem'
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                marginBottom: '20px'
               }}>
                 <div style={{
-                  padding: '1.5rem',
+                  padding: '16px',
                   backgroundColor: 'white',
                   borderRadius: '12px',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
                   border: '1px solid #e5e7eb'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                    <TrendingUp size={20} style={{ color: '#059669' }} />
-                    <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280' }}>Total GDD</span>
+                    <TrendingUp size={18} style={{ color: '#059669' }} />
+                    <span style={{ fontSize: '14px', fontWeight: '600', color: '#6b7280' }}>Total GDD</span>
                   </div>
-                  <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#059669' }}>
+                  <div style={{ fontSize: '24px', fontWeight: '700', color: '#059669' }}>
                     {Math.round(vineyardWeatherData.reduce((sum, day) => sum + day.gdd, 0))} GDDs
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '4px' }}>
+                  <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>
                     {vineyardWeatherData.length} days
                   </div>
                 </div>
 
                 <div style={{
-                  padding: '1.5rem',
+                  padding: '16px',
                   backgroundColor: 'white',
                   borderRadius: '12px',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
                   border: '1px solid #e5e7eb'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                    <CloudRain size={20} style={{ color: '#3b82f6' }} />
-                    <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280' }}>Total Rainfall</span>
+                    <CloudRain size={18} style={{ color: '#3b82f6' }} />
+                    <span style={{ fontSize: '14px', fontWeight: '600', color: '#6b7280' }}>Total Rainfall</span>
                   </div>
-                  <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#3b82f6' }}>
-                    {vineyardWeatherData.reduce((sum, day) => sum + day.rainfall, 0).toFixed(2)}
+                  <div style={{ fontSize: '24px', fontWeight: '700', color: '#3b82f6' }}>
+                    {vineyardWeatherData.reduce((sum, day) => sum + day.rainfall, 0).toFixed(2)}"
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '4px' }}>
+                  <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>
                     Precipitation
                   </div>
                 </div>
 
                 <div style={{
-                  padding: '1.5rem',
+                  padding: '16px',
                   backgroundColor: 'white',
                   borderRadius: '12px',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
                   border: '1px solid #e5e7eb'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                    <Thermometer size={20} style={{ color: '#ef4444' }} />
-                    <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280' }}>Avg High Temp</span>
+                    <Thermometer size={18} style={{ color: '#ef4444' }} />
+                    <span style={{ fontSize: '14px', fontWeight: '600', color: '#6b7280' }}>Avg High Temp</span>
                   </div>
-                  <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#ef4444' }}>
+                  <div style={{ fontSize: '24px', fontWeight: '700', color: '#ef4444' }}>
                     {vineyardWeatherData.length > 0 ? (vineyardWeatherData.reduce((sum, day) => sum + day.temp_high, 0) / vineyardWeatherData.length).toFixed(1) : '0.0'}°F
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '4px' }}>
+                  <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>
                     Daily average
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Quick Actions */}
+            {/* Quick Actions - Mobile optimized full width buttons */}
             <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: '1rem',
-              marginBottom: '2rem'
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              marginBottom: '20px'
             }}>
               <button
                 onClick={() => setActiveTab('activities')}
                 style={{
-                  padding: '1rem',
+                  padding: '16px',
                   backgroundColor: '#22c55e',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '8px',
+                  borderRadius: '12px',
                   cursor: 'pointer',
                   fontSize: '16px',
                   fontWeight: '600',
@@ -1992,10 +1991,9 @@ export function WeatherDashboard({
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px',
-                  transition: 'all 0.2s ease'
+                  width: '100%',
+                  minHeight: '52px'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#16a34a'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#22c55e'}
               >
                 🌱 Add Event
               </button>
@@ -2003,11 +2001,11 @@ export function WeatherDashboard({
               <button
                 onClick={() => setActiveTab('insights')}
                 style={{
-                  padding: '1rem',
+                  padding: '16px',
                   backgroundColor: '#3b82f6',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '8px',
+                  borderRadius: '12px',
                   cursor: 'pointer',
                   fontSize: '16px',
                   fontWeight: '600',
@@ -2015,28 +2013,39 @@ export function WeatherDashboard({
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px',
-                  transition: 'all 0.2s ease'
+                  width: '100%',
+                  minHeight: '52px'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
               >
                 📈 View Growth Curve
               </button>
             </div>
 
-            {/* Recent Activities Preview */}
+            {/* Recent Activities Preview - Mobile optimized */}
             {vineyardActivities.length > 0 && currentVineyard && (
               <div style={{
                 backgroundColor: 'white',
                 borderRadius: '12px',
-                padding: '1.5rem',
+                padding: '16px',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
                 border: '1px solid #e5e7eb',
-                marginBottom: '2rem'
+                marginBottom: '16px'
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <h3 style={{ margin: '0', fontSize: '1.125rem', color: '#374151' }}>
-                    Recent Activities - {currentVineyard.name}
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'flex-start', 
+                  marginBottom: '12px',
+                  flexWrap: 'wrap',
+                  gap: '8px'
+                }}>
+                  <h3 style={{ 
+                    margin: '0', 
+                    fontSize: '16px', 
+                    color: '#374151',
+                    lineHeight: '1.3'
+                  }}>
+                    Recent Activities
                   </h3>
                   <button
                     onClick={() => setActiveTab('activities')}
@@ -2045,9 +2054,10 @@ export function WeatherDashboard({
                       backgroundColor: '#f3f4f6',
                       color: '#374151',
                       border: '1px solid #d1d5db',
-                      borderRadius: '6px',
+                      borderRadius: '8px',
                       cursor: 'pointer',
-                      fontSize: '12px'
+                      fontSize: '12px',
+                      minHeight: '32px'
                     }}
                   >
                     View All
@@ -2084,17 +2094,26 @@ export function WeatherDashboard({
                           display: 'flex',
                           alignItems: 'center',
                           gap: '12px',
-                          padding: '8px',
+                          padding: '12px',
                           backgroundColor: '#f8fafc',
-                          borderRadius: '6px'
+                          borderRadius: '8px',
+                          minHeight: '48px'
                         }}
                       >
-                        <span style={{ fontSize: '16px' }}>{style.emoji}</span>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                        <span style={{ fontSize: '18px', minWidth: '18px' }}>{style.emoji}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ 
+                            fontSize: '14px', 
+                            fontWeight: '500', 
+                            color: '#374151',
+                            lineHeight: '1.3',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}>
                             {activity.event_type?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Other'}
                           </div>
-                          <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                          <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
                             {new Date(activity.event_date).toLocaleDateString()}
                           </div>
                         </div>
@@ -2103,13 +2122,46 @@ export function WeatherDashboard({
                             width: '8px',
                             height: '8px',
                             backgroundColor: style.color,
-                            borderRadius: '50%'
+                            borderRadius: '50%',
+                            flexShrink: 0
                           }}
                         ></div>
                       </div>
                     );
                   })}
                 </div>
+              </div>
+            )}
+
+            {/* No vineyard state - Mobile optimized */}
+            {!currentVineyard && (
+              <div style={{
+                padding: '24px',
+                textAlign: 'center',
+                backgroundColor: '#f8fafc',
+                borderRadius: '12px',
+                border: '2px dashed #cbd5e1'
+              }}>
+                <div style={{ fontSize: '32px', marginBottom: '12px' }}>🍇</div>
+                <h3 style={{ margin: '0 0 8px 0', color: '#374151', fontSize: '16px' }}>Welcome to Vigneron.AI</h3>
+                <p style={{ margin: '0 0 16px 0', color: '#6b7280', fontSize: '14px' }}>
+                  Create your first vineyard to get started
+                </p>
+                <button
+                  onClick={() => setActiveTab('vineyards')}
+                  style={{
+                    padding: '12px 20px',
+                    backgroundColor: '#22c55e',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '600'
+                  }}
+                >
+                  Create Vineyard
+                </button>
               </div>
             )}
           </div>
