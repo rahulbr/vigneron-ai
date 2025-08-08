@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Search, FileText, MapPin } from 'lucide-react';
+import { RefreshCw, Search, FileText, MapPin, Edit2, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { ReportsModal } from './ReportsModal';
 import BlockSelector from './BlockSelector';
@@ -411,7 +411,7 @@ export function ActivitiesTab({
       spray_application: { color: "#f97316", label: "Spray Application", emoji: "🌿" },
       fertilization: { color: "#84cc16", label: "Fertilization", emoji: "🌱" },
       canopy_management: { color: "#10b981", label: "Canopy Management", emoji: "🍃" },
-      soil_work: { color: "#8b5cf6", label: "Soil Work", emoji: "🌍" },
+      soil_work: { color: "#8b5cf6", label: "Soil Work", emoji: "📝" },
       equipment_maintenance: { color: "#6b7280", label: "Equipment Maintenance", emoji: "🔧" },
       fruit_set: { color: "#f59e0b", label: "Fruit Set", emoji: "🫐" },
       pest: { color: "#dc2626", label: "Pest Observation", emoji: "🐞" },
@@ -1117,24 +1117,35 @@ export function ActivitiesTab({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
+                          // TODO: Implement edit functionality
+                          console.log('Edit activity:', activity.id);
+                        }}
+                        style={{
+                          padding: '6px',
+                          backgroundColor: '#f59e0b',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Edit2 size={12} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
                           deleteActivity(activity.id, style.label);
                         }}
                         style={{
-                          padding: '4px',
+                          padding: '6px',
                           backgroundColor: '#ef4444',
                           color: 'white',
                           border: 'none',
                           borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          width: '24px',
-                          height: '24px'
+                          cursor: 'pointer'
                         }}
                       >
-                        🗑️
+                        <Trash2 size={12} />
                       </button>
                     </div>
                   </div>

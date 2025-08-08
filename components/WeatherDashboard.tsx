@@ -2066,6 +2066,11 @@ export function WeatherDashboard({
                       spray_application: { color: "#f97316", emoji: "🌿" },
                       fertilization: { color: "#84cc16", emoji: "🌱" },
                       canopy_management: { color: "#10b981", emoji: "🍃" },
+                      soil_work: { color: "#8b5cf6", emoji: "📝" },
+                      equipment_maintenance: { color: "#6b7280", emoji: "🔧" },
+                      fruit_set: { color: "#f59e0b", emoji: "🫐" },
+                      pest: { color: "#dc2626", emoji: "🐞" },
+                      scouting: { color: "#059669", emoji: "🔍" },
                       other: { color: "#9ca3af", emoji: "📝" }
                     };
 

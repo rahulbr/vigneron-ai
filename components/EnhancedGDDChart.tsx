@@ -429,7 +429,7 @@ export function EnhancedGDDChart({
     spray_application: { color: "#f97316", label: "Spray Application", emoji: "🌿" },
     fertilization: { color: "#84cc16", label: "Fertilization", emoji: "🌱" },
     canopy_management: { color: "#10b981", label: "Canopy Management", emoji: "🍃" },
-    soil_work: { color: "#8b5cf6", label: "Soil Work", emoji: "🌍" },
+    soil_work: { color: "#8b5cf6", label: "Soil Work", emoji: "📝" },
     equipment_maintenance: { color: "#6b7280", label: "Equipment Maintenance", emoji: "🔧" },
     fruit_set: { color: "#f59e0b", label: "Fruit Set", emoji: "🫐" },
     pest: { color: "#dc2626", label: "Pest Observation", emoji: "🐞" },
