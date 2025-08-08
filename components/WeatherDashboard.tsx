@@ -273,13 +273,17 @@ export function WeatherDashboard({
   const [showCreateOrganization, setShowCreateOrganization] = useState(false);
   const [showCreateProperty, setShowCreateProperty] = useState(false);
 
-  // Progressive loading state
+  // Progressive loading state with enhanced tracking
   const [progressiveLoading, setProgressiveLoading] = useState({
     weather: false,
     activities: false,
     vineyards: false,
-    insights: false
+    insights: false,
+    initial: true
   });
+
+  // Track app initialization
+  const [appInitialized, setAppInitialized] = useState(false);
 
   // Use existing setData and setLoading from useWeather hook instead of local state
 
@@ -464,7 +468,8 @@ export function WeatherDashboard({
         console.error('❌ Error loading vineyards:', error);
       } finally {
         setIsLoadingVineyards(false);
-        setProgressiveLoading(prev => ({ ...prev, vineyards: false }));
+        setProgressiveLoading(prev => ({ ...prev, vineyards: false, initial: false }));
+        setAppInitialized(true);
       }
     };
 
@@ -1690,20 +1695,101 @@ export function WeatherDashboard({
 
 
 
-  // Don't render until initialized
-  if (!isInitialized) {
+  // Enhanced initialization screen with progressive loading
+  if (!isInitialized || !appInitialized) {
     return (
-      <div style={{ padding: '20px', textAlign: 'center' }}>
+      <div style={{ 
+        padding: '2rem', 
+        textAlign: 'center',
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#f8fafc'
+      }}>
         <div style={{
-          width: '30px',
-          height: '30px',
-          border: '3px solid #f3f3f3',
-          borderTop: '3px solid #3498db',
+          width: '48px',
+          height: '48px',
+          border: '4px solid #e5e7eb',
+          borderTop: '4px solid #059669',
           borderRadius: '50%',
           animation: 'spin 1s linear infinite',
-          margin: '0 auto 10px'
+          marginBottom: '24px'
         }}></div>
-        <p>Initializing weather dashboard...</p>
+        
+        <h2 style={{ 
+          margin: '0 0 16px 0', 
+          color: '#374151',
+          fontSize: '1.5rem',
+          fontWeight: '600'
+        }}>
+          🍇 Loading Vigneron.AI
+        </h2>
+        
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: '8px',
+          maxWidth: '300px',
+          width: '100%'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '8px 12px',
+            backgroundColor: 'white',
+            borderRadius: '6px',
+            border: '1px solid #e5e7eb'
+          }}>
+            <span style={{ fontSize: '14px', color: '#6b7280' }}>📍 Initializing location...</span>
+            {isInitialized ? (
+              <span style={{ color: '#059669', fontSize: '16px' }}>✅</span>
+            ) : (
+              <div style={{
+                width: '12px',
+                height: '12px',
+                border: '2px solid #e5e7eb',
+                borderTop: '2px solid #059669',
+                borderRadius: '50%',
+                animation: 'spin 0.8s linear infinite'
+              }}></div>
+            )}
+          </div>
+          
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '8px 12px',
+            backgroundColor: 'white',
+            borderRadius: '6px',
+            border: '1px solid #e5e7eb'
+          }}>
+            <span style={{ fontSize: '14px', color: '#6b7280' }}>🍇 Loading vineyards...</span>
+            {!isLoadingVineyards ? (
+              <span style={{ color: '#059669', fontSize: '16px' }}>✅</span>
+            ) : (
+              <div style={{
+                width: '12px',
+                height: '12px',
+                border: '2px solid #e5e7eb',
+                borderTop: '2px solid #3b82f6',
+                borderRadius: '50%',
+                animation: 'spin 0.8s linear infinite'
+              }}></div>
+            )}
+          </div>
+        </div>
+        
+        <p style={{ 
+          margin: '16px 0 0 0', 
+          color: '#9ca3af', 
+          fontSize: '12px' 
+        }}>
+          Preparing your vineyard management dashboard...
+        </p>
       </div>
     );
   }
