@@ -548,3 +548,16 @@ button:focus, input:focus, select:focus, textarea:focus {
     padding: 8px !important;
   }
 }
+
+/* Desktop Styles */
+@media (min-width: 769px) {
+  /* Show desktop tabs on larger screens */
+  .desktop-tabs {
+    display: block !important;
+  }
+
+  /* Remove mobile bottom padding on desktop */
+  .mobile-content-padding {
+    padding-bottom: 20px !important;
+  }
+}
