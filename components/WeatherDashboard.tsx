@@ -1,6 +1,6 @@
 // components/WeatherDashboard.tsx - COMPLETE Fixed Version with All Features
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useWeather, useWeatherConnection } from '../hooks/useWeather';
 import { EnhancedGDDChart } from './EnhancedGDDChart';
 import { googleGeocodingService, GeocodeResult } from '../lib/googleGeocodingService';
@@ -13,8 +13,9 @@ import { ActivitiesTab } from './ActivitiesTab';
 import { InsightsTab } from './InsightsTab';
 import { VineyardsTab } from './VineyardsTab';
 import { ReportsTab } from './ReportsTab';
-import { getUserOrganizations, getOrganizationProperties, getPropertyBlocks, createOrganization, createProperty, Organization, Property, Block } from '../lib/supabase';
+import { Organization, Property, Block } from '../lib/supabase';
 import BlockSelector from './BlockSelector';
+import * as weatherService from '../services/weatherService'; // Assuming weatherService is in services folder
 
 // Placeholder for ReportsModal component if it's defined elsewhere
 const ReportsModal = ({ isOpen, onClose, vineyard, activities }: any) => {
@@ -272,6 +273,14 @@ export function WeatherDashboard({
   const [showCreateOrganization, setShowCreateOrganization] = useState(false);
   const [showCreateProperty, setShowCreateProperty] = useState(false);
 
+  // Progressive loading state
+  const [progressiveLoading, setProgressiveLoading] = useState({
+    weather: false,
+    activities: false,
+    vineyards: false,
+    insights: false
+  });
+
   // Load organizations on mount
   useEffect(() => {
     const loadOrganizations = async () => {
@@ -402,15 +411,17 @@ export function WeatherDashboard({
   // Load user's vineyards on component mount
   useEffect(() => {
     const loadUserVineyards = async () => {
+      setIsLoadingVineyards(true);
       try {
-        setIsLoadingVineyards(true);
         console.log('🔍 Loading user vineyards...');
+        setProgressiveLoading(prev => ({ ...prev, vineyards: true }));
 
         // Get authenticated user
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           console.log('👤 No authenticated user, using demo mode');
           setIsLoadingVineyards(false);
+          setProgressiveLoading(prev => ({ ...prev, vineyards: false }));
           return;
         }
 
@@ -450,6 +461,7 @@ export function WeatherDashboard({
         console.error('❌ Error loading vineyards:', error);
       } finally {
         setIsLoadingVineyards(false);
+        setProgressiveLoading(prev => ({ ...prev, vineyards: false }));
       }
     };
 
@@ -710,13 +722,12 @@ export function WeatherDashboard({
   // Remove auto-generation of AI insights - only generate when button is clicked
 
   // Load activities for current vineyard
-  const loadActivities = async () => {
-    if (!vineyardId) {
-      console.log('⚠️ No vineyard ID - cannot load activities');
-      return;
-    }
+  const loadActivities = useCallback(async () => {
+    if (!vineyardId) return;
 
     setIsLoadingActivities(true);
+    setProgressiveLoading(prev => ({ ...prev, activities: true }));
+
     try {
       console.log('📋 Loading activities for vineyard:', vineyardId);
 
@@ -763,8 +774,9 @@ export function WeatherDashboard({
       setActivities([]);
     } finally {
       setIsLoadingActivities(false);
+      setProgressiveLoading(prev => ({ ...prev, activities: false }));
     }
-  };
+  }, [vineyardId]);
 
   // Auto-load activities when vineyard changes
   useEffect(() => {
@@ -774,7 +786,7 @@ export function WeatherDashboard({
     } else {
       console.log('⚠️ No vineyard ID available');
     }
-  }, [vineyardId]);
+  }, [vineyardId, loadActivities]);
 
   // Force load activities when component mounts
   useEffect(() => {
@@ -785,7 +797,7 @@ export function WeatherDashboard({
         loadActivities();
       }, 1000); // Small delay to ensure vineyard ID is set
     }
-  }, [currentVineyard]);
+  }, [currentVineyard, loadActivities]);
 
   // Calculate safety alerts when activities change
   useEffect(() => {
@@ -889,34 +901,20 @@ export function WeatherDashboard({
     setSafetyAlerts(alerts);
   };
 
-  // Listen for chart date clicks to pre-populate form
+  // Listen for tab switching events
   useEffect(() => {
-    const handleChartDateClicked = (event: CustomEvent) => {
-      const clickedDate = event.detail?.date;
-      if (clickedDate) {
-        console.log('📅 Pre-populating form with clicked date:', clickedDate);
-        setActivityForm(prev => ({
-          ...prev,
-          start_date: clickedDate
-        }));
-      }
-    };
-
     const handleTabSwitch = (event: CustomEvent) => {
-      const tabId = event.detail?.tabId;
-      if (tabId) {
-        console.log('🔄 Switching to tab:', tabId);
-        setActiveTab(tabId);
-      }
+      const { tabId } = event.detail;
+      setActiveTab(tabId);
     };
 
-    window.addEventListener('chartDateClicked', handleChartDateClicked as EventListener);
-    window.addEventListener('switchToTab', handleTabSwitch as EventListener);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('switchToTab', handleTabSwitch as EventListener);
 
-    return () => {
-      window.removeEventListener('chartDateClicked', handleChartDateClicked as EventListener);
-      window.removeEventListener('switchToTab', handleTabSwitch as EventListener);
-    };
+      return () => {
+        window.removeEventListener('switchToTab', handleTabSwitch as EventListener);
+      };
+    }
   }, []);
 
   // Save new activity
@@ -1643,6 +1641,45 @@ export function WeatherDashboard({
     }
   };
 
+  // Fetch weather data using the useCallback hook
+  const fetchWeatherData = useCallback(async () => {
+    if (!vineyardId) return;
+
+    setLoading(true);
+    setError(null);
+    setProgressiveLoading(prev => ({ ...prev, weather: true }));
+
+    try {
+      const fetchedData = await weatherService.getWeatherData(
+        String(latitude || 38.5), // Use current state latitude
+        String(longitude || -122.8), // Use current state longitude
+        dateRange.start,
+        dateRange.end
+      );
+
+      setData(fetchedData);
+      console.log('✅ Weather data fetched:', fetchedData.length, 'days');
+    } catch (err) {
+      console.error('❌ Error fetching weather data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch weather data');
+    } finally {
+      setLoading(false);
+      setProgressiveLoading(prev => ({ ...prev, weather: false }));
+    }
+  }, [latitude, longitude, dateRange]); // Dependencies include latitude and longitude
+
+  // Re-fetch weather data if initialization or date range changes
+  useEffect(() => {
+    if (isInitialized && dateRange.start && dateRange.end && latitude && longitude) {
+      console.log('🌤️ Fetching weather data due to initialization or date range change:', {
+        latitude,
+        longitude,
+        dateRange
+      });
+      fetchWeatherData();
+    }
+  }, [isInitialized, dateRange.start, dateRange.end, latitude, longitude, fetchWeatherData]);
+
   // Calculate summary statistics
   const totalGDD = data.reduce((sum, day) => sum + day.gdd, 0);
   const totalRainfall = data.reduce((sum, day) => sum + day.rainfall, 0);
@@ -1697,47 +1734,126 @@ export function WeatherDashboard({
     switch (activeTab) {
       case 'activities':
         return (
-          <ActivitiesTab
-            vineyardId={vineyardId}
-            currentVineyard={currentVineyard}
-            activities={activities}
-            onActivitiesChange={loadActivities}
-            selectedOrganization={selectedOrganization}
-            selectedProperty={selectedProperty}
-            selectedBlockIds={selectedBlockIds}
-            onSelectedBlockIdsChange={setSelectedBlockIds}
-          />
+          <>
+            {progressiveLoading.activities && (
+              <div style={{
+                position: 'fixed',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                padding: '20px',
+                borderRadius: '12px',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+                zIndex: 1000,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <div className="spinner" style={{
+                  width: '20px',
+                  height: '20px',
+                  border: '2px solid #f3f3f3',
+                  borderTop: '2px solid #22c55e',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }}></div>
+                <span style={{ color: '#374151', fontWeight: '500' }}>Loading activities...</span>
+              </div>
+            )}
+            <ActivitiesTab
+              vineyardId={vineyardId || ''}
+              currentVineyard={currentVineyard}
+              activities={activities}
+              onActivitiesChange={loadActivities}
+              selectedOrganization={selectedOrganization}
+              selectedProperty={selectedProperty}
+              selectedBlockIds={selectedBlockIds}
+              onSelectedBlockIdsChange={setSelectedBlockIds}
+            />
+          </>
         );
       case 'insights':
         return (
-          <InsightsTab
-            data={data}
-            loading={loading}
-            vineyardId={vineyardId}
-            currentVineyard={currentVineyard}
-            customLocation={customLocation}
-            activities={activities}
-            onActivitiesChange={loadActivities}
-            dateRange={dateRange}
-          />
+          <>
+            {progressiveLoading.insights && (
+              <div style={{
+                position: 'fixed',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                padding: '20px',
+                borderRadius: '12px',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+                zIndex: 1000,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <div className="spinner" style={{
+                  width: '20px',
+                  height: '20px',
+                  border: '2px solid #f3f3f3',
+                  borderTop: '2px solid #3b82f6',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }}></div>
+                <span style={{ color: '#374151', fontWeight: '500' }}>Loading insights...</span>
+              </div>
+            )}
+            <InsightsTab
+              data={data}
+              loading={loading || progressiveLoading.weather}
+              vineyardId={vineyardId || ''}
+              currentVineyard={currentVineyard}
+              customLocation={customLocation}
+              activities={activities}
+              onActivitiesChange={loadActivities}
+              dateRange={dateRange}
+              fetchData={fetchWeatherData}
+            />
+          </>
         );
       case 'vineyards':
         return (
-          <VineyardsTab
-            userVineyards={userVineyards}
-            currentVineyard={currentVineyard}
-            onVineyardChange={switchVineyard}
-            onVineyardsUpdate={async () => {
-              // Reload user vineyards
-              try {
-                const { getUserVineyards } = await import('../lib/supabase');
-                const vineyards = await getUserVineyards();
-                setUserVineyards(vineyards);
-              } catch (error) {
-                console.error('Error reloading vineyards:', error);
-              }
-            }}
-          />
+          <>
+            {progressiveLoading.vineyards && (
+              <div style={{
+                position: 'fixed',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                padding: '20px',
+                borderRadius: '12px',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+                zIndex: 1000,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <div className="spinner" style={{
+                  width: '20px',
+                  height: '20px',
+                  border: '2px solid #f3f3f3',
+                  borderTop: '2px solid #8b5cf6',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }}></div>
+                <span style={{ color: '#374151', fontWeight: '500' }}>Loading vineyards...</span>
+              </div>
+            )}
+            <VineyardsTab
+              selectedOrganization={selectedOrganization}
+              setSelectedOrganization={setSelectedOrganization}
+              selectedProperty={selectedProperty}
+              setSelectedProperty={setSelectedProperty}
+              selectedBlockIds={selectedBlockIds}
+              onSelectedBlockIdsChange={setSelectedBlockIds}
+              activities={activities}
+            />
+          </>
         );
       case 'reports':
         return (
@@ -1815,7 +1931,7 @@ export function WeatherDashboard({
                     <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280' }}>Total Rainfall</span>
                   </div>
                   <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#3b82f6' }}>
-                    {totalRainfall.toFixed(2)}"
+                    {totalRainfall.toFixed(2)}
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '4px' }}>
                     Precipitation
@@ -2073,7 +2189,7 @@ export function WeatherDashboard({
         onRefresh={async () => {
           console.log('🔄 Triggering pull-to-refresh...');
           // Reload weather data and activities
-          refetchWithCache();
+          fetchWeatherData();
           await loadActivities();
           console.log('🔄 Pull-to-refresh complete.');
         }}

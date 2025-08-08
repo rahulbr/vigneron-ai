@@ -181,6 +181,15 @@ export function InsightsTab({
     // generateAIInsights();
   };
 
+  // Navigation function to switch to Activities tab
+  const navigateToActivities = () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('switchToTab', {
+        detail: { tabId: 'activities' }
+      }));
+    }
+  };
+
   return (
     <div style={{ padding: '1rem', minHeight: '200px' }}>
       {loading && (

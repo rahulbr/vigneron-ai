@@ -596,10 +596,13 @@ export function EnhancedGDDChart({
 
           <button
             onClick={() => {
-              console.log('📊 Add Event button clicked - opening Add Event form');
-              // Scroll to Event Log section
-              const eventLogSection = document.querySelector('[data-event-log-section]');
-              if (eventLogSection) {
+              console.log('📊 Add Event button clicked - navigating to Activities tab');
+              // Navigate to Activities tab
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('switchToTab', {
+                  detail: { tabId: 'activities' }
+                }));
+              }
                 eventLogSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
               }
 
