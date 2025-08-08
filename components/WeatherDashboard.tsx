@@ -15,7 +15,7 @@ import { VineyardsTab } from './VineyardsTab';
 import { ReportsTab } from './ReportsTab';
 import { Organization, Property, Block } from '../lib/supabase';
 import BlockSelector from './BlockSelector';
-import * as weatherService from '../services/weatherService'; // Assuming weatherService is in services folder
+// Using existing useWeather hook instead of direct weatherService import
 
 // Placeholder for ReportsModal component if it's defined elsewhere
 const ReportsModal = ({ isOpen, onClose, vineyard, activities }: any) => {
@@ -280,6 +280,8 @@ export function WeatherDashboard({
     vineyards: false,
     insights: false
   });
+
+  // Use existing setData and setLoading from useWeather hook instead of local state
 
   // Load organizations on mount
   useEffect(() => {
@@ -1641,32 +1643,22 @@ export function WeatherDashboard({
     }
   };
 
-  // Fetch weather data using the useCallback hook
+  // Fetch weather data using existing refetchWithCache function
   const fetchWeatherData = useCallback(async () => {
-    if (!vineyardId) return;
+    if (!vineyardId || !isInitialized || !dateRange.start || !dateRange.end) return;
 
-    setLoading(true);
-    setError(null);
     setProgressiveLoading(prev => ({ ...prev, weather: true }));
-
+    console.log('🌤️ Fetching weather data:', { latitude, longitude, dateRange });
+    
     try {
-      const fetchedData = await weatherService.getWeatherData(
-        String(latitude || 38.5), // Use current state latitude
-        String(longitude || -122.8), // Use current state longitude
-        dateRange.start,
-        dateRange.end
-      );
-
-      setData(fetchedData);
-      console.log('✅ Weather data fetched:', fetchedData.length, 'days');
+      await refetchWithCache();
+      console.log('✅ Weather data refreshed');
     } catch (err) {
       console.error('❌ Error fetching weather data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch weather data');
     } finally {
-      setLoading(false);
       setProgressiveLoading(prev => ({ ...prev, weather: false }));
     }
-  }, [latitude, longitude, dateRange]); // Dependencies include latitude and longitude
+  }, [vineyardId, isInitialized, dateRange, latitude, longitude, refetchWithCache]);
 
   // Re-fetch weather data if initialization or date range changes
   useEffect(() => {
