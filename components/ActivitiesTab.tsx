@@ -439,22 +439,150 @@ export function ActivitiesTab({
   );
 
   return (
-    <div style={{ padding: '1rem' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div>
-          <h3 style={{ margin: '0 0 4px 0', fontSize: '1.25rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            🌱 Event Log
-          </h3>
-          {activities.length > 0 && (
-            <div style={{ fontSize: '13px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span>{activities.length} total events</span>
-              <span>•</span>
-              <span style={{ color: '#059669' }}>{eventsWithLocation.length} with location</span>
-            </div>
-          )}
+    <div style={{ padding: '12px' }}>
+      {/* Mobile-optimized Header */}
+      <div style={{ marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3 style={{ 
+              margin: '0 0 6px 0', 
+              fontSize: '18px', 
+              color: '#374151', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '6px',
+              lineHeight: '1.3'
+            }}>
+              🌱 Event Log
+            </h3>
+            {activities.length > 0 && (
+              <div style={{ 
+                fontSize: '12px', 
+                color: '#6b7280', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px',
+                flexWrap: 'wrap'
+              }}>
+                <span>{activities.length} total</span>
+                <span>•</span>
+                <span style={{ color: '#059669' }}>{eventsWithLocation.length} with location</span>
+              </div>
+            )}
+          </div>
+          
+          {/* Filter Button - Mobile friendly */}
+          <div style={{ position: "relative", flexShrink: 0 }}>
+            <button
+              onClick={() => setShowEventFilterDropdown(!showEventFilterDropdown)}
+              style={{
+                padding: "8px 12px",
+                backgroundColor: "#f3f4f6",
+                color: "#374151",
+                border: "1px solid #d1d5db",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontSize: "12px",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                minHeight: '40px'
+              }}
+            >
+              🔍 {eventFilterTypes.length > 0 ? `${eventFilterTypes.length}` : 'All'}
+            </button>
+
+            {showEventFilterDropdown && (
+              <div style={{
+                position: "absolute",
+                top: "100%",
+                right: "0",
+                backgroundColor: "white",
+                border: "1px solid #ddd",
+                borderRadius: "8px",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                zIndex: 1000,
+                minWidth: "240px",
+                maxHeight: "280px",
+                overflowY: "auto"
+              }}>
+                <div style={{ padding: "12px", borderBottom: "1px solid #eee", fontWeight: "600", fontSize: "13px" }}>
+                  Filter by Event Type
+                </div>
+                <div style={{ padding: "8px" }}>
+                  <button
+                    onClick={() => setEventFilterTypes([])}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      backgroundColor: eventFilterTypes.length === 0 ? "#e0f2fe" : "transparent",
+                      border: "none",
+                      textAlign: "left",
+                      cursor: "pointer",
+                      fontSize: "13px",
+                      borderRadius: "6px",
+                      marginBottom: "4px"
+                    }}
+                  >
+                    Show All Events
+                  </button>
+                  {activityTypes.map((type) => {
+                    const eventType = type.toLowerCase().replace(' ', '_');
+                    const style = getEventStyle(eventType);
+                    const isSelected = eventFilterTypes.includes(eventType);
+                    return (
+                      <button
+                        key={type}
+                        onClick={() => {
+                          if (isSelected) {
+                            setEventFilterTypes(prev => prev.filter(t => t !== eventType));
+                          } else {
+                            setEventFilterTypes(prev => [...prev, eventType]);
+                          }
+                        }}
+                        style={{
+                          width: "100%",
+                          padding: "10px 12px",
+                          backgroundColor: isSelected ? "#e0f2fe" : "transparent",
+                          border: "none",
+                          textAlign: "left",
+                          cursor: "pointer",
+                          fontSize: "13px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          borderRadius: "6px",
+                          marginBottom: "2px"
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: "10px",
+                            height: "10px",
+                            backgroundColor: style.color,
+                            borderRadius: "50%",
+                            flexShrink: 0
+                          }}
+                        ></div>
+                        <span style={{ fontSize: '14px', marginRight: '4px' }}>{style.emoji}</span>
+                        <span style={{ flex: 1 }}>{style.label}</span>
+                        {isSelected && <span style={{ color: "#22c55e", fontSize: '14px' }}>✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+
+        {/* Mobile Action Buttons Row */}
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', 
+          gap: '8px',
+          marginTop: '12px'
+        }}>
           {/* Route Button */}
           {(() => {
             const eventsWithLocationFiltered = filteredActivities.filter(activity =>
@@ -488,20 +616,22 @@ export function ActivitiesTab({
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{
-                    padding: '6px 12px',
+                    padding: '10px 12px',
                     backgroundColor: '#10b981',
                     color: 'white',
                     textDecoration: 'none',
-                    borderRadius: '6px',
-                    fontSize: '12px',
+                    borderRadius: '8px',
+                    fontSize: '13px',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '4px',
+                    justifyContent: 'center',
+                    gap: '6px',
                     fontWeight: '500',
-                    whiteSpace: 'nowrap'
+                    textAlign: 'center',
+                    minHeight: '44px'
                   }}
                 >
-                  🗺️ {sortedEvents.length === 1 ? 'View Map' : 'Route All'} ({sortedEvents.length})
+                  🗺️ Route ({sortedEvents.length})
                 </a>
               );
             }
@@ -511,7 +641,6 @@ export function ActivitiesTab({
           {/* Reports Button */}
           <button
             onClick={() => {
-              // Dispatch event to switch to Reports tab
               if (typeof window !== 'undefined') {
                 window.dispatchEvent(new CustomEvent('switchToTab', {
                   detail: { tabId: 'reports' }
@@ -520,188 +649,92 @@ export function ActivitiesTab({
             }}
             disabled={!currentVineyard || activities.length === 0}
             style={{
-              padding: '6px 12px',
+              padding: '10px 12px',
               backgroundColor: !currentVineyard || activities.length === 0 ? '#9ca3af' : '#3b82f6',
               color: 'white',
               border: 'none',
-              borderRadius: '6px',
+              borderRadius: '8px',
               cursor: !currentVineyard || activities.length === 0 ? 'not-allowed' : 'pointer',
-              fontSize: '12px',
+              fontSize: '13px',
               display: 'flex',
               alignItems: 'center',
-              gap: '4px',
-              fontWeight: '500'
+              justifyContent: 'center',
+              gap: '6px',
+              fontWeight: '500',
+              minHeight: '44px'
             }}
           >
-            <FileText size={12} />
+            <FileText size={14} />
             📊 Reports
           </button>
-
-          {/* Filter Dropdown */}
-          <div style={{ position: "relative" }}>
-            <button
-              onClick={() => setShowEventFilterDropdown(!showEventFilterDropdown)}
-              style={{
-                padding: "6px 12px",
-                backgroundColor: "#f3f4f6",
-                color: "#374151",
-                border: "1px solid #d1d5db",
-                borderRadius: "6px",
-                cursor: "pointer",
-                fontSize: "12px",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px"
-              }}
-            >
-              🔍 {eventFilterTypes.length > 0 ? `${eventFilterTypes.length} filtered` : 'All'}
-            </button>
-
-            {showEventFilterDropdown && (
-              <div style={{
-                position: "absolute",
-                top: "100%",
-                right: "0",
-                backgroundColor: "white",
-                border: "1px solid #ddd",
-                borderRadius: "6px",
-                boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
-                zIndex: 1000,
-                minWidth: "200px",
-                maxHeight: "300px",
-                overflowY: "auto"
-              }}>
-                <div style={{ padding: "8px 12px", borderBottom: "1px solid #eee", fontWeight: "bold", fontSize: "12px" }}>
-                  Filter events by type:
-                </div>
-                <div style={{ padding: "4px" }}>
-                  <button
-                    onClick={() => setEventFilterTypes([])}
-                    style={{
-                      width: "100%",
-                      padding: "6px 12px",
-                      backgroundColor: eventFilterTypes.length === 0 ? "#e0f2fe" : "transparent",
-                      border: "none",
-                      textAlign: "left",
-                      cursor: "pointer",
-                      fontSize: "12px"
-                    }}
-                  >
-                    Show All Events
-                  </button>
-                  {activityTypes.map((type) => {
-                    const eventType = type.toLowerCase().replace(' ', '_');
-                    const style = getEventStyle(eventType);
-                    const isSelected = eventFilterTypes.includes(eventType);
-                    return (
-                      <button
-                        key={type}
-                        onClick={() => {
-                          if (isSelected) {
-                            setEventFilterTypes(prev => prev.filter(t => t !== eventType));
-                          } else {
-                            setEventFilterTypes(prev => [...prev, eventType]);
-                          }
-                        }}
-                        style={{
-                          width: "100%",
-                          padding: "6px 12px",
-                          backgroundColor: isSelected ? "#e0f2fe" : "transparent",
-                          border: "none",
-                          textAlign: "left",
-                          cursor: "pointer",
-                          fontSize: "12px",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "6px"
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: "8px",
-                            height: "8px",
-                            backgroundColor: style.color,
-                            borderRadius: "50%"
-                          }}
-                        ></div>
-                        {style.emoji} {style.label}
-                        {isSelected && <span style={{ marginLeft: "auto", color: "#22c55e" }}>✓</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
-      {/* Add Event Button */}
+      {/* Mobile-optimized Add Event Button */}
       {!showActivityForm && (
-        <div style={{ marginBottom: '20px' }}>
+        <div style={{ marginBottom: '16px' }}>
           <button
             onClick={() => setShowActivityForm(true)}
             style={{
-              padding: '12px 20px',
+              width: '100%',
+              padding: '16px 20px',
               backgroundColor: '#22c55e',
               color: 'white',
               border: 'none',
-              borderRadius: '8px',
+              borderRadius: '12px',
               cursor: 'pointer',
               fontSize: '16px',
               fontWeight: '600',
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: '8px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#16a34a';
-              e.currentTarget.style.transform = 'translateY(-1px)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#22c55e';
-              e.currentTarget.style.transform = 'translateY(0)';
+              boxShadow: '0 2px 8px rgba(34, 197, 94, 0.2)',
+              minHeight: '52px'
             }}
           >
-            ➕ Add Event
+            ➕ Add New Event
           </button>
         </div>
       )}
 
-      {/* Activity Form */}
+      {/* Mobile-optimized Activity Form */}
       {showActivityForm && (
         <div style={{
-          padding: '20px',
+          padding: '16px',
           backgroundColor: '#f8fafc',
           border: '2px solid #22c55e',
           borderRadius: '12px',
-          marginBottom: '20px'
+          marginBottom: '16px'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <h4 style={{ margin: '0', color: '#059669', fontSize: '18px', fontWeight: '700' }}>
               ➕ Add New Event
             </h4>
             <button
               onClick={() => setShowActivityForm(false)}
               style={{
-                padding: '4px 8px',
+                padding: '8px 12px',
                 backgroundColor: '#6b7280',
                 color: 'white',
                 border: 'none',
-                borderRadius: '4px',
+                borderRadius: '8px',
                 cursor: 'pointer',
-                fontSize: '12px'
+                fontSize: '14px',
+                minHeight: '40px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}
             >
               ✕
             </button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+          {/* Mobile-first stacked form layout */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px' }}>
             <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '15px', color: '#374151' }}>
                 Event Type *
               </label>
               <select
@@ -709,10 +742,12 @@ export function ActivitiesTab({
                 onChange={(e) => setActivityForm(prev => ({ ...prev, activity_type: e.target.value }))}
                 style={{
                   width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  backgroundColor: 'white'
+                  padding: '12px 16px',
+                  border: '2px solid #d1d5db',
+                  borderRadius: '8px',
+                  backgroundColor: 'white',
+                  fontSize: '16px',
+                  minHeight: '48px'
                 }}
                 required
               >
@@ -723,40 +758,46 @@ export function ActivitiesTab({
               </select>
             </div>
 
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
-                Date *
-              </label>
-              <input
-                type="date"
-                value={activityForm.start_date}
-                onChange={(e) => setActivityForm(prev => ({ ...prev, start_date: e.target.value }))}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px'
-                }}
-                required
-              />
-            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '15px', color: '#374151' }}>
+                  Date *
+                </label>
+                <input
+                  type="date"
+                  value={activityForm.start_date}
+                  onChange={(e) => setActivityForm(prev => ({ ...prev, start_date: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: '2px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    minHeight: '48px'
+                  }}
+                  required
+                />
+              </div>
 
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
-                End Date (Optional)
-              </label>
-              <input
-                type="date"
-                value={activityForm.end_date}
-                onChange={(e) => setActivityForm(prev => ({ ...prev, end_date: e.target.value }))}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px'
-                }}
-                min={activityForm.start_date}
-              />
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '15px', color: '#374151' }}>
+                  End Date
+                </label>
+                <input
+                  type="date"
+                  value={activityForm.end_date}
+                  onChange={(e) => setActivityForm(prev => ({ ...prev, end_date: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: '2px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    minHeight: '48px'
+                  }}
+                  min={activityForm.start_date}
+                />
+              </div>
             </div>
           </div>
 
@@ -780,45 +821,48 @@ export function ActivitiesTab({
             </div>
           )}
 
-          {/* Location Section */}
+          {/* Mobile-optimized Location Section */}
           <div style={{
-            marginBottom: '16px',
-            padding: '12px',
+            marginBottom: '20px',
+            padding: '16px',
             backgroundColor: '#fefce8',
-            border: '1px solid #fde68a',
-            borderRadius: '8px'
+            border: '2px solid #fde68a',
+            borderRadius: '12px'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span style={{ fontSize: '16px' }}>📍</span>
-              <label style={{ fontWeight: '600', fontSize: '14px', color: '#a16207' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <span style={{ fontSize: '18px' }}>📍</span>
+              <label style={{ fontWeight: '600', fontSize: '16px', color: '#a16207' }}>
                 Location (Optional)
               </label>
             </div>
 
             {activityForm.location_lat && activityForm.location_lng ? (
               <div style={{
-                padding: '8px',
+                padding: '12px',
                 backgroundColor: '#f0fdf4',
-                border: '1px solid #bbf7d0',
-                borderRadius: '6px',
-                marginBottom: '8px',
+                border: '2px solid #bbf7d0',
+                borderRadius: '8px',
+                marginBottom: '12px',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'space-between'
+                justifyContent: 'space-between',
+                gap: '8px'
               }}>
-                <div style={{ fontSize: '13px', color: '#065f46' }}>
+                <div style={{ fontSize: '14px', color: '#065f46', flex: 1, minWidth: 0 }}>
                   📍 {activityForm.location_name || 'Location set'}
                 </div>
                 <button
                   onClick={clearLocation}
                   style={{
-                    padding: '4px 8px',
+                    padding: '8px 12px',
                     backgroundColor: '#ef4444',
                     color: 'white',
                     border: 'none',
-                    borderRadius: '4px',
+                    borderRadius: '6px',
                     cursor: 'pointer',
-                    fontSize: '11px'
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    flexShrink: 0
                   }}
                 >
                   Clear
@@ -826,46 +870,48 @@ export function ActivitiesTab({
               </div>
             ) : (
               <div style={{
-                padding: '8px',
+                padding: '12px',
                 backgroundColor: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                borderRadius: '6px',
-                marginBottom: '8px',
+                border: '2px solid #e2e8f0',
+                borderRadius: '8px',
+                marginBottom: '12px',
                 textAlign: 'center'
               }}>
-                <div style={{ fontSize: '12px', color: '#92400e' }}>
+                <div style={{ fontSize: '14px', color: '#92400e' }}>
                   No location set for this event
                 </div>
               </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '8px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <button
                 type="button"
                 onClick={getCurrentLocation}
                 disabled={isGettingLocation}
                 style={{
-                  padding: '8px 12px',
+                  width: '100%',
+                  padding: '12px 16px',
                   backgroundColor: isGettingLocation ? '#9ca3af' : '#10b981',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '6px',
+                  borderRadius: '8px',
                   cursor: isGettingLocation ? 'not-allowed' : 'pointer',
-                  fontSize: '12px',
+                  fontSize: '14px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '4px',
-                  fontWeight: '500'
+                  gap: '6px',
+                  fontWeight: '600',
+                  minHeight: '48px'
                 }}
               >
                 {isGettingLocation ? (
                   <>
-                    <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} />
-                    Getting...
+                    <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                    Getting Location...
                   </>
                 ) : (
-                  '📍 Check In Here'
+                  '📍 Check In at Current Location'
                 )}
               </button>
 
@@ -874,33 +920,35 @@ export function ActivitiesTab({
                   type="button"
                   onClick={useVineyardLocation}
                   style={{
-                    padding: '8px 12px',
+                    width: '100%',
+                    padding: '12px 16px',
                     backgroundColor: '#3b82f6',
                     color: 'white',
                     border: 'none',
-                    borderRadius: '6px',
+                    borderRadius: '8px',
                     cursor: 'pointer',
-                    fontSize: '12px',
+                    fontSize: '14px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '4px',
-                    fontWeight: '500'
+                    gap: '6px',
+                    fontWeight: '600',
+                    minHeight: '48px'
                   }}
                 >
-                  🍇 Vineyard Location
+                  🍇 Use Vineyard Location
                 </button>
               )}
             </div>
 
             {locationError && (
               <div style={{
-                marginTop: '8px',
-                padding: '6px 8px',
+                marginTop: '12px',
+                padding: '12px',
                 backgroundColor: '#fef2f2',
-                border: '1px solid #fecaca',
-                borderRadius: '4px',
-                fontSize: '12px',
+                border: '2px solid #fecaca',
+                borderRadius: '8px',
+                fontSize: '14px',
                 color: '#991b1b'
               }}>
                 {locationError}
@@ -908,9 +956,9 @@ export function ActivitiesTab({
             )}
           </div>
 
-          {/* Notes */}
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '14px' }}>
+          {/* Mobile-optimized Notes */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '15px', color: '#374151' }}>
               Notes (Optional)
             </label>
             <textarea
@@ -919,47 +967,55 @@ export function ActivitiesTab({
               placeholder="Add any details about this event..."
               style={{
                 width: '100%',
-                padding: '8px 12px',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                minHeight: '60px',
-                resize: 'vertical'
+                padding: '12px 16px',
+                border: '2px solid #d1d5db',
+                borderRadius: '8px',
+                minHeight: '80px',
+                resize: 'vertical',
+                fontSize: '16px'
               }}
             />
           </div>
 
-          <div style={{ display: 'flex', gap: '10px' }}>
+          {/* Mobile-optimized Action Buttons */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <button
               onClick={saveActivity}
               disabled={isSavingActivity || !activityForm.activity_type || !activityForm.start_date}
               style={{
-                padding: '10px 16px',
+                width: '100%',
+                padding: '16px 20px',
                 backgroundColor: isSavingActivity || !activityForm.activity_type || !activityForm.start_date ? '#9ca3af' : '#22c55e',
                 color: 'white',
                 border: 'none',
-                borderRadius: '6px',
+                borderRadius: '8px',
                 cursor: isSavingActivity || !activityForm.activity_type || !activityForm.start_date ? 'not-allowed' : 'pointer',
-                fontSize: '14px',
+                fontSize: '16px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
-                fontWeight: '600'
+                justifyContent: 'center',
+                gap: '8px',
+                fontWeight: '600',
+                minHeight: '52px'
               }}
             >
-              {isSavingActivity ? <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> : '💾'}
-              {isSavingActivity ? 'Saving...' : 'Save Event'}
+              {isSavingActivity ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : '💾'}
+              {isSavingActivity ? 'Saving Event...' : 'Save Event'}
             </button>
 
             <button
               onClick={() => setShowActivityForm(false)}
               style={{
-                padding: '10px 16px',
+                width: '100%',
+                padding: '12px 20px',
                 backgroundColor: '#6b7280',
                 color: 'white',
                 border: 'none',
-                borderRadius: '6px',
+                borderRadius: '8px',
                 cursor: 'pointer',
-                fontSize: '14px'
+                fontSize: '14px',
+                fontWeight: '500',
+                minHeight: '44px'
               }}
             >
               Cancel
@@ -1002,17 +1058,24 @@ export function ActivitiesTab({
 
         {filteredActivities.length === 0 ? (
           <div style={{
-            padding: '30px',
+            padding: '32px 24px',
             textAlign: 'center',
             backgroundColor: '#f8fafc',
-            borderRadius: '8px',
+            borderRadius: '12px',
             border: '2px dashed #cbd5e1'
           }}>
-            <div style={{ fontSize: '48px', marginBottom: '10px' }}>📅</div>
-            <h4 style={{ margin: '0 0 8px 0', color: '#374151' }}>
+            <div style={{ fontSize: '64px', marginBottom: '16px' }}>📅</div>
+            <h4 style={{ margin: '0 0 12px 0', color: '#374151', fontSize: '18px' }}>
               {activities.length === 0 ? 'No Events Logged' : 'No Events Match Filter'}
             </h4>
-            <p style={{ margin: '0', color: '#6b7280', fontSize: '14px' }}>
+            <p style={{ 
+              margin: '0', 
+              color: '#6b7280', 
+              fontSize: '15px',
+              lineHeight: '1.5',
+              maxWidth: '280px',
+              margin: '0 auto'
+            }}>
               {activities.length === 0
                 ? 'Start logging your vineyard events to track phenology and activities throughout the season.'
                 : `${activities.length} events total, but none match the current filter. Clear the filter to see all events.`
@@ -1021,13 +1084,11 @@ export function ActivitiesTab({
           </div>
         ) : (
           <div style={{
-            maxHeight: '500px',
-            overflowY: 'auto',
-            border: '1px solid #e5e7eb',
-            borderRadius: '8px',
-            backgroundColor: 'white'
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px'
           }}>
-            {filteredActivities.map((activity, index, filteredArray) => {
+            {filteredActivities.map((activity, index) => {
               const style = getEventStyle(activity.event_type);
               const blockNames = activity.blocks && Array.isArray(activity.blocks)
                 ? activity.blocks.map((block: any) => block.name).join(', ')
@@ -1038,48 +1099,46 @@ export function ActivitiesTab({
                   key={activity.id || index}
                   style={{
                     padding: '16px',
-                    borderBottom: index < filteredArray.length - 1 ? '1px solid #f3f4f6' : 'none',
                     backgroundColor: 'white',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f8fafc';
-                    e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'white';
-                    e.currentTarget.style.boxShadow = 'none';
+                    borderRadius: '12px',
+                    border: '1px solid #e5e7eb',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                  {/* Header with event type and actions */}
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'flex-start', 
+                    marginBottom: '12px',
+                    gap: '12px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
                       <div
                         style={{
-                          width: '8px',
-                          height: '8px',
+                          width: '12px',
+                          height: '12px',
                           backgroundColor: style.color,
                           borderRadius: '50%',
                           flexShrink: 0
                         }}
                       ></div>
-                      <span style={{ fontSize: '16px', flexShrink: 0 }}>{style.emoji}</span>
+                      <span style={{ fontSize: '20px', flexShrink: 0 }}>{style.emoji}</span>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{
                           fontWeight: '600',
-                          fontSize: '15px',
+                          fontSize: '16px',
                           color: '#374151',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
+                          marginBottom: '4px'
                         }}>
                           {style.label}
                         </div>
-                        <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '2px' }}>
+                        <div style={{ fontSize: '14px', color: '#6b7280' }}>
                           {new Date(activity.event_date).toLocaleDateString('en-US', {
                             weekday: 'short',
                             month: 'short',
-                            day: 'numeric'
+                            day: 'numeric',
+                            year: 'numeric'
                           })}
                           {activity.end_date && activity.end_date !== activity.event_date && (
                             <span> → {new Date(activity.end_date).toLocaleDateString('en-US', {
@@ -1091,7 +1150,8 @@ export function ActivitiesTab({
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexShrink: 0 }}>
+                    {/* Mobile-optimized action buttons */}
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
                       {activity.location_lat && activity.location_lng && (
                         <a
                           href={`https://www.google.com/maps?q=${activity.location_lat},${activity.location_lng}&z=18`}
@@ -1099,37 +1159,41 @@ export function ActivitiesTab({
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
                           style={{
-                            padding: '4px 8px',
+                            padding: '8px',
                             backgroundColor: '#10b981',
                             color: 'white',
                             textDecoration: 'none',
-                            borderRadius: '4px',
-                            fontSize: '11px',
+                            borderRadius: '8px',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '2px',
-                            fontWeight: '500'
+                            justifyContent: 'center',
+                            minWidth: '40px',
+                            minHeight: '40px'
                           }}
                         >
-                          <MapPin size={12} />
+                          <MapPin size={16} />
                         </a>
                       )}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          // TODO: Implement edit functionality
                           console.log('Edit activity:', activity.id);
                         }}
                         style={{
-                          padding: '6px',
+                          padding: '8px',
                           backgroundColor: '#f59e0b',
                           color: 'white',
                           border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer'
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minWidth: '40px',
+                          minHeight: '40px'
                         }}
                       >
-                        <Edit2 size={12} />
+                        <Edit2 size={16} />
                       </button>
                       <button
                         onClick={(e) => {
@@ -1137,15 +1201,20 @@ export function ActivitiesTab({
                           deleteActivity(activity.id, style.label);
                         }}
                         style={{
-                          padding: '6px',
+                          padding: '8px',
                           backgroundColor: '#ef4444',
                           color: 'white',
                           border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer'
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minWidth: '40px',
+                          minHeight: '40px'
                         }}
                       >
-                        <Trash2 size={12} />
+                        <Trash2 size={16} />
                       </button>
                     </div>
                   </div>
@@ -1153,19 +1222,21 @@ export function ActivitiesTab({
                   {/* Block Information */}
                   {blockNames && (
                     <div style={{
-                      fontSize: '12px',
+                      fontSize: '13px',
                       color: '#6b7280',
-                      marginBottom: '4px',
+                      marginBottom: '8px',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px'
+                      gap: '6px',
+                      flexWrap: 'wrap'
                     }}>
                       <span>🏷️ Blocks:</span>
                       <span style={{
                         backgroundColor: '#e0f2fe',
-                        padding: '1px 4px',
-                        borderRadius: '3px',
-                        fontWeight: '500'
+                        padding: '4px 8px',
+                        borderRadius: '6px',
+                        fontWeight: '500',
+                        fontSize: '12px'
                       }}>
                         {blockNames}
                       </span>
@@ -1174,30 +1245,36 @@ export function ActivitiesTab({
 
                   {/* Notes and location */}
                   {(activity.notes || activity.location_name) && (
-                    <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                    <div style={{ fontSize: '13px', color: '#6b7280' }}>
                       {activity.notes && (
                         <div style={{
-                          marginBottom: '2px',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
+                          marginBottom: '6px',
+                          lineHeight: '1.4',
+                          backgroundColor: '#f8fafc',
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          border: '1px solid #e2e8f0'
                         }}>
                           💬 {activity.notes}
                         </div>
                       )}
                       {activity.location_name && (
                         <div style={{
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '4px'
+                          gap: '6px',
+                          flexWrap: 'wrap'
                         }}>
-                          📍 {activity.location_name}
+                          <span>📍 {activity.location_name}</span>
                           {activity.location_accuracy && (
-                            <span style={{ fontSize: '10px', color: '#9ca3af' }}>
-                              (±{Math.round(activity.location_accuracy)}m)
+                            <span style={{ 
+                              fontSize: '11px', 
+                              color: '#9ca3af',
+                              backgroundColor: '#f3f4f6',
+                              padding: '2px 6px',
+                              borderRadius: '4px'
+                            }}>
+                              ±{Math.round(activity.location_accuracy)}m
                             </span>
                           )}
                         </div>
