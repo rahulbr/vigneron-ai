@@ -779,7 +779,7 @@ export function WeatherDashboard({
       setIsLoadingActivities(false);
       setProgressiveLoading(prev => ({ ...prev, activities: false }));
     }
-  }, []);
+  }, [vineyardId]);
 
   // Auto-load activities when vineyard changes
   useEffect(() => {
@@ -1661,7 +1661,7 @@ export function WeatherDashboard({
     } catch (err) {
       console.error('❌ Error fetching weather data:', err);
     }
-  }, [isInitialized, dateRange, latitude, longitude, refetchWithCache]);
+  }, [isInitialized, dateRange, latitude, longitude]);
 
   // Re-fetch weather data if initialization or date range changes
   useEffect(() => {
