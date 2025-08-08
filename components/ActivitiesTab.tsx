@@ -510,7 +510,14 @@ export function ActivitiesTab({
 
           {/* Reports Button */}
           <button
-            onClick={() => setShowReportsModal(true)}
+            onClick={() => {
+              // Dispatch event to switch to Reports tab
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('switchToTab', {
+                  detail: { tabId: 'reports' }
+                }));
+              }
+            }}
             disabled={!currentVineyard || activities.length === 0}
             style={{
               padding: '6px 12px',

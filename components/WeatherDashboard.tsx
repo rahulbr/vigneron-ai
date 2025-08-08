@@ -9,6 +9,8 @@ import { AlertCircle, RefreshCw, MapPin, Calendar, Thermometer, CloudRain, Trend
 import { TabNavigation } from './TabNavigation';
 import { ActivitiesTab } from './ActivitiesTab';
 import { InsightsTab } from './InsightsTab';
+import { VineyardsTab } from './VineyardsTab';
+import { ReportsTab } from './ReportsTab';
 import { getUserOrganizations, getOrganizationProperties, getPropertyBlocks, createOrganization, createProperty, Organization, Property, Block } from '../lib/supabase';
 import BlockSelector from './BlockSelector';
 
@@ -898,9 +900,20 @@ export function WeatherDashboard({
       }
     };
 
+    const handleTabSwitch = (event: CustomEvent) => {
+      const tabId = event.detail?.tabId;
+      if (tabId) {
+        console.log('🔄 Switching to tab:', tabId);
+        setActiveTab(tabId);
+      }
+    };
+
     window.addEventListener('chartDateClicked', handleChartDateClicked as EventListener);
+    window.addEventListener('switchToTab', handleTabSwitch as EventListener);
+    
     return () => {
       window.removeEventListener('chartDateClicked', handleChartDateClicked as EventListener);
+      window.removeEventListener('switchToTab', handleTabSwitch as EventListener);
     };
   }, []);
 
@@ -1708,46 +1721,29 @@ export function WeatherDashboard({
         );
       case 'vineyards':
         return (
-          <div style={{ padding: '1rem' }}>
-            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.25rem', color: '#374151' }}>
-              🍇 Vineyard Management
-            </h3>
-            {/* Vineyard management content would be moved here */}
-            <div style={{
-              padding: '20px',
-              backgroundColor: '#f8fafc',
-              borderRadius: '8px',
-              border: '2px dashed #cbd5e1',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '48px', marginBottom: '10px' }}>🍇</div>
-              <h4 style={{ margin: '0 0 8px 0', color: '#374151' }}>Vineyard Management</h4>
-              <p style={{ margin: '0', color: '#6b7280', fontSize: '14px' }}>
-                Vineyard creation and management tools will be available here.
-              </p>
-            </div>
-          </div>
+          <VineyardsTab
+            userVineyards={userVineyards}
+            currentVineyard={currentVineyard}
+            onVineyardChange={switchVineyard}
+            onVineyardsUpdate={async () => {
+              // Reload user vineyards
+              try {
+                const { getUserVineyards } = await import('../lib/supabase');
+                const vineyards = await getUserVineyards();
+                setUserVineyards(vineyards);
+              } catch (error) {
+                console.error('Error reloading vineyards:', error);
+              }
+            }}
+          />
         );
       case 'reports':
         return (
-          <div style={{ padding: '1rem' }}>
-            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.25rem', color: '#374151' }}>
-              📋 Reports & Analytics
-            </h3>
-            <div style={{
-              padding: '20px',
-              backgroundColor: '#f8fafc',
-              borderRadius: '8px',
-              border: '2px dashed #cbd5e1',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '48px', marginBottom: '10px' }}>📊</div>
-              <h4 style={{ margin: '0 0 8px 0', color: '#374151' }}>Reports & Analytics</h4>
-              <p style={{ margin: '0', color: '#6b7280', fontSize: '14px' }}>
-                Comprehensive reports and data analytics will be available here.
-              </p>
-            </div>
-          </div>
+          <ReportsTab
+            currentVineyard={currentVineyard}
+            activities={activities}
+            weatherData={data}
+          />
         );
       default: // dashboard
         return (
@@ -2135,5 +2131,41 @@ export function WeatherDashboard({
         />
       )}
     </div>
+  );
+}
+
+// Import the missing savePhenologyEvent function that's used in the component
+async function savePhenologyEvent(
+  vineyardId: string,
+  eventType: string,
+  date: string,
+  notes: string,
+  endDate?: string,
+  harvestBlock?: string,
+  selectedBlockIds?: string[],
+  location?: { latitude: number; longitude: number; locationName: string },
+  sprayData?: any,
+  irrigationData?: any,
+  fertilizationData?: any,
+  harvestData?: any,
+  canopyData?: any,
+  scoutData?: any
+) {
+  const { savePhenologyEvent: saveEvent } = await import('../lib/supabase');
+  return saveEvent(
+    vineyardId,
+    eventType,
+    date,
+    notes,
+    endDate,
+    harvestBlock,
+    selectedBlockIds,
+    location,
+    sprayData,
+    irrigationData,
+    fertilizationData,
+    harvestData,
+    canopyData,
+    scoutData
   );
 }
