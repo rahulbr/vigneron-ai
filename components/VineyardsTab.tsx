@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { MapPin, Edit, Trash2, Plus, Save, X, Search, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -11,11 +10,11 @@ interface VineyardsTabProps {
   onVineyardsUpdate: () => void;
 }
 
-export function VineyardsTab({ 
-  userVineyards, 
-  currentVineyard, 
-  onVineyardChange, 
-  onVineyardsUpdate 
+export function VineyardsTab({
+  userVineyards,
+  currentVineyard,
+  onVineyardChange,
+  onVineyardsUpdate
 }: VineyardsTabProps) {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingVineyardId, setEditingVineyardId] = useState<string | null>(null);
@@ -39,6 +38,9 @@ export function VineyardsTab({
     latitude: 0,
     longitude: 0
   });
+
+  // Safety check for userVineyards to prevent errors if it's undefined
+  const safeUserVineyards = userVineyards || [];
 
   // Search for locations using Google Maps API
   const handleLocationSearch = async () => {
@@ -220,12 +222,16 @@ export function VineyardsTab({
       onVineyardsUpdate();
 
       // If this was the current vineyard, switch to another one
-      if (currentVineyard?.id === vineyard.id && userVineyards.length > 1) {
-        const remainingVineyards = userVineyards.filter(v => v.id !== vineyard.id);
+      if (currentVineyard?.id === vineyard.id && safeUserVineyards.length > 1) {
+        const remainingVineyards = safeUserVineyards.filter(v => v.id !== vineyard.id);
         if (remainingVineyards.length > 0) {
           onVineyardChange(remainingVineyards[0]);
         }
+      } else if (currentVineyard?.id === vineyard.id && safeUserVineyards.length === 1) {
+        // If it was the only vineyard, reset currentVineyard
+        onVineyardChange(null);
       }
+
 
       alert(`✅ Vineyard "${vineyard.name}" has been deleted.`);
 
@@ -478,11 +484,11 @@ export function VineyardsTab({
       }}>
         <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e5e7eb' }}>
           <h4 style={{ margin: '0', fontSize: '16px', color: '#374151' }}>
-            Your Vineyards ({userVineyards.length})
+            Your Vineyards ({safeUserVineyards.length})
           </h4>
         </div>
 
-        {userVineyards.length === 0 ? (
+        {safeUserVineyards.length === 0 ? (
           <div style={{ padding: '3rem', textAlign: 'center' }}>
             <div style={{ fontSize: '48px', marginBottom: '1rem' }}>🍇</div>
             <h4 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>No Vineyards Yet</h4>
@@ -492,12 +498,12 @@ export function VineyardsTab({
           </div>
         ) : (
           <div>
-            {userVineyards.map((vineyard, index) => (
+            {safeUserVineyards.map((vineyard, index) => (
               <div
                 key={vineyard.id}
                 style={{
                   padding: '1rem 1.5rem',
-                  borderBottom: index < userVineyards.length - 1 ? '1px solid #e5e7eb' : 'none',
+                  borderBottom: index < safeUserVineyards.length - 1 ? '1px solid #e5e7eb' : 'none',
                   backgroundColor: currentVineyard?.id === vineyard.id ? '#f0f9ff' : 'white'
                 }}
               >

@@ -1649,7 +1649,7 @@ export function WeatherDashboard({
 
     setProgressiveLoading(prev => ({ ...prev, weather: true }));
     console.log('🌤️ Fetching weather data:', { latitude, longitude, dateRange });
-    
+
     try {
       await refetchWithCache();
       console.log('✅ Weather data refreshed');
@@ -1837,13 +1837,25 @@ export function WeatherDashboard({
               </div>
             )}
             <VineyardsTab
-              selectedOrganization={selectedOrganization}
-              setSelectedOrganization={setSelectedOrganization}
-              selectedProperty={selectedProperty}
-              setSelectedProperty={setSelectedProperty}
-              selectedBlockIds={selectedBlockIds}
-              onSelectedBlockIdsChange={setSelectedBlockIds}
-              activities={activities}
+              userVineyards={userVineyards || []}
+              currentVineyard={currentVineyard}
+              onVineyardChange={switchVineyard}
+              onVineyardsUpdate={() => {
+                // Reload vineyards after updates
+                const loadUserVineyards = async () => {
+                  try {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (!user) return;
+
+                    const { getUserVineyards } = await import('../lib/supabase');
+                    const vineyards = await getUserVineyards();
+                    setUserVineyards(vineyards);
+                  } catch (error) {
+                    console.error('❌ Error reloading vineyards:', error);
+                  }
+                };
+                loadUserVineyards();
+              }}
             />
           </>
         );
@@ -2281,4 +2293,18 @@ async function savePhenologyEvent(
     canopyData,
     scoutData
   );
+}
+
+// Placeholder for getUserOrganizations (assuming it's defined elsewhere or in supabase module)
+async function getUserOrganizations() {
+  // Replace with actual implementation if not already imported or available globally
+  console.warn('getUserOrganizations placeholder called. Implement actual function.');
+  return [];
+}
+
+// Placeholder for getOrganizationProperties (assuming it's defined elsewhere or in supabase module)
+async function getOrganizationProperties(orgId: string) {
+  // Replace with actual implementation if not already imported or available globally
+  console.log(`getOrganizationProperties called for ${orgId} placeholder. Implement actual function.`);
+  return [];
 }
