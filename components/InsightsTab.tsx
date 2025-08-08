@@ -13,7 +13,7 @@ interface InsightsTabProps {
   activities: any[];
   onActivitiesChange: () => void;
   dateRange: { start: string; end: string };
-  fetchData: () => void; // Added for pull-to-refresh
+  fetchData: () => void;
 }
 
 export function InsightsTab({
@@ -25,7 +25,7 @@ export function InsightsTab({
   activities,
   onActivitiesChange,
   dateRange,
-  fetchData // Added for pull-to-refresh
+  fetchData
 }: InsightsTabProps) {
   // AI-related state
   const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
@@ -175,8 +175,8 @@ export function InsightsTab({
     }
   };
 
-  const handleRefresh = () => {
-    fetchData(); // Call the passed fetchData function
+  const handleRefresh = async () => {
+    await fetchData(); // Call the passed fetchData function
     // Optionally, you could also re-trigger AI insights if needed after data refresh
     // generateAIInsights();
   };
