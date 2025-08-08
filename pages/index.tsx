@@ -1,7 +1,8 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { WeatherDashboard } from '../components/WeatherDashboard';
 import { supabase } from '../lib/supabase';
+import { MobileBottomTabs } from '../components/MobileBottomTabs';
+import { TabNavigation } from '../components/TabNavigation'; // Ensure this import is also present if not already
 
 interface Vineyard {
   id: string;
@@ -16,10 +17,49 @@ export default function Home() {
   const [vineyard, setVineyard] = useState<Vineyard | null>(null);
   const [vineyardId, setVineyardId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('weather'); // State to manage active tab
+
+  // Placeholder for tab content rendering logic, assuming it exists elsewhere or will be added
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'weather':
+        return (
+          <div style={{ padding: '20px' }}>
+            <WeatherDashboard
+              vineyardId={vineyard?.id}
+              initialLatitude={vineyard?.latitude}
+              initialLongitude={vineyard?.longitude}
+              locationName={vineyard?.location}
+            />
+          </div>
+        );
+      // Add other tabs here if they are defined in your TabNavigation
+      // case 'insights':
+      //   return <InsightsTab />;
+      // case 'activities':
+      //   return <ActivitiesTab />;
+      // case 'reports':
+      //   return <ReportsTab />;
+      // case 'vineyards':
+      //   return <VineyardsTab />;
+      default:
+        return <p>Select a tab</p>;
+    }
+  };
+
+  // Define tabs for TabNavigation and MobileBottomTabs
+  const tabs = [
+    { id: 'weather', title: 'Weather', icon: '☀️' }, // Example icon
+    // Add other tabs here
+    // { id: 'insights', title: 'Insights', icon: '📊' },
+    // { id: 'activities', title: 'Activities', icon: '📅' },
+    // { id: 'reports', title: 'Reports', icon: '📄' },
+    // { id: 'vineyards', title: 'Vineyards', icon: '🍇' },
+  ];
 
   const loadVineyardData = useCallback(async () => {
     console.log('🔍 Using stored vineyard ID:', vineyardId);
-    
+
     if (!vineyardId) {
       setLoading(false);
       return;
@@ -85,13 +125,24 @@ export default function Home() {
   }
 
   return (
-    <div>
-      <WeatherDashboard
-        vineyardId={vineyard?.id}
-        initialLatitude={vineyard?.latitude}
-        initialLongitude={vineyard?.longitude}
-        locationName={vineyard?.location}
-      />
-    </div>
+    // Removed AuthWrapper and VineyardProvider as they are likely handled at a higher level or not needed for this specific component change.
+    // If they are required, they should be re-integrated.
+    // The changes focus on integrating MobileBottomTabs and adjusting the layout.
+    
+      <div className="mobile-content-padding" style={{ padding: '1rem', paddingBottom: '60px' }}> {/* Added paddingBottom to accommodate bottom tabs */}
+        <TabNavigation 
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
+
+        {renderTabContent()}
+
+        <MobileBottomTabs
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
+      </div>
   );
 }

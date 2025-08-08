@@ -414,9 +414,10 @@ export function WeatherDashboard({
   useEffect(() => {
     const loadUserVineyards = async () => {
       setIsLoadingVineyards(true);
+      setProgressiveLoading(prev => ({ ...prev, vineyards: true }));
+
       try {
         console.log('🔍 Loading user vineyards...');
-        setProgressiveLoading(prev => ({ ...prev, vineyards: true }));
 
         // Get authenticated user
         const { data: { user } } = await supabase.auth.getUser();
@@ -1722,7 +1723,7 @@ export function WeatherDashboard({
   // Tab content renderer
   const renderTabContent = () => {
     // Filter activities by current vineyard
-    const vineyardActivities = currentVineyard 
+    const vineyardActivities = currentVineyard
       ? activities.filter(activity => activity.vineyard_id === currentVineyard.id)
       : [];
 
@@ -2111,157 +2112,165 @@ export function WeatherDashboard({
     }
   };
 
+  const handleRefresh = async () => {
+    if (isInitialized && dateRange.start && dateRange.end) {
+      await refetchWithCache();
+    }
+  };
+
   return (
-    <div className="container section-spacing" style={{ padding: '1rem', height: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Safety Alerts */}
-      {safetyAlerts.length > 0 && (
-        <div style={{ marginBottom: '20px' }}>
-          {safetyAlerts.map(alert => (
-            <div
-              key={alert.id}
-              style={{
-                padding: '15px 20px',
-                backgroundColor: alert.severity === 'critical' ? '#fef2f2' :
-                                alert.severity === 'high' ? '#fffbeb' : '#f0f9ff',
-                border: `2px solid ${alert.severity === 'critical' ? '#ef4444' :
-                                   alert.severity === 'high' ? '#f59e0b' : '#3b82f6'}`,
-                borderRadius: '8px',
-                marginBottom: '10px',
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '12px'
-              }}
-            >
-              <div style={{
-                fontSize: '20px',
-                marginTop: '2px',
-                color: alert.severity === 'critical' ? '#ef4444' :
-                       alert.severity === 'high' ? '#f59e0b' : '#3b82f6'
-              }}>
-                {alert.severity === 'critical' ? '🚨' : alert.severity === 'high' ? '🚫' : '📅'}
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{
-                  fontWeight: '700',
-                  fontSize: '16px',
-                  marginBottom: '4px',
-                  color: alert.severity === 'critical' ? '#991b1b' :
-                         alert.severity === 'high' ? '#92400e' : '#1e40af'
-                }}>
-                  {alert.title}
-                </div>
-                <div style={{
-                  fontSize: '14px',
-                  marginBottom: '6px',
-                  color: alert.severity === 'critical' ? '#7f1d1d' :
-                         alert.severity === 'high' ? '#78350f' : '#1e3a8a'
-                }}>
-                  {alert.message}
-                </div>
-                <div style={{
-                  fontSize: '12px',
-                  color: '#6b7280',
+    <MobileRefresh onRefresh={handleRefresh}>
+      <div className="container section-spacing" style={{ padding: '1rem', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+        {/* Safety Alerts */}
+        {safetyAlerts.length > 0 && (
+          <div style={{ marginBottom: '20px' }}>
+            {safetyAlerts.map(alert => (
+              <div
+                key={alert.id}
+                style={{
+                  padding: '15px 20px',
+                  backgroundColor: alert.severity === 'critical' ? '#fef2f2' :
+                                  alert.severity === 'high' ? '#fffbeb' : '#f0f9ff',
+                  border: `2px solid ${alert.severity === 'critical' ? '#ef4444' :
+                                     alert.severity === 'high' ? '#f59e0b' : '#3b82f6'}`,
+                  borderRadius: '8px',
+                  marginBottom: '10px',
                   display: 'flex',
-                  alignItems: 'center',
+                  alignItems: 'flex-start',
                   gap: '12px'
+                }}
+              >
+                <div style={{
+                  fontSize: '20px',
+                  marginTop: '2px',
+                  color: alert.severity === 'critical' ? '#ef4444' :
+                         alert.severity === 'high' ? '#f59e0b' : '#3b82f6'
                 }}>
-                  <span>📍 {alert.location}</span>
-                  <span>•</span>
-                  <span>{alert.productInfo.category} - {alert.productInfo.signal} Signal Word</span>
-                  {alert.type === 'reentry' && (
-                    <>
-                      <span>•</span>
-                      <span style={{ fontWeight: '600', color: '#ef4444' }}>
-                        Safe re-entry: {new Date(Date.now() + alert.hoursRemaining * 60 * 60 * 1000).toLocaleString()}
-                      </span>
-                    </>
-                  )}
+                  {alert.severity === 'critical' ? '🚨' : alert.severity === 'high' ? '🚫' : '📅'}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{
+                    fontWeight: '700',
+                    fontSize: '16px',
+                    marginBottom: '4px',
+                    color: alert.severity === 'critical' ? '#991b1b' :
+                           alert.severity === 'high' ? '#92400e' : '#1e40af'
+                  }}>
+                    {alert.title}
+                  </div>
+                  <div style={{
+                    fontSize: '14px',
+                    marginBottom: '6px',
+                    color: alert.severity === 'critical' ? '#7f1d1d' :
+                           alert.severity === 'high' ? '#78350f' : '#1e3a8a'
+                  }}>
+                    {alert.message}
+                  </div>
+                  <div style={{
+                    fontSize: '12px',
+                    color: '#6b7280',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px'
+                  }}>
+                    <span>📍 {alert.location}</span>
+                    <span>•</span>
+                    <span>{alert.productInfo.category} - {alert.productInfo.signal} Signal Word</span>
+                    {alert.type === 'reentry' && (
+                      <>
+                        <span>•</span>
+                        <span style={{ fontWeight: '600', color: '#ef4444' }}>
+                          Safe re-entry: {new Date(Date.now() + alert.hoursRemaining * 60 * 60 * 1000).toLocaleString()}
+                        </span>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
 
-      {/* Header */}
-      {/* Removed the title and subtitle as per the request */}
+        {/* Header */}
+        {/* Removed the title and subtitle as per the request */}
 
-      {/* Tab Navigation */}
-      <TabNavigation
-        tabs={tabs}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-      />
-
-      {/* Tab Content */}
-      {/* Wrap tab content in MobileRefresh for pull-to-refresh */}
-      <MobileRefresh
-        onRefresh={async () => {
-          console.log('🔄 Triggering pull-to-refresh...');
-          // Reload weather data and activities
-          fetchWeatherData();
-          await loadActivities();
-          console.log('🔄 Pull-to-refresh complete.');
-        }}
-        style={{ flexGrow: 1, overflowY: 'auto' }} // Allow scrolling within the refreshable area
-      >
-        {renderTabContent()}
-      </MobileRefresh>
-
-      {/* Loading State */}
-      {loading && (
-        <div style={{
-          padding: '40px',
-          textAlign: 'center',
-          backgroundColor: '#f8fafc',
-          borderRadius: '12px',
-          border: '2px dashed #cbd5e1',
-          marginBottom: '20px'
-        }}>
-          <RefreshCw size={32} style={{ color: '#64748b', animation: 'spin 1s linear infinite', marginBottom: '16px' }} />
-          <h3 style={{ margin: '0 0 8px 0', color: '#475569' }}>Loading Weather Data</h3>
-          <p style={{ margin: '0', color: '#64748b' }}>
-            Fetching weather data for {customLocation}...
-          </p>
-        </div>
-      )}
-
-      {/* Data Status Footer */}
-      {lastUpdated && (
-        <div style={{
-          padding: '12px 16px',
-          backgroundColor: '#f1f5f9',
-          borderRadius: '8px',
-          border: '1px solid #e2e8f0',
-          textAlign: 'center',
-          fontSize: '14px',
-          color: '#64748b',
-          marginTop: '20px'
-        }}>
-          <span>Last updated: {lastUpdated.toLocaleString()}</span>
-          <span style={{ margin: '0 12px', color: '#cbd5e1' }}>•</span>
-          <span>{data.length} data points loaded</span>
-          {dateRange.start && dateRange.end && (
-            <>
-              <span style={{ margin: '0 12px', color: '#cbd5e1' }}>•</span>
-              <span>Period: {dateRange.start} to {dateRange.end}</span>
-            </>
-          )}
-        </div>
-      )}
-
-
-
-      {/* Reports Modal */}
-      {showReportsModal && currentVineyard && (
-        <ReportsModal
-          isOpen={showReportsModal}
-          onClose={() => setShowReportsModal(false)}
-          vineyard={currentVineyard}
-          activities={activities}
+        {/* Tab Navigation */}
+        <TabNavigation
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
         />
-      )}
-    </div>
+
+        {/* Tab Content */}
+        {/* Wrap tab content in MobileRefresh for pull-to-refresh */}
+        <MobileRefresh
+          onRefresh={async () => {
+            console.log('🔄 Triggering pull-to-refresh...');
+            // Reload weather data and activities
+            fetchWeatherData();
+            await loadActivities();
+            console.log('🔄 Pull-to-refresh complete.');
+          }}
+          style={{ flexGrow: 1, overflowY: 'auto' }} // Allow scrolling within the refreshable area
+        >
+          {renderTabContent()}
+        </MobileRefresh>
+
+        {/* Loading State */}
+        {loading && (
+          <div style={{
+            padding: '40px',
+            textAlign: 'center',
+            backgroundColor: '#f8fafc',
+            borderRadius: '12px',
+            border: '2px dashed #cbd5e1',
+            marginBottom: '20px'
+          }}>
+            <RefreshCw size={32} style={{ color: '#64748b', animation: 'spin 1s linear infinite', marginBottom: '16px' }} />
+            <h3 style={{ margin: '0 0 8px 0', color: '#475569' }}>Loading Weather Data</h3>
+            <p style={{ margin: '0', color: '#64748b' }}>
+              Fetching weather data for {customLocation}...
+            </p>
+          </div>
+        )}
+
+        {/* Data Status Footer */}
+        {lastUpdated && (
+          <div style={{
+            padding: '12px 16px',
+            backgroundColor: '#f1f5f9',
+            borderRadius: '8px',
+            border: '1px solid #e2e8f0',
+            textAlign: 'center',
+            fontSize: '14px',
+            color: '#64748b',
+            marginTop: '20px'
+          }}>
+            <span>Last updated: {lastUpdated.toLocaleString()}</span>
+            <span style={{ margin: '0 12px', color: '#cbd5e1' }}>•</span>
+            <span>{data.length} data points loaded</span>
+            {dateRange.start && dateRange.end && (
+              <>
+                <span style={{ margin: '0 12px', color: '#cbd5e1' }}>•</span>
+                <span>Period: {dateRange.start} to {dateRange.end}</span>
+              </>
+            )}
+          </div>
+        )}
+
+
+
+        {/* Reports Modal */}
+        {showReportsModal && currentVineyard && (
+          <ReportsModal
+            isOpen={showReportsModal}
+            onClose={() => setShowReportsModal(false)}
+            vineyard={currentVineyard}
+            activities={activities}
+          />
+        )}
+      </div>
+    </MobileRefresh>
   );
 }
 
