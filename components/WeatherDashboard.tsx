@@ -214,9 +214,17 @@ export function WeatherDashboard({
   // Weather Service instance
   const weatherService = useMemo(() => new WeatherService(), []);
 
+  // Weather data state
+  const [data, setData] = useState<any[]>([]);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [weatherError, setWeatherError] = useState<any>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [weatherFromCache, setWeatherFromCache] = useState(false);
+  const [error, setError] = useState<any>(null);
+  const [isOnline, setIsOnline] = useState(true);
+
   // Offline functionality
   const {
-    isOnline,
     isOfflineReady,
     queuedActions,
     lastSyncTime,
@@ -226,6 +234,18 @@ export function WeatherDashboard({
     getCachedData,
     queueAction
   } = useOffline();
+
+  // Activity types for dropdown
+  const activityTypes = [
+    'Bud Break', 'Bloom', 'Veraison', 'Harvest', 'Pruning', 
+    'Irrigation', 'Spray Application', 'Fertilization', 
+    'Canopy Management', 'Soil Work', 'Equipment Maintenance',
+    'Fruit Set', 'Pest', 'Scouting', 'Other'
+  ];
+
+  // Event filter state
+  const [eventFilterTypes, setEventFilterTypes] = useState<string[]>([]);
+  const [showEventFilterDropdown, setShowEventFilterDropdown] = useState(false);
 
   // Fetch authenticated user and initialize app state
   useEffect(() => {
@@ -390,6 +410,57 @@ export function WeatherDashboard({
     setDateRangeMode('current');
     setIsInitialized(true);
   }, []);
+
+  // Weather fetching function
+  const refetchWeather = useCallback(async () => {
+    if (!dateRange.start || !dateRange.end || !latitude || !longitude) {
+      console.log('❌ Missing required data for weather fetch');
+      return;
+    }
+
+    setWeatherLoading(true);
+    setWeatherError(null);
+    setWeatherFromCache(false);
+
+    try {
+      console.log('🌤️ Fetching weather data...', { latitude, longitude, dateRange });
+      
+      const weatherData = await weatherService.getHistoricalWeather(
+        latitude,
+        longitude,
+        dateRange.start,
+        dateRange.end,
+        50 // base GDD temperature
+      );
+
+      setData(weatherData);
+      setLastUpdated(new Date());
+      setError(null);
+      console.log('✅ Weather data loaded:', weatherData.length, 'data points');
+
+    } catch (error: any) {
+      console.error('❌ Weather fetch error:', error);
+      setWeatherError(error);
+      setError({
+        code: 'WEATHER_FETCH_ERROR',
+        message: error.message || 'Failed to fetch weather data'
+      });
+      
+      // Try to load cached data as fallback
+      try {
+        const cachedData = getCachedData(`weather_${latitude}_${longitude}_${dateRange.start}_${dateRange.end}`);
+        if (cachedData && Array.isArray(cachedData)) {
+          setData(cachedData);
+          setWeatherFromCache(true);
+          console.log('📱 Loaded cached weather data as fallback');
+        }
+      } catch (cacheError) {
+        console.warn('Could not load cached weather data:', cacheError);
+      }
+    } finally {
+      setWeatherLoading(false);
+    }
+  }, [latitude, longitude, dateRange.start, dateRange.end, weatherService, getCachedData]);
 
   // Auto-fetch weather data once dates are initialized and vineyard is selected
   useEffect(() => {
@@ -646,6 +717,376 @@ export function WeatherDashboard({
   const locationCoveragePercent = activities.length > 0
     ? Math.round((eventsWithLocation.length / activities.length) * 100)
     : 0;
+
+  // Activity management functions
+  const saveActivity = async () => {
+    if (!activityForm.activity_type || !activityForm.start_date || !currentVineyard) {
+      alert('Please fill in required fields: Event Type and Date');
+      return;
+    }
+
+    setIsSavingActivity(true);
+    try {
+      console.log('💾 Saving activity...', activityForm);
+      
+      const activityData = {
+        vineyard_id: currentVineyard.id,
+        event_type: activityForm.activity_type,
+        event_date: activityForm.start_date,
+        end_date: activityForm.end_date || null,
+        notes: activityForm.notes || '',
+        location_lat: activityForm.location_lat,
+        location_lng: activityForm.location_lng,
+        location_name: activityForm.location_name || '',
+        location_accuracy: activityForm.location_accuracy,
+        // Activity-specific fields
+        spray_product: activityForm.spray_product || null,
+        spray_quantity: activityForm.spray_quantity || null,
+        spray_unit: activityForm.spray_unit || null,
+        spray_target: activityForm.spray_target || null,
+        spray_conditions: activityForm.spray_conditions || null,
+        spray_equipment: activityForm.spray_equipment || null,
+        irrigation_amount: activityForm.irrigation_amount || null,
+        irrigation_unit: activityForm.irrigation_unit || null,
+        irrigation_method: activityForm.irrigation_method || null,
+        irrigation_duration: activityForm.irrigation_duration || null,
+        fertilizer_type: activityForm.fertilizer_type || null,
+        fertilizer_npk: activityForm.fertilizer_npk || null,
+        fertilizer_rate: activityForm.fertilizer_rate || null,
+        fertilizer_unit: activityForm.fertilizer_unit || null,
+        fertilizer_method: activityForm.fertilizer_method || null,
+        harvest_yield: activityForm.harvest_yield || null,
+        harvest_unit: activityForm.harvest_unit || null,
+        harvest_brix: activityForm.harvest_brix || null,
+        harvest_ph: activityForm.harvest_ph || null,
+        harvest_ta: activityForm.harvest_ta || null,
+        harvest_block: activityForm.harvest_block || null,
+        canopy_activity: activityForm.canopy_activity || null,
+        canopy_intensity: activityForm.canopy_intensity || null,
+        canopy_side: activityForm.canopy_side || null,
+        canopy_stage: activityForm.canopy_stage || null,
+        scout_focus: activityForm.scout_focus || null,
+        scout_severity: activityForm.scout_severity || null,
+        scout_distribution: activityForm.scout_distribution || null,
+        scout_action: activityForm.scout_action || null
+      };
+
+      // Save to database
+      const { data: savedActivity, error } = await supabase
+        .from('phenology_events')
+        .insert([activityData])
+        .select('*')
+        .single();
+
+      if (error) throw error;
+
+      // Handle block associations if blocks are selected
+      if (selectedBlockIds.length > 0 && savedActivity) {
+        const blockAssociations = selectedBlockIds.map(blockId => ({
+          event_id: savedActivity.id,
+          block_id: blockId
+        }));
+
+        const { error: blockError } = await supabase
+          .from('event_blocks')
+          .insert(blockAssociations);
+
+        if (blockError) {
+          console.warn('Block association error:', blockError);
+        }
+      }
+
+      // Reset form and reload activities
+      setActivityForm({
+        activity_type: '',
+        start_date: new Date().toISOString().split('T')[0],
+        end_date: '',
+        notes: '',
+        location_lat: null,
+        location_lng: null,
+        location_name: '',
+        location_accuracy: null,
+        spray_product: '', spray_quantity: '', spray_unit: 'oz/acre', spray_target: '', spray_conditions: '', spray_equipment: '',
+        irrigation_amount: '', irrigation_unit: 'inches', irrigation_method: '', irrigation_duration: '',
+        fertilizer_type: '', fertilizer_npk: '', fertilizer_rate: '', fertilizer_unit: 'lbs/acre', fertilizer_method: '',
+        harvest_yield: '', harvest_unit: 'tons/acre', harvest_brix: '', harvest_ph: '', harvest_ta: '', harvest_block: '',
+        canopy_activity: '', canopy_intensity: '', canopy_side: '', canopy_stage: '',
+        scout_focus: '', scout_severity: '', scout_distribution: '', scout_action: ''
+      });
+      setSelectedBlockIds([]);
+      setShowActivityForm(false);
+      
+      await loadActivitiesForVineyard(currentVineyard.id);
+      console.log('✅ Activity saved successfully');
+
+    } catch (error: any) {
+      console.error('❌ Error saving activity:', error);
+      alert('Failed to save activity: ' + error.message);
+    } finally {
+      setIsSavingActivity(false);
+    }
+  };
+
+  const deleteActivity = async (activityId: string) => {
+    if (!window.confirm('Are you sure you want to delete this event?')) {
+      return;
+    }
+
+    try {
+      console.log('🗑️ Deleting activity:', activityId);
+      
+      // Delete block associations first
+      await supabase
+        .from('event_blocks')
+        .delete()
+        .eq('event_id', activityId);
+
+      // Delete the activity
+      const { error } = await supabase
+        .from('phenology_events')
+        .delete()
+        .eq('id', activityId);
+
+      if (error) throw error;
+
+      await loadActivitiesForVineyard(currentVineyard?.id);
+      console.log('✅ Activity deleted successfully');
+
+    } catch (error: any) {
+      console.error('❌ Error deleting activity:', error);
+      alert('Failed to delete activity: ' + error.message);
+    }
+  };
+
+  const deleteVineyard = async (vineyard: any) => {
+    if (!window.confirm(`Are you sure you want to delete "${vineyard.name}" and all its data? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      console.log('🗑️ Deleting vineyard:', vineyard.name);
+      const { deleteVineyard } = await import('../lib/supabase');
+      await deleteVineyard(vineyard.id);
+
+      const updatedVineyards = userVineyards.filter(v => v.id !== vineyard.id);
+      setUserVineyards(updatedVineyards);
+
+      if (currentVineyard?.id === vineyard.id) {
+        if (updatedVineyards.length > 0) {
+          switchVineyard(updatedVineyards[0]);
+        } else {
+          setCurrentVineyard(null);
+          setVineyardId('');
+          localStorage.removeItem('currentVineyardId');
+        }
+      }
+
+      console.log('✅ Vineyard deleted successfully');
+    } catch (error: any) {
+      console.error('❌ Error deleting vineyard:', error);
+      alert('Failed to delete vineyard: ' + error.message);
+    }
+  };
+
+  const startEditingActivity = (activity: any) => {
+    setEditingActivityId(activity.id);
+    setEditingActivity(activity);
+    setEditActivityForm({
+      activity_type: activity.event_type || '',
+      start_date: activity.event_date || '',
+      end_date: activity.end_date || '',
+      notes: activity.notes || '',
+      location_lat: activity.location_lat,
+      location_lng: activity.location_lng,
+      location_name: activity.location_name || '',
+      location_accuracy: activity.location_accuracy,
+      spray_product: activity.spray_product || '',
+      spray_quantity: activity.spray_quantity || '',
+      spray_unit: activity.spray_unit || 'oz/acre',
+      spray_target: activity.spray_target || '',
+      spray_conditions: activity.spray_conditions || '',
+      spray_equipment: activity.spray_equipment || '',
+      irrigation_amount: activity.irrigation_amount || '',
+      irrigation_unit: activity.irrigation_unit || 'inches',
+      irrigation_method: activity.irrigation_method || '',
+      irrigation_duration: activity.irrigation_duration || '',
+      fertilizer_type: activity.fertilizer_type || '',
+      fertilizer_npk: activity.fertilizer_npk || '',
+      fertilizer_rate: activity.fertilizer_rate || '',
+      fertilizer_unit: activity.fertilizer_unit || 'lbs/acre',
+      fertilizer_method: activity.fertilizer_method || '',
+      harvest_yield: activity.harvest_yield || '',
+      harvest_unit: activity.harvest_unit || 'tons/acre',
+      harvest_brix: activity.harvest_brix || '',
+      harvest_ph: activity.harvest_ph || '',
+      harvest_ta: activity.harvest_ta || '',
+      harvest_block: activity.harvest_block || '',
+      canopy_activity: activity.canopy_activity || '',
+      canopy_intensity: activity.canopy_intensity || '',
+      canopy_side: activity.canopy_side || '',
+      canopy_stage: activity.canopy_stage || '',
+      scout_focus: activity.scout_focus || '',
+      scout_severity: activity.scout_severity || '',
+      scout_distribution: activity.scout_distribution || '',
+      scout_action: activity.scout_action || ''
+    });
+  };
+
+  const cancelEditingActivity = () => {
+    setEditingActivityId(null);
+    setEditingActivity(null);
+    setEditActivityForm({
+      activity_type: '',
+      start_date: '',
+      end_date: '',
+      notes: '',
+      location_lat: null,
+      location_lng: null,
+      location_name: '',
+      location_accuracy: null,
+      spray_product: '', spray_quantity: '', spray_unit: 'oz/acre', spray_target: '', spray_conditions: '', spray_equipment: '',
+      irrigation_amount: '', irrigation_unit: 'inches', irrigation_method: '', irrigation_duration: '',
+      fertilizer_type: '', fertilizer_npk: '', fertilizer_rate: '', fertilizer_unit: 'lbs/acre', fertilizer_method: '',
+      harvest_yield: '', harvest_unit: 'tons/acre', harvest_brix: '', harvest_ph: '', harvest_ta: '', harvest_block: '',
+      canopy_activity: '', canopy_intensity: '', canopy_side: '', canopy_stage: '',
+      scout_focus: '', scout_severity: '', scout_distribution: '', scout_action: ''
+    });
+  };
+
+  const updateActivity = async (activityId: string, updatedData: any) => {
+    setIsUpdatingActivity(true);
+    try {
+      console.log('✏️ Updating activity:', activityId);
+      
+      const { error } = await supabase
+        .from('phenology_events')
+        .update({
+          event_type: updatedData.activity_type,
+          event_date: updatedData.start_date,
+          end_date: updatedData.end_date || null,
+          notes: updatedData.notes || '',
+          location_lat: updatedData.location_lat,
+          location_lng: updatedData.location_lng,
+          location_name: updatedData.location_name || '',
+          location_accuracy: updatedData.location_accuracy,
+          spray_product: updatedData.spray_product || null,
+          spray_quantity: updatedData.spray_quantity || null,
+          spray_unit: updatedData.spray_unit || null,
+          spray_target: updatedData.spray_target || null,
+          spray_conditions: updatedData.spray_conditions || null,
+          spray_equipment: updatedData.spray_equipment || null,
+          irrigation_amount: updatedData.irrigation_amount || null,
+          irrigation_unit: updatedData.irrigation_unit || null,
+          irrigation_method: updatedData.irrigation_method || null,
+          irrigation_duration: updatedData.irrigation_duration || null,
+          fertilizer_type: updatedData.fertilizer_type || null,
+          fertilizer_npk: updatedData.fertilizer_npk || null,
+          fertilizer_rate: updatedData.fertilizer_rate || null,
+          fertilizer_unit: updatedData.fertilizer_unit || null,
+          fertilizer_method: updatedData.fertilizer_method || null,
+          harvest_yield: updatedData.harvest_yield || null,
+          harvest_unit: updatedData.harvest_unit || null,
+          harvest_brix: updatedData.harvest_brix || null,
+          harvest_ph: updatedData.harvest_ph || null,
+          harvest_ta: updatedData.harvest_ta || null,
+          harvest_block: updatedData.harvest_block || null,
+          canopy_activity: updatedData.canopy_activity || null,
+          canopy_intensity: updatedData.canopy_intensity || null,
+          canopy_side: updatedData.canopy_side || null,
+          canopy_stage: updatedData.canopy_stage || null,
+          scout_focus: updatedData.scout_focus || null,
+          scout_severity: updatedData.scout_severity || null,
+          scout_distribution: updatedData.scout_distribution || null,
+          scout_action: updatedData.scout_action || null
+        })
+        .eq('id', activityId);
+
+      if (error) throw error;
+
+      cancelEditingActivity();
+      await loadActivitiesForVineyard(currentVineyard?.id);
+      console.log('✅ Activity updated successfully');
+
+    } catch (error: any) {
+      console.error('❌ Error updating activity:', error);
+      alert('Failed to update activity: ' + error.message);
+    } finally {
+      setIsUpdatingActivity(false);
+    }
+  };
+
+  const getCurrentLocation = async () => {
+    setIsGettingLocation(true);
+    setLocationError('');
+
+    try {
+      if (!navigator.geolocation) {
+        throw new Error('Geolocation is not supported by this browser');
+      }
+
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          resolve,
+          reject,
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 30000
+          }
+        );
+      });
+
+      const { latitude, longitude, accuracy } = position.coords;
+
+      setActivityForm(prev => ({
+        ...prev,
+        location_lat: latitude,
+        location_lng: longitude,
+        location_accuracy: accuracy,
+        location_name: `📍 Current Location (±${Math.round(accuracy)}m)`
+      }));
+
+    } catch (error: any) {
+      let errorMessage = 'Failed to get location';
+      if (error.code === 1) {
+        errorMessage = 'Location access denied. Please enable location permissions.';
+      } else if (error.code === 2) {
+        errorMessage = 'Location unavailable. Please try again.';
+      } else if (error.code === 3) {
+        errorMessage = 'Location request timed out. Please try again.';
+      }
+      setLocationError(errorMessage);
+    } finally {
+      setIsGettingLocation(false);
+    }
+  };
+
+  const clearLocation = () => {
+    setActivityForm(prev => ({
+      ...prev,
+      location_lat: null,
+      location_lng: null,
+      location_accuracy: null,
+      location_name: ''
+    }));
+  };
+
+  const openReportsModal = () => {
+    setShowReportsModal(true);
+  };
+
+  const generateAIInsights = async () => {
+    setIsGeneratingInsights(true);
+    try {
+      // Implement AI insights generation here
+      console.log('🤖 Generating AI insights...');
+      // This would call the OpenAI service
+    } catch (error) {
+      console.error('AI insights error:', error);
+    } finally {
+      setIsGeneratingInsights(false);
+    }
+  };
 
   // Get icon for insight type (harvest-focused)
   const getInsightIcon = (type: string) => {
