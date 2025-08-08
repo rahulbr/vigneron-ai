@@ -1,324 +1,298 @@
 
-// Service Worker for Vigneron.AI
-const CACHE_NAME = 'vigneron-ai-v1';
+// Enhanced Service Worker for Vigneron.AI - Farmer-focused offline functionality
+const CACHE_NAME = 'vigneron-v1.2.0';
 const OFFLINE_URL = '/offline.html';
 
-// Core files to cache for offline use
-const CORE_FILES = [
+// Critical resources that farmers need to work offline
+const STATIC_ASSETS = [
   '/',
   '/offline.html',
-  '/_next/static/css/app/globals.css',
+  '/_next/static/css/',
+  '/_next/static/js/',
   '/favicon.ico'
 ];
 
-// Cache strategies
-const CACHE_STRATEGIES = {
-  // Cache first for static assets
-  CACHE_FIRST: 'cache-first',
-  // Network first for API calls with cache fallback
-  NETWORK_FIRST: 'network-first',
-  // Stale while revalidate for frequently updated content
-  STALE_WHILE_REVALIDATE: 'stale-while-revalidate'
-};
+// Weather API endpoints to cache
+const WEATHER_CACHE = 'weather-v1';
+const VINEYARD_DATA_CACHE = 'vineyard-data-v1';
 
-// Install event - cache core files
 self.addEventListener('install', (event) => {
   console.log('🔧 Service Worker installing...');
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('📦 Caching core files');
-        return cache.addAll(CORE_FILES);
-      })
-      .then(() => {
-        console.log('✅ Service Worker installed successfully');
-        return self.skipWaiting();
-      })
-      .catch((error) => {
-        console.error('❌ Service Worker install failed:', error);
-      })
+    (async () => {
+      // Cache static assets
+      const cache = await caches.open(CACHE_NAME);
+      
+      try {
+        // Cache the offline page first
+        await cache.add(OFFLINE_URL);
+        console.log('✅ Cached offline page');
+        
+        // Cache other static assets
+        await cache.add('/');
+        console.log('✅ Cached main page');
+        
+      } catch (error) {
+        console.warn('⚠️ Some static assets failed to cache:', error);
+      }
+      
+      // Skip waiting to activate immediately
+      self.skipWaiting();
+    })()
   );
 });
 
-// Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
   console.log('🚀 Service Worker activating...');
   event.waitUntil(
-    caches.keys()
-      .then((cacheNames) => {
-        return Promise.all(
-          cacheNames
-            .filter((cacheName) => cacheName !== CACHE_NAME)
-            .map((cacheName) => {
-              console.log('🗑️ Deleting old cache:', cacheName);
-              return caches.delete(cacheName);
-            })
-        );
-      })
-      .then(() => {
-        console.log('✅ Service Worker activated');
-        return self.clients.claim();
-      })
+    (async () => {
+      // Clean up old caches
+      const cacheNames = await caches.keys();
+      await Promise.all(
+        cacheNames
+          .filter(name => name !== CACHE_NAME && name !== WEATHER_CACHE && name !== VINEYARD_DATA_CACHE)
+          .map(name => {
+            console.log('🗑️ Deleting old cache:', name);
+            return caches.delete(name);
+          })
+      );
+      
+      // Take control of all pages immediately
+      await self.clients.claim();
+      console.log('✅ Service Worker is now controlling all pages');
+    })()
   );
 });
 
-// Fetch event - handle network requests
+// Smart caching strategy for different types of requests
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
-
+  
   // Skip non-GET requests
-  if (request.method !== 'GET') return;
-
-  // Skip chrome-extension and other non-http(s) requests
-  if (!url.protocol.startsWith('http')) return;
-
-  // Handle different types of requests
-  if (url.pathname.startsWith('/api/')) {
-    // API calls - network first with cache fallback
-    event.respondWith(handleApiRequest(request));
-  } else if (url.pathname.startsWith('/_next/static/')) {
-    // Static assets - cache first
-    event.respondWith(handleStaticAssets(request));
-  } else if (url.hostname.includes('supabase.co')) {
-    // Supabase requests - network first
-    event.respondWith(handleDatabaseRequest(request));
-  } else if (url.hostname.includes('googleapis.com') || url.hostname.includes('maps.google.com')) {
-    // Google Maps/API - cache with network fallback
-    event.respondWith(handleMapRequest(request));
+  if (request.method !== 'GET') {
+    return;
+  }
+  
+  // Handle different types of requests with appropriate strategies
+  if (url.pathname === '/') {
+    // Main page - Network first, fallback to cache
+    event.respondWith(networkFirstStrategy(request));
+  } else if (url.pathname.includes('/_next/') || url.pathname.includes('/static/')) {
+    // Static assets - Cache first
+    event.respondWith(cacheFirstStrategy(request));
+  } else if (url.hostname === 'api.open-meteo.com' || url.pathname.includes('/api/weather')) {
+    // Weather API - Cache with background update
+    event.respondWith(staleWhileRevalidateStrategy(request, WEATHER_CACHE));
+  } else if (url.pathname.includes('/api/') && url.pathname.includes('supabase')) {
+    // Supabase API - Network first with offline queue
+    event.respondWith(networkFirstWithQueueStrategy(request));
   } else {
-    // HTML pages - stale while revalidate
-    event.respondWith(handlePageRequest(request));
+    // Everything else - Network first
+    event.respondWith(networkFirstStrategy(request));
   }
 });
 
-// Handle API requests (weather, etc.)
-async function handleApiRequest(request) {
-  const cache = await caches.open(CACHE_NAME);
-  
+// Network first strategy - Try network, fallback to cache, then offline page
+async function networkFirstStrategy(request) {
   try {
-    // Try network first
     const networkResponse = await fetch(request);
     
     if (networkResponse.ok) {
       // Cache successful responses
-      cache.put(request, networkResponse.clone());
+      const cache = await caches.open(CACHE_NAME);
+      cache.put(request, networkResponse.clone()).catch(console.warn);
     }
     
     return networkResponse;
   } catch (error) {
-    console.log('🔄 API network failed, trying cache:', request.url);
+    console.log('📱 Network failed, trying cache for:', request.url);
     
-    // Fall back to cache
-    const cachedResponse = await cache.match(request);
+    // Try cache first
+    const cachedResponse = await caches.match(request);
     if (cachedResponse) {
-      // Add offline indicator header
-      const response = cachedResponse.clone();
-      response.headers.set('x-served-from', 'cache');
-      return response;
+      return cachedResponse;
     }
     
-    // Return offline response for critical API calls
-    return new Response(
-      JSON.stringify({
-        error: 'Offline - data not available in cache',
-        offline: true,
-        timestamp: new Date().toISOString()
-      }),
-      {
-        status: 503,
-        statusText: 'Service Unavailable - Offline',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-served-from': 'offline-fallback'
-        }
-      }
-    );
+    // For navigation requests, return offline page
+    if (request.mode === 'navigate') {
+      return caches.match(OFFLINE_URL);
+    }
+    
+    // For other requests, return a basic response
+    return new Response('Offline - Content not available', { 
+      status: 503, 
+      statusText: 'Service Unavailable' 
+    });
   }
 }
 
-// Handle static assets
-async function handleStaticAssets(request) {
-  const cache = await caches.open(CACHE_NAME);
-  
-  // Try cache first for static assets
-  const cachedResponse = await cache.match(request);
+// Cache first strategy - For static assets that rarely change
+async function cacheFirstStrategy(request) {
+  const cachedResponse = await caches.match(request);
   if (cachedResponse) {
     return cachedResponse;
   }
   
-  // If not in cache, fetch and cache
   try {
     const networkResponse = await fetch(request);
     if (networkResponse.ok) {
-      cache.put(request, networkResponse.clone());
+      const cache = await caches.open(CACHE_NAME);
+      cache.put(request, networkResponse.clone()).catch(console.warn);
     }
     return networkResponse;
   } catch (error) {
-    console.log('❌ Static asset failed to load:', request.url);
-    throw error;
+    return new Response('Resource not available offline', { 
+      status: 503, 
+      statusText: 'Service Unavailable' 
+    });
   }
 }
 
-// Handle database requests (Supabase)
-async function handleDatabaseRequest(request) {
+// Stale while revalidate - For weather data
+async function staleWhileRevalidateStrategy(request, cacheName) {
+  const cache = await caches.open(cacheName);
+  const cachedResponse = await cache.match(request);
+  
+  // Start fetch in background
+  const fetchPromise = fetch(request).then(response => {
+    if (response.ok) {
+      cache.put(request, response.clone()).catch(console.warn);
+    }
+    return response;
+  }).catch(error => {
+    console.log('🌤️ Weather API failed:', error);
+    return null;
+  });
+  
+  // Return cached version immediately if available
+  if (cachedResponse) {
+    console.log('📊 Serving cached weather data');
+    return cachedResponse;
+  }
+  
+  // Wait for network if no cache available
+  return fetchPromise || new Response('Weather data not available offline', { 
+    status: 503, 
+    statusText: 'Service Unavailable' 
+  });
+}
+
+// Network first with offline queue - For vineyard data updates
+async function networkFirstWithQueueStrategy(request) {
   try {
-    const networkResponse = await fetch(request);
-    
-    // Cache successful GET requests
-    if (networkResponse.ok && request.method === 'GET') {
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(request, networkResponse.clone());
-    }
-    
-    return networkResponse;
+    const response = await fetch(request);
+    return response;
   } catch (error) {
-    console.log('🔄 Database network failed, trying cache:', request.url);
+    console.log('📡 Network failed for API request:', request.url);
     
-    if (request.method === 'GET') {
-      const cache = await caches.open(CACHE_NAME);
-      const cachedResponse = await cache.match(request);
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-    }
-    
-    // Queue POST/PUT/DELETE requests for later sync
-    if (request.method !== 'GET') {
-      await queueOfflineAction(request);
+    // If it's a POST/PUT/DELETE request, queue it for later
+    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(request.method)) {
+      await queueRequest(request);
       
-      return new Response(
-        JSON.stringify({
-          success: true,
-          queued: true,
-          message: 'Action queued for sync when online'
-        }),
-        {
-          status: 202,
-          statusText: 'Accepted - Queued for sync',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-served-from': 'offline-queue'
-          }
-        }
-      );
+      // Return a success response to prevent app errors
+      return new Response(JSON.stringify({ 
+        success: true, 
+        queued: true, 
+        message: 'Request queued for sync when online' 
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
     
-    throw error;
-  }
-}
-
-// Handle Google Maps requests
-async function handleMapRequest(request) {
-  const cache = await caches.open(CACHE_NAME);
-  
-  try {
-    const networkResponse = await fetch(request);
-    
-    // Cache map tiles and API responses
-    if (networkResponse.ok) {
-      cache.put(request, networkResponse.clone());
-    }
-    
-    return networkResponse;
-  } catch (error) {
-    // Try to serve from cache
-    const cachedResponse = await cache.match(request);
+    // For GET requests, try cache
+    const cachedResponse = await caches.match(request);
     if (cachedResponse) {
       return cachedResponse;
     }
     
-    throw error;
+    return new Response('Data not available offline', { 
+      status: 503, 
+      statusText: 'Service Unavailable' 
+    });
   }
 }
 
-// Handle page requests
-async function handlePageRequest(request) {
-  const cache = await caches.open(CACHE_NAME);
-  
+// Queue requests for later sync
+async function queueRequest(request) {
   try {
-    // Try network first
-    const networkResponse = await fetch(request);
+    const requestData = {
+      url: request.url,
+      method: request.method,
+      headers: Object.fromEntries(request.headers.entries()),
+      body: request.method !== 'GET' ? await request.text() : null,
+      timestamp: Date.now()
+    };
     
-    if (networkResponse.ok) {
-      // Cache the page
-      cache.put(request, networkResponse.clone());
-    }
+    // Store in IndexedDB via the main app's offline storage
+    self.postMessage({
+      type: 'QUEUE_REQUEST',
+      data: requestData
+    });
     
-    return networkResponse;
+    console.log('📝 Queued request for sync:', request.method, request.url);
   } catch (error) {
-    // Fall back to cache
-    const cachedResponse = await cache.match(request);
-    if (cachedResponse) {
-      return cachedResponse;
-    }
-    
-    // Fall back to offline page
-    const offlineResponse = await cache.match(OFFLINE_URL);
-    if (offlineResponse) {
-      return offlineResponse;
-    }
-    
-    throw error;
+    console.error('❌ Failed to queue request:', error);
   }
 }
 
-// Queue offline actions for later sync
-async function queueOfflineAction(request) {
-  try {
-    // We'll implement this with IndexedDB in the next step
-    console.log('📝 Queuing offline action:', request.method, request.url);
-    
-    // For now, just log it
-    // This will be enhanced with proper IndexedDB storage
-  } catch (error) {
-    console.error('❌ Failed to queue offline action:', error);
-  }
-}
-
-// Background sync for queued actions
+// Background sync for queued requests
 self.addEventListener('sync', (event) => {
   if (event.tag === 'vineyard-data-sync') {
     console.log('🔄 Background sync triggered');
-    event.waitUntil(syncQueuedActions());
+    event.waitUntil(syncQueuedRequests());
   }
 });
 
-// Sync queued actions when back online
-async function syncQueuedActions() {
+async function syncQueuedRequests() {
   try {
-    console.log('🚀 Syncing queued actions...');
-    // Implementation will be added with IndexedDB integration
-    console.log('✅ Sync completed');
+    // Notify the main app to handle sync
+    const clients = await self.clients.matchAll();
+    clients.forEach(client => {
+      client.postMessage({
+        type: 'SYNC_QUEUED_REQUESTS'
+      });
+    });
   } catch (error) {
-    console.error('❌ Sync failed:', error);
+    console.error('❌ Background sync failed:', error);
   }
 }
 
-// Handle push notifications for important updates
-self.addEventListener('push', (event) => {
-  if (!event.data) return;
-  
-  const data = event.data.json();
-  
-  const options = {
-    body: data.body || 'New vineyard update available',
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
-    data: data.data || {},
-    actions: [
-      {
-        action: 'view',
-        title: 'View Details'
-      },
-      {
-        action: 'dismiss',
-        title: 'Dismiss'
-      }
-    ]
-  };
-  
-  event.waitUntil(
-    self.registration.showNotification(data.title || 'Vigneron.AI', options)
-  );
+// Handle messages from the main app
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
+
+// Periodic cleanup
+self.addEventListener('periodicsync', (event) => {
+  if (event.tag === 'cleanup') {
+    event.waitUntil(cleanupCaches());
+  }
+});
+
+async function cleanupCaches() {
+  try {
+    const cache = await caches.open(WEATHER_CACHE);
+    const requests = await cache.keys();
+    
+    // Remove entries older than 7 days
+    const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+    
+    for (const request of requests) {
+      const response = await cache.match(request);
+      if (response) {
+        const dateHeader = response.headers.get('date');
+        if (dateHeader && new Date(dateHeader).getTime() < sevenDaysAgo) {
+          await cache.delete(request);
+        }
+      }
+    }
+    
+    console.log('🧹 Cache cleanup completed');
+  } catch (error) {
+    console.error('❌ Cache cleanup failed:', error);
+  }
+}
