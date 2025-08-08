@@ -12,6 +12,74 @@ import { InsightsTab } from './InsightsTab';
 import { getUserOrganizations, getOrganizationProperties, getPropertyBlocks, createOrganization, createProperty, Organization, Property, Block } from '../lib/supabase';
 import BlockSelector from './BlockSelector';
 
+// Placeholder for ReportsModal component if it's defined elsewhere
+const ReportsModal = ({ isOpen, onClose, vineyard, activities }: any) => {
+  if (!isOpen) return null;
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 1000
+    }}>
+      <div style={{
+        backgroundColor: 'white',
+        padding: '30px',
+        borderRadius: '12px',
+        width: '80%',
+        maxWidth: '700px',
+        boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2 style={{ margin: 0, fontSize: '1.75rem', color: '#1f2937' }}>
+            📋 Vineyard Reports for {vineyard?.name}
+          </h2>
+          <button onClick={onClose} style={{
+            background: 'none',
+            border: 'none',
+            fontSize: '24px',
+            cursor: 'pointer',
+            color: '#6b7280'
+          }}>
+            &times;
+          </button>
+        </div>
+        <p style={{ color: '#6b7280', fontSize: '14px' }}>Report generation features will be implemented here.</p>
+        <div style={{ marginTop: '20px', textAlign: 'right' }}>
+          <button onClick={onClose} style={{
+            padding: '10px 20px',
+            backgroundColor: '#e5e7eb',
+            color: '#374151',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            marginRight: '10px'
+          }}>
+            Close
+          </button>
+          <button style={{
+            padding: '10px 20px',
+            backgroundColor: '#22c55e',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer'
+          }}>
+            Generate Report
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
 interface WeatherDashboardProps {
   vineyardId?: string;
   initialLatitude?: number;
@@ -84,7 +152,7 @@ export function WeatherDashboard({
   const [editingVineyardName, setEditingVineyardName] = useState('');
   const [editingVineyardLocation, setEditingVineyardLocation] = useState(false);
 
-  
+
 
   // Activity Log state
   const [activities, setActivities] = useState<any[]>([]);
@@ -429,7 +497,7 @@ export function WeatherDashboard({
       setCustomLocation(vineyard.name);
       localStorage.setItem('currentVineyardId', vineyard.id);
 
-      
+
 
       // Clear and reload activities immediately
       setActivities([]);
@@ -1577,7 +1645,7 @@ export function WeatherDashboard({
     ? Math.round((eventsWithLocation.length / activities.length) * 100)
     : 0;
 
-  
+
 
   // Don't render until initialized
   if (!isInitialized) {
@@ -2055,7 +2123,7 @@ export function WeatherDashboard({
         </div>
       )}
 
-      
+
 
       {/* Reports Modal */}
       {showReportsModal && currentVineyard && (
