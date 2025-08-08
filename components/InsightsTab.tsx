@@ -191,19 +191,19 @@ export function InsightsTab({
   };
 
   return (
-    <div style={{ padding: '1rem', minHeight: '200px' }}>
+    <div style={{ padding: '12px', minHeight: '200px' }}>
       {loading && (
         <div style={{
-          padding: '40px',
+          padding: '24px 16px',
           textAlign: 'center',
           backgroundColor: '#f8fafc',
-          borderRadius: '12px',
+          borderRadius: '8px',
           border: '2px dashed #cbd5e1',
-          marginBottom: '20px'
+          marginBottom: '16px'
         }}>
-          <RefreshCw size={32} style={{ color: '#64748b', animation: 'spin 1s linear infinite', marginBottom: '16px' }} />
-          <h3 style={{ margin: '0 0 8px 0', color: '#475569' }}>Loading Analytics</h3>
-          <p style={{ margin: '0', color: '#64748b' }}>
+          <RefreshCw size={24} style={{ color: '#64748b', animation: 'spin 1s linear infinite', marginBottom: '12px' }} />
+          <h3 style={{ margin: '0 0 6px 0', color: '#475569', fontSize: '16px' }}>Loading Analytics</h3>
+          <p style={{ margin: '0', color: '#64748b', fontSize: '14px' }}>
             Generating insights for {customLocation}...
           </p>
         </div>
@@ -213,7 +213,7 @@ export function InsightsTab({
         <>
           {/* Enhanced GDD Chart */}
           {data.length > 0 && !loading && vineyardId && (
-            <div style={{ marginBottom: '20px' }}>
+            <div style={{ marginBottom: '16px' }}>
               <EnhancedGDDChart
                 weatherData={data}
                 locationName={customLocation}
@@ -226,14 +226,15 @@ export function InsightsTab({
           {/* Generate AI Insights Button */}
           {data.length > 0 && !isGeneratingInsights && (
             <div style={{
-              marginBottom: '20px',
-              textAlign: 'center'
+              marginBottom: '16px',
+              padding: '0 4px'
             }}>
               <button
                 onClick={generateAIInsights}
                 disabled={!process.env.NEXT_PUBLIC_OPENAI_API_KEY}
                 style={{
-                  padding: '12px 24px',
+                  width: '100%',
+                  padding: '16px 20px',
                   backgroundColor: !process.env.NEXT_PUBLIC_OPENAI_API_KEY ? '#9ca3af' : '#8b5cf6',
                   color: 'white',
                   border: 'none',
@@ -243,15 +244,19 @@ export function InsightsTab({
                   fontWeight: '600',
                   display: 'flex',
                   alignItems: 'center',
+                  justifyContent: 'center',
                   gap: '8px',
-                  margin: '0 auto'
+                  minHeight: '52px',
+                  touchAction: 'manipulation'
                 }}
               >
-                <Brain size={20} />
-                {!process.env.NEXT_PUBLIC_OPENAI_API_KEY ? 'AI Insights (API Key Required)' : 'Generate AI Insights'}
+                <Brain size={18} />
+                <span style={{ fontSize: '15px' }}>
+                  {!process.env.NEXT_PUBLIC_OPENAI_API_KEY ? 'AI Insights (API Key Required)' : 'Generate AI Insights'}
+                </span>
               </button>
               {!process.env.NEXT_PUBLIC_OPENAI_API_KEY && (
-                <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
+                <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px', textAlign: 'center', padding: '0 8px' }}>
                   Add NEXT_PUBLIC_OPENAI_API_KEY to enable AI features
                 </p>
               )}
@@ -261,57 +266,59 @@ export function InsightsTab({
           {/* AI Insights Panel */}
           {showAIPanel && (
             <div style={{
-              marginBottom: '20px',
-              padding: '20px',
+              marginBottom: '16px',
+              padding: '16px',
               backgroundColor: '#fefce8',
-              borderRadius: '12px',
+              borderRadius: '8px',
               border: '1px solid #fde68a'
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                <h3 style={{ margin: '0', fontSize: '18px', color: '#92400e', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Brain size={20} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                <h3 style={{ margin: '0', fontSize: '16px', color: '#92400e', display: 'flex', alignItems: 'center', gap: '6px', flex: '1 1 auto' }}>
+                  <Brain size={18} />
                   AI Vineyard Insights
                 </h3>
                 {isGeneratingInsights ? (
-                  <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite', color: '#92400e' }} />
+                  <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite', color: '#92400e', marginTop: '2px' }} />
                 ) : (
                   <button
                     onClick={generateAIInsights}
                     style={{
-                      padding: '6px 12px',
+                      padding: '6px 10px',
                       backgroundColor: '#eab308',
                       color: 'white',
                       border: 'none',
                       borderRadius: '6px',
                       cursor: 'pointer',
-                      fontSize: '12px',
+                      fontSize: '11px',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px'
+                      gap: '4px',
+                      minHeight: '28px',
+                      touchAction: 'manipulation'
                     }}
                   >
-                    <RefreshCw size={12} />
+                    <RefreshCw size={10} />
                     Refresh
                   </button>
                 )}
               </div>
 
               {isGeneratingInsights ? (
-                <div style={{ textAlign: 'center', padding: '20px' }}>
-                  <div style={{ marginBottom: '10px' }}>🤖 AI is analyzing your vineyard data...</div>
-                  <div style={{ fontSize: '14px', color: '#92400e' }}>
+                <div style={{ textAlign: 'center', padding: '16px 8px' }}>
+                  <div style={{ marginBottom: '8px', fontSize: '15px' }}>🤖 AI is analyzing your vineyard data...</div>
+                  <div style={{ fontSize: '13px', color: '#92400e' }}>
                     This may take a few seconds
                   </div>
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {/* AI Recommendations */}
                   {aiInsights.length > 0 && (
                     <div>
-                      <h4 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#92400e', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <h4 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#92400e', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         🍇 Recommendations
                       </h4>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         {aiInsights
                           .sort((a, b) => {
                             const urgencyOrder = { high: 3, medium: 2, low: 1 };
@@ -332,50 +339,54 @@ export function InsightsTab({
                               <div
                                 key={insight.id}
                                 style={{
-                                  padding: '16px',
+                                  padding: '12px',
                                   backgroundColor: colors.bg,
                                   border: urgencyStyle.border,
-                                  borderRadius: '8px',
+                                  borderRadius: '6px',
                                   position: 'relative'
                                 }}
                               >
-                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                                  <div style={{ marginTop: '2px' }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                                  <div style={{ marginTop: '2px', fontSize: '14px' }}>
                                     {getInsightIcon(insight.type)}
                                   </div>
-                                  <div style={{ flex: 1 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                                      <div style={{ fontWeight: '600', fontSize: '15px', color: colors.text }}>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: '6px', marginBottom: '6px' }}>
+                                      <div style={{ fontWeight: '600', fontSize: '14px', color: colors.text, flex: '1 1 auto', minWidth: '120px' }}>
                                         {insight.title}
                                       </div>
-                                      <div style={{
-                                        ...urgencyStyle.badge,
-                                        padding: '2px 8px',
-                                        borderRadius: '12px',
-                                        fontSize: '11px',
-                                        fontWeight: '600',
-                                        textTransform: 'uppercase'
-                                      }}>
-                                        {insight.urgency}
-                                      </div>
-                                      {insight.daysToAction && (
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
                                         <div style={{
-                                          padding: '2px 8px',
-                                          backgroundColor: '#f3f4f6',
-                                          borderRadius: '12px',
-                                          fontSize: '11px',
-                                          color: '#374151',
-                                          fontWeight: '500'
+                                          ...urgencyStyle.badge,
+                                          padding: '2px 6px',
+                                          borderRadius: '10px',
+                                          fontSize: '10px',
+                                          fontWeight: '600',
+                                          textTransform: 'uppercase',
+                                          whiteSpace: 'nowrap'
                                         }}>
-                                          {insight.daysToAction} days
+                                          {insight.urgency}
                                         </div>
-                                      )}
+                                        {insight.daysToAction && (
+                                          <div style={{
+                                            padding: '2px 6px',
+                                            backgroundColor: '#f3f4f6',
+                                            borderRadius: '10px',
+                                            fontSize: '10px',
+                                            color: '#374151',
+                                            fontWeight: '500',
+                                            whiteSpace: 'nowrap'
+                                          }}>
+                                            {insight.daysToAction} days
+                                          </div>
+                                        )}
+                                      </div>
                                     </div>
-                                    <div style={{ fontSize: '14px', color: colors.text, lineHeight: '1.4', marginBottom: '6px' }}>
+                                    <div style={{ fontSize: '13px', color: colors.text, lineHeight: '1.4', marginBottom: '6px' }}>
                                       {insight.message}
                                     </div>
-                                    <div style={{ fontSize: '11px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                      <span>📊 {(insight.confidence * 100).toFixed(0)}% confidence</span>
+                                    <div style={{ fontSize: '10px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                      <span>📊 {(insight.confidence * 100).toFixed(0)}%</span>
                                       <span>•</span>
                                       <span style={{ textTransform: 'capitalize' }}>{insight.category}</span>
                                     </div>
@@ -389,20 +400,20 @@ export function InsightsTab({
                   )}
 
                   {/* Additional Analysis Sections */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {/* Weather Analysis */}
                     {weatherAnalysis && (
                       <div>
-                        <h4 style={{ margin: '0 0 15px 0', fontSize: '16px', color: '#92400e', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <h4 style={{ margin: '0 0 10px 0', fontSize: '15px', color: '#92400e', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           🌤️ Weather Impact
                         </h4>
                         <div style={{
-                          padding: '14px',
+                          padding: '12px',
                           backgroundColor: '#f0f9ff',
                           border: '1px solid #bae6fd',
-                          borderRadius: '8px',
-                          fontSize: '14px',
-                          lineHeight: '1.5',
+                          borderRadius: '6px',
+                          fontSize: '13px',
+                          lineHeight: '1.4',
                           color: '#0c4a6e'
                         }}>
                           {weatherAnalysis}
@@ -413,16 +424,16 @@ export function InsightsTab({
                     {/* Phenology Analysis */}
                     {phenologyAnalysis && (
                       <div>
-                        <h4 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#92400e', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <h4 style={{ margin: '0 0 10px 0', fontSize: '15px', color: '#92400e', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           📈 Development & Timing
                         </h4>
                         <div style={{
-                          padding: '14px',
+                          padding: '12px',
                           backgroundColor: '#f0fdf4',
                           border: '1px solid #bbf7d0',
-                          borderRadius: '8px',
-                          fontSize: '14px',
-                          lineHeight: '1.5',
+                          borderRadius: '6px',
+                          fontSize: '13px',
+                          lineHeight: '1.4',
                           color: '#065f46'
                         }}>
                           {phenologyAnalysis}
@@ -438,15 +449,15 @@ export function InsightsTab({
           {/* No data state */}
           {(!data || data.length === 0) && !loading && (
             <div style={{
-              padding: '40px',
+              padding: '32px 16px',
               textAlign: 'center',
               backgroundColor: '#f8fafc',
               borderRadius: '8px',
               border: '2px dashed #cbd5e1'
             }}>
-              <div style={{ fontSize: '48px', marginBottom: '10px' }}>📈</div>
-              <h4 style={{ margin: '0 0 8px 0', color: '#374151' }}>No Weather Data Available</h4>
-              <p style={{ margin: '0', color: '#6b7280', fontSize: '14px' }}>
+              <div style={{ fontSize: '40px', marginBottom: '12px' }}>📈</div>
+              <h4 style={{ margin: '0 0 8px 0', color: '#374151', fontSize: '16px' }}>No Weather Data Available</h4>
+              <p style={{ margin: '0', color: '#6b7280', fontSize: '13px', lineHeight: '1.4' }}>
                 Load weather data to view the growth curve and generate AI insights.
               </p>
             </div>
