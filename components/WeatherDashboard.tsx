@@ -1870,7 +1870,7 @@ export function WeatherDashboard({
         return (
           <ReportsTab
             currentVineyard={currentVineyard}
-            activities={vineyardActivities}
+            activities={activities}
             weatherData={vineyardWeatherData}
           />
         );
