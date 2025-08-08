@@ -19,8 +19,15 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('weather'); // State to manage active tab
 
-  // Placeholder for tab content rendering logic, assuming it exists elsewhere or will be added
   const renderTabContent = () => {
+    if (!vineyard) {
+      return (
+        <div style={{ padding: '20px', textAlign: 'center' }}>
+          <p>Please select a vineyard to continue</p>
+        </div>
+      );
+    }
+
     switch (activeTab) {
       case 'weather':
         return (
@@ -33,15 +40,48 @@ export default function Home() {
             />
           </div>
         );
-      // Add other tabs here if they are defined in your TabNavigation
-      // case 'insights':
-      //   return <InsightsTab />;
-      // case 'activities':
-      //   return <ActivitiesTab />;
-      // case 'reports':
-      //   return <ReportsTab />;
-      // case 'vineyards':
-      //   return <VineyardsTab />;
+      case 'insights':
+        return (
+          <div style={{ padding: '20px' }}>
+            <h2>📈 Vineyard Insights</h2>
+            <p>Analytics and trends for {vineyard.name}</p>
+            {/* InsightsTab component would go here */}
+          </div>
+        );
+      case 'activities':
+        return (
+          <div style={{ padding: '20px' }}>
+            <h2>🌱 Activities</h2>
+            <p>Field activities for {vineyard.name}</p>
+            {/* ActivitiesTab component would go here */}
+          </div>
+        );
+      case 'reports':
+        return (
+          <div style={{ padding: '20px' }}>
+            <h2>📋 Reports</h2>
+            <p>Generated reports for {vineyard.name}</p>
+            {/* ReportsTab component would go here */}
+          </div>
+        );
+      case 'vineyards':
+        return (
+          <div style={{ padding: '20px' }}>
+            <h2>🍇 Vineyard Management</h2>
+            <div style={{
+              padding: '16px',
+              backgroundColor: '#f8fafc',
+              borderRadius: '8px',
+              border: '1px solid #e2e8f0'
+            }}>
+              <h3>Current Vineyard</h3>
+              <p><strong>Name:</strong> {vineyard.name}</p>
+              <p><strong>Location:</strong> {vineyard.location}</p>
+              <p><strong>Coordinates:</strong> {vineyard.latitude}, {vineyard.longitude}</p>
+            </div>
+            {/* VineyardsTab component would go here */}
+          </div>
+        );
       default:
         return <p>Select a tab</p>;
     }
@@ -49,12 +89,11 @@ export default function Home() {
 
   // Define tabs for TabNavigation and MobileBottomTabs
   const tabs = [
-    { id: 'weather', title: 'Weather', icon: '☀️' }, // Example icon
-    // Add other tabs here
-    // { id: 'insights', title: 'Insights', icon: '📊' },
-    // { id: 'activities', title: 'Activities', icon: '📅' },
-    // { id: 'reports', title: 'Reports', icon: '📄' },
-    // { id: 'vineyards', title: 'Vineyards', icon: '🍇' },
+    { id: 'weather', label: 'Dashboard', emoji: '📊' },
+    { id: 'insights', label: 'Insights', emoji: '📈' },
+    { id: 'activities', label: 'Activities', emoji: '🌱' },
+    { id: 'reports', label: 'Reports', emoji: '📋' },
+    { id: 'vineyards', label: 'Vineyards', emoji: '🍇' }
   ];
 
   const loadVineyardData = useCallback(async () => {
@@ -125,24 +164,31 @@ export default function Home() {
   }
 
   return (
-    // Removed AuthWrapper and VineyardProvider as they are likely handled at a higher level or not needed for this specific component change.
-    // If they are required, they should be re-integrated.
-    // The changes focus on integrating MobileBottomTabs and adjusting the layout.
-    
-      <div className="mobile-content-padding" style={{ padding: '1rem', paddingBottom: '60px' }}> {/* Added paddingBottom to accommodate bottom tabs */}
+    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+      {/* Desktop Tab Navigation - Hidden on Mobile */}
+      <div style={{ display: 'none' }} className="desktop-tabs">
         <TabNavigation 
           tabs={tabs}
           activeTab={activeTab}
           onTabChange={setActiveTab}
         />
-
-        {renderTabContent()}
-
-        <MobileBottomTabs
-          tabs={tabs}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-        />
       </div>
+
+      {/* Main Content with Mobile Padding */}
+      <div className="mobile-content-padding" style={{ 
+        padding: '1rem',
+        paddingBottom: '100px', // Space for mobile bottom tabs
+        minHeight: 'calc(100vh - 100px)'
+      }}>
+        {renderTabContent()}
+      </div>
+
+      {/* Mobile Bottom Tab Navigation */}
+      <MobileBottomTabs
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
+    </div>
   );
 }

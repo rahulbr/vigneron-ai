@@ -1698,8 +1698,8 @@ export function WeatherDashboard({
   // Enhanced initialization screen with progressive loading
   if (!isInitialized || !appInitialized) {
     return (
-      <div style={{ 
-        padding: '2rem', 
+      <div style={{
+        padding: '2rem',
         textAlign: 'center',
         minHeight: '100vh',
         display: 'flex',
@@ -1717,19 +1717,19 @@ export function WeatherDashboard({
           animation: 'spin 1s linear infinite',
           marginBottom: '24px'
         }}></div>
-        
-        <h2 style={{ 
-          margin: '0 0 16px 0', 
+
+        <h2 style={{
+          margin: '0 0 16px 0',
           color: '#374151',
           fontSize: '1.5rem',
           fontWeight: '600'
         }}>
           🍇 Loading Vigneron.AI
         </h2>
-        
-        <div style={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
+
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
           gap: '8px',
           maxWidth: '300px',
           width: '100%'
@@ -1757,7 +1757,7 @@ export function WeatherDashboard({
               }}></div>
             )}
           </div>
-          
+
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -1782,11 +1782,11 @@ export function WeatherDashboard({
             )}
           </div>
         </div>
-        
-        <p style={{ 
-          margin: '16px 0 0 0', 
-          color: '#9ca3af', 
-          fontSize: '12px' 
+
+        <p style={{
+          margin: '16px 0 0 0',
+          color: '#9ca3af',
+          fontSize: '12px'
         }}>
           Preparing your vineyard management dashboard...
         </p>
@@ -2240,7 +2240,7 @@ export function WeatherDashboard({
                     fontSize: '16px',
                     marginBottom: '4px',
                     color: alert.severity === 'critical' ? '#991b1b' :
-                           alert.severity === 'high' ? '#92400e' : '#1e40af'
+                           alert.severity === 'high' ? '#78350f' : '#1e40af'
                   }}>
                     {alert.title}
                   </div>
@@ -2347,12 +2347,13 @@ export function WeatherDashboard({
 
 
         {/* Reports Modal */}
-        {showReportsModal && currentVineyard && (
+        {showReportsModal && (
           <ReportsModal
             isOpen={showReportsModal}
             onClose={() => setShowReportsModal(false)}
-            vineyard={currentVineyard}
-            activities={activities}
+            activities={vineyardActivities}
+            weatherData={data}
+            vineyardName={customLocation}
           />
         )}
       </div>
