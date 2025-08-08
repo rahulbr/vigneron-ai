@@ -603,6 +603,10 @@ export function EnhancedGDDChart({
                   detail: { tabId: 'activities' }
                 }));
               }
+
+              // Scroll to Activities tab and open Add Event form
+              const eventLogSection = document.querySelector('[data-event-log-section]');
+              if (eventLogSection) {
                 eventLogSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
               }
 
