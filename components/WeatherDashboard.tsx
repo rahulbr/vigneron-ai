@@ -201,7 +201,7 @@ export function WeatherDashboard({ vineyardId, initialLatitude, initialLongitude
     if (isInitialized && dateRange.start && dateRange.end && vineyardId) {
       fetchWeatherData();
     }
-  }, [isInitialized, dateRange, vineyardId, fetchWeatherData]);
+  }, [isInitialized, dateRange, vineyardId]); // Removed fetchWeatherData from deps to prevent infinite loop
 
   // Load activities when vineyard changes
   useEffect(() => {
