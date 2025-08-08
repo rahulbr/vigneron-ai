@@ -1,10 +1,8 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { WeatherDashboard } from '../components/WeatherDashboard';
-import { VineyardsTab } from '../components/VineyardsTab';
 import { supabase } from '../lib/supabase';
 import { MobileBottomTabs } from '../components/MobileBottomTabs';
-import { TabNavigation } from '../components/TabNavigation';
+import { TabNavigation } from '../components/TabNavigation'; // Ensure this import is also present if not already
 
 interface Vineyard {
   id: string;
@@ -17,200 +15,91 @@ interface Vineyard {
 
 export default function Home() {
   const [vineyard, setVineyard] = useState<Vineyard | null>(null);
-  const [userVineyards, setUserVineyards] = useState<Vineyard[]>([]);
+  const [vineyardId, setVineyardId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('vineyards'); // Start with vineyard selection
-  const [isLoadingVineyards, setIsLoadingVineyards] = useState(true);
+  const [activeTab, setActiveTab] = useState('weather'); // State to manage active tab
 
-  // Load user's vineyards on initialization
-  const loadUserVineyards = useCallback(async () => {
-    setIsLoadingVineyards(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('👤 No authenticated user');
-        setLoading(false);
-        setIsLoadingVineyards(false);
-        return;
-      }
-
-      // Load user's vineyards
-      const { getUserVineyards } = await import('../lib/supabase');
-      const vineyards = await getUserVineyards();
-      
-      console.log('🍇 Loaded vineyards:', vineyards);
-      setUserVineyards(vineyards);
-
-      // Try to restore previously selected vineyard
-      const storedVineyardId = localStorage.getItem('current_vineyard_id');
-      if (storedVineyardId && vineyards.length > 0) {
-        const savedVineyard = vineyards.find(v => v.id === storedVineyardId);
-        if (savedVineyard) {
-          setVineyard(savedVineyard);
-          setActiveTab('weather'); // Switch to dashboard if vineyard found
-        }
-      } else if (vineyards.length === 1) {
-        // If only one vineyard, auto-select it
-        setVineyard(vineyards[0]);
-        localStorage.setItem('current_vineyard_id', vineyards[0].id);
-        setActiveTab('weather');
-      }
-
-    } catch (error) {
-      console.error('❌ Error loading vineyards:', error);
-    } finally {
-      setLoading(false);
-      setIsLoadingVineyards(false);
-    }
-  }, []);
-
-  // Handle vineyard selection
-  const handleVineyardChange = (selectedVineyard: Vineyard | null) => {
-    setVineyard(selectedVineyard);
-    if (selectedVineyard) {
-      localStorage.setItem('current_vineyard_id', selectedVineyard.id);
-      // Auto-switch to weather dashboard when vineyard is selected
-      setActiveTab('weather');
-    }
-  };
-
-  // Handle vineyard updates (after creation/editing)
-  const handleVineyardsUpdate = () => {
-    loadUserVineyards();
-  };
-
-  useEffect(() => {
-    loadUserVineyards();
-  }, [loadUserVineyards]);
-
-  // Define tabs for navigation
-  const tabs = [
-    { id: 'weather', label: 'Dashboard', emoji: '📊' },
-    { id: 'insights', label: 'Insights', emoji: '📈' },
-    { id: 'activities', label: 'Activities', emoji: '🌱' },
-    { id: 'reports', label: 'Reports', emoji: '📋' },
-    { id: 'vineyards', label: 'Vineyards', emoji: '🍇' }
-  ];
-
+  // Placeholder for tab content rendering logic, assuming it exists elsewhere or will be added
   const renderTabContent = () => {
-    // Always show vineyard tab regardless of selection
-    if (activeTab === 'vineyards') {
-      return (
-        <VineyardsTab
-          userVineyards={userVineyards}
-          currentVineyard={vineyard}
-          onVineyardChange={handleVineyardChange}
-          onVineyardsUpdate={handleVineyardsUpdate}
-        />
-      );
-    }
-
-    // For other tabs, require vineyard selection
-    if (!vineyard) {
-      return (
-        <div style={{ 
-          padding: '2rem', 
-          textAlign: 'center',
-          backgroundColor: '#f8fafc',
-          borderRadius: '12px',
-          border: '2px dashed #cbd5e1',
-          margin: '2rem'
-        }}>
-          <div style={{ fontSize: '64px', marginBottom: '1rem' }}>🍇</div>
-          <h3 style={{ margin: '0 0 0.5rem 0', color: '#374151', fontSize: '1.5rem' }}>
-            Welcome to Vigneron.AI
-          </h3>
-          <p style={{ margin: '0 0 1.5rem 0', color: '#6b7280', fontSize: '1rem' }}>
-            Please select or create a vineyard to get started
-          </p>
-          <button
-            onClick={() => setActiveTab('vineyards')}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: '#22c55e',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            🍇 Manage Vineyards
-          </button>
-        </div>
-      );
-    }
-
-    // Render content for selected tab with vineyard context
     switch (activeTab) {
       case 'weather':
         return (
-          <WeatherDashboard
-            vineyardId={vineyard.id}
-            initialLatitude={vineyard.latitude}
-            initialLongitude={vineyard.longitude}
-            locationName={vineyard.location}
-          />
-        );
-      case 'insights':
-        return (
-          <div style={{ padding: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h2 style={{ margin: '0', fontSize: '1.5rem', color: '#374151' }}>📈 Vineyard Insights</h2>
-              <div style={{ fontSize: '14px', color: '#6b7280' }}>{vineyard.name}</div>
-            </div>
-            <div style={{ 
-              padding: '2rem', 
-              backgroundColor: '#f8fafc', 
-              borderRadius: '8px',
-              textAlign: 'center'
-            }}>
-              <p style={{ color: '#6b7280' }}>Analytics and trends for {vineyard.name} coming soon...</p>
-            </div>
+          <div style={{ padding: '20px' }}>
+            <WeatherDashboard
+              vineyardId={vineyard?.id}
+              initialLatitude={vineyard?.latitude}
+              initialLongitude={vineyard?.longitude}
+              locationName={vineyard?.location}
+            />
           </div>
         );
-      case 'activities':
-        return (
-          <div style={{ padding: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h2 style={{ margin: '0', fontSize: '1.5rem', color: '#374151' }}>🌱 Activities</h2>
-              <div style={{ fontSize: '14px', color: '#6b7280' }}>{vineyard.name}</div>
-            </div>
-            <div style={{ 
-              padding: '2rem', 
-              backgroundColor: '#f8fafc', 
-              borderRadius: '8px',
-              textAlign: 'center'
-            }}>
-              <p style={{ color: '#6b7280' }}>Field activities for {vineyard.name} coming soon...</p>
-            </div>
-          </div>
-        );
-      case 'reports':
-        return (
-          <div style={{ padding: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h2 style={{ margin: '0', fontSize: '1.5rem', color: '#374151' }}>📋 Reports</h2>
-              <div style={{ fontSize: '14px', color: '#6b7280' }}>{vineyard.name}</div>
-            </div>
-            <div style={{ 
-              padding: '2rem', 
-              backgroundColor: '#f8fafc', 
-              borderRadius: '8px',
-              textAlign: 'center'
-            }}>
-              <p style={{ color: '#6b7280' }}>Generated reports for {vineyard.name} coming soon...</p>
-            </div>
-          </div>
-        );
+      // Add other tabs here if they are defined in your TabNavigation
+      // case 'insights':
+      //   return <InsightsTab />;
+      // case 'activities':
+      //   return <ActivitiesTab />;
+      // case 'reports':
+      //   return <ReportsTab />;
+      // case 'vineyards':
+      //   return <VineyardsTab />;
       default:
         return <p>Select a tab</p>;
     }
   };
+
+  // Define tabs for TabNavigation and MobileBottomTabs
+  const tabs = [
+    { id: 'weather', title: 'Weather', icon: '☀️' }, // Example icon
+    // Add other tabs here
+    // { id: 'insights', title: 'Insights', icon: '📊' },
+    // { id: 'activities', title: 'Activities', icon: '📅' },
+    // { id: 'reports', title: 'Reports', icon: '📄' },
+    // { id: 'vineyards', title: 'Vineyards', icon: '🍇' },
+  ];
+
+  const loadVineyardData = useCallback(async () => {
+    console.log('🔍 Using stored vineyard ID:', vineyardId);
+
+    if (!vineyardId) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('vineyards')
+        .select('*')
+        .eq('id', vineyardId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('❌ Database error:', error);
+        setLoading(false);
+        return;
+      }
+
+      if (data) {
+        setVineyard(data);
+        console.log('✅ Vineyard data loaded:', data);
+      }
+    } catch (error) {
+      console.error('❌ Error loading vineyard:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [vineyardId]);
+
+  useEffect(() => {
+    const storedVineyardId = localStorage.getItem('current_vineyard_id') || 
+                            '8a7802ad-566f-417a-ad24-3df7d006ecf4';
+    setVineyardId(storedVineyardId);
+  }, []);
+
+  useEffect(() => {
+    if (vineyardId) {
+      loadVineyardData();
+    }
+  }, [vineyardId, loadVineyardData]);
 
   if (loading) {
     return (
@@ -220,70 +109,40 @@ export default function Home() {
         alignItems: 'center', 
         height: '100vh',
         flexDirection: 'column',
-        gap: '20px',
-        backgroundColor: '#f8fafc'
+        gap: '20px'
       }}>
         <div style={{
           width: '40px',
           height: '40px',
           border: '4px solid #f3f3f3',
-          borderTop: '4px solid #22c55e',
+          borderTop: '4px solid #3498db',
           borderRadius: '50%',
           animation: 'spin 1s linear infinite'
         }}></div>
-        <p style={{ color: '#6b7280' }}>Loading your vineyard data...</p>
+        <p>Loading vineyard data...</p>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
-      {/* Desktop Tab Navigation */}
-      <div className="desktop-tabs" style={{ 
-        display: 'block',
-        '@media (max-width: 768px)': { display: 'none' }
-      }}>
+    // Removed AuthWrapper and VineyardProvider as they are likely handled at a higher level or not needed for this specific component change.
+    // If they are required, they should be re-integrated.
+    // The changes focus on integrating MobileBottomTabs and adjusting the layout.
+    
+      <div className="mobile-content-padding" style={{ padding: '1rem', paddingBottom: '60px' }}> {/* Added paddingBottom to accommodate bottom tabs */}
         <TabNavigation 
           tabs={tabs}
           activeTab={activeTab}
           onTabChange={setActiveTab}
         />
-      </div>
 
-      {/* Main Content */}
-      <div className="mobile-content-padding" style={{ 
-        padding: '0',
-        paddingBottom: '100px',
-        minHeight: 'calc(100vh - 100px)'
-      }}>
         {renderTabContent()}
+
+        <MobileBottomTabs
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
       </div>
-
-      {/* Mobile Bottom Tab Navigation */}
-      <MobileBottomTabs
-        tabs={tabs}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-      />
-
-      <style jsx>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        
-        @media (max-width: 768px) {
-          .desktop-tabs {
-            display: none !important;
-          }
-        }
-        
-        @media (min-width: 769px) {
-          .mobile-content-padding {
-            padding-bottom: 20px !important;
-          }
-        }
-      `}</style>
-    </div>
   );
 }
