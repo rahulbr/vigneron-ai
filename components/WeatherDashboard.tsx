@@ -1984,7 +1984,7 @@ export function WeatherDashboard({
   };
 
   return (
-    <div className="container section-spacing" style={{ padding: '1rem' }}>
+    <div className="container section-spacing" style={{ padding: '1rem', height: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Safety Alerts */}
       {safetyAlerts.length > 0 && (
         <div style={{ marginBottom: '20px' }}>

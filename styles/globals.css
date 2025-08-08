@@ -61,8 +61,9 @@ body {
     gap: 16px !important;
   }
   
-  /* Form layouts stack properly */
-  div[style*="grid-template-columns"] {
+  /* Force all inline grid styles to stack on mobile */
+  [style*="grid-template-columns"],
+  [style*="gridTemplateColumns"] {
     display: flex !important;
     flex-direction: column !important;
     gap: 16px !important;
@@ -88,6 +89,49 @@ body {
   td, th {
     padding: 8px 4px !important;
     font-size: 13px !important;
+  }
+
+  /* Enhanced mobile tab navigation */
+  .tab-navigation {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+    background: white !important;
+    padding: 8px !important;
+    margin-bottom: 16px !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+  }
+
+  /* Mobile-specific chart sizing */
+  .chart-container {
+    width: 100% !important;
+    height: 280px !important;
+    overflow: hidden !important;
+  }
+
+  /* Activity list mobile optimizations */
+  .activity-item {
+    padding: 12px !important;
+    margin-bottom: 8px !important;
+    border-radius: 8px !important;
+  }
+
+  /* Form improvements for mobile */
+  .form-container {
+    padding: 12px !important;
+    margin: 8px 0 !important;
+  }
+
+  /* Button group stacking */
+  .button-row {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  .button-row > * {
+    width: 100% !important;
   }
 }
 
